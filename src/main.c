@@ -44,6 +44,21 @@ static inline void closerom(const rom_t* const rom)
 }
 
 
+static inline void printascii(const unsigned char* const data, long begin, long end)
+{
+	printf("................: ");
+
+	for (long i = begin; i < end; ++i) {
+		const char byte = (char) data[i];
+		if (byte >= -127 && byte <= 126 && byte != '\n')
+			putchar(byte);
+		else
+			putchar('*');
+	}
+
+	putchar('\n');
+}
+
 int main(const int argc, const char* const * const argv)
 {
 	if (argc > 1) {
@@ -52,8 +67,22 @@ int main(const int argc, const char* const * const argv)
 		if (rom == NULL)
 			return EXIT_FAILURE;
 
-		fwrite(rom->data, 1, rom->size, stdout);
-		putchar('\n');
+		long b;
+		for (b = 0; b < rom->size; ++b) {
+			if ((b % 8) != 0) {
+				printf("%2X ", rom->data[b]);
+			} else {
+				printf("%2X", rom->data[b]);
+				printascii(rom->data, b - 8, b);
+			}
+		}
+
+		const long diff = --b % 8;
+		if (diff != 0) {
+			for (long i = diff; i < 8; ++i)
+				printf("  ");
+			printascii(rom->data, b - diff, b);
+		}
 
 		closerom(rom);
 		return EXIT_SUCCESS;
