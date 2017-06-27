@@ -72,9 +72,9 @@ int main(const int argc, const char* const * const argv)
 		long b;
 		for (b = 0; b < rom->size; ++b) {
 			if ((b % 8) != 0) {
-				printf("%2X ", rom->data[b]);
+				printf("%.2X ", rom->data[b]);
 			} else if (b >= 8) {
-				printf("%2X", rom->data[b]);
+				printf("%.2X", rom->data[b]);
 				printascii(rom->data, b - 8, b);
 			}
 		}
