@@ -50,10 +50,10 @@ static inline void printascii(const unsigned char* const data, long begin, long 
 
 	for (long i = begin; i < end; ++i) {
 		const char byte = (char) data[i];
-		if (byte >= -127 && byte <= 126 && byte != '\n')
-			putchar(byte);
+		if (byte >= 48 && byte <= 90 && byte != '\n')
+			printf("%c ", byte);
 		else
-			putchar('*');
+			printf(". ");
 	}
 
 	putchar('\n');
@@ -67,11 +67,13 @@ int main(const int argc, const char* const * const argv)
 		if (rom == NULL)
 			return EXIT_FAILURE;
 
+		printf("ROM SIZE: %ld\n", rom->size);
+
 		long b;
 		for (b = 0; b < rom->size; ++b) {
 			if ((b % 8) != 0) {
 				printf("%2X ", rom->data[b]);
-			} else {
+			} else if (b >= 8) {
 				printf("%2X", rom->data[b]);
 				printascii(rom->data, b - 8, b);
 			}
