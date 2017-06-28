@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <ctype.h>
 
 struct rom {
 	long size;
@@ -50,7 +50,7 @@ static inline void printascii(const unsigned char* const data, long begin, long 
 
 	for (long i = begin; i < end; ++i) {
 		const char byte = (char) data[i];
-		if (byte >= 48 && byte <= 90 && byte != '\n')
+		if (isalnum(byte))
 			printf("%c ", byte);
 		else
 			printf(". ");
