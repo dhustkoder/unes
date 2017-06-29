@@ -28,8 +28,6 @@ int main(const int argc, const char* const * const argv)
 		if (rom == NULL)
 			return EXIT_FAILURE;
 
-		printf("ROM SIZE: %ld\n", rom->size);
-
 		long b;
 		for (b = 0; b < rom->size; ++b) {
 			if ((b % 8) != 0) {
@@ -46,6 +44,18 @@ int main(const int argc, const char* const * const argv)
 				putchar(' ');
 			printascii(rom->data, b - diff, b);
 		}
+
+
+		printf("ROM SIZE: %ld\n"
+		       "PRG-ROM BANKS: %d\n"
+		       "VROM BANKS: %d\n"
+		       "RAM BANKS: %d\n",
+		       rom->size,
+		       (int)rom->data[4],
+		       (int)rom->data[5],
+		       (int)rom->data[8]);
+
+
 
 		closerom(rom);
 		return EXIT_SUCCESS;
