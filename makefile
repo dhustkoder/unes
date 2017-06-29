@@ -9,7 +9,7 @@ $(BUILD_DIR)/unes: $(OBJS_DIR)/main.o
 	mkdir -p $(BUILD_DIR)
 	$(CC) -o $@ $< $(CFLAGS)
 
-$(OBJS_DIR)/main.o: $(SRC_DIR)/main.c
+$(OBJS_DIR)/main.o: $(SRC_DIR)/main.c $(SRC_DIR)/rom.h
 	mkdir -p $(OBJS_DIR)	
 	$(CC) -c -o $@ $< $(CFLAGS)
 
