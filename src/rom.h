@@ -4,11 +4,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
+
+
+#define PRGROM_BANK_SIZE (16 * 1024)
+#define VROM_BANK_SIZE   (8  * 1024)
+#define RAM_BANK_SIZE    (8  * 1024)
 
 
 typedef struct rom {
-	long size;
-	unsigned char data[];
+	uint8_t prgrom_num_banks;
+	uint8_t vrom_num_banks;
+	uint8_t ram_num_banks;	
+	uint8_t ctrl1;
+	uint8_t ctrl2;
+	uint8_t data[];
 } rom_t;
 
 
@@ -23,21 +33,25 @@ static inline rom_t* openrom(const char* const path)
 		return NULL;
 	}
 
-	const char ines_match[5] = { 'N', 'E', 'S', 0x1A, '\0' };
-	char ines[5] = { '\0', '\0', '\0', '\0', '\0' };
-	fread(ines, 1, 4, file);
-	if (strcmp(ines, ines_match) != 0) {
-		fprintf(stderr, "\'%s\' is not an iNES file.\n", path);
+	const uint8_t header_match[] = { 'N', 'E', 'S', 0x1A };
+	uint8_t ines_header[16];
+	fread(ines_header, 1, 16, file);
+	if (memcmp(ines_header, header_match, sizeof(header_match)) != 0) {
+		fprintf(stderr, "\'%s\' is not an ines file.\n", path);
 		goto Lfclose;
 	}
 
-	fseek(file, 0, SEEK_END);
-	const long filelen = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	const int datasize = ines_header[4] * PRGROM_BANK_SIZE +
+	                    ines_header[5] * VROM_BANK_SIZE +
+			    ines_header[8] * RAM_BANK_SIZE;
 
-	rom = malloc(sizeof(rom_t) + filelen);
-	fread(rom->data, 1, filelen, file);
-	rom->size = filelen;
+	rom = malloc(sizeof(rom_t) + datasize); 
+	rom->prgrom_num_banks = ines_header[4];
+	rom->vrom_num_banks = ines_header[5];
+	rom->ctrl1 = ines_header[6];
+	rom->ctrl2 = ines_header[7];
+	rom->ram_num_banks = ines_header[8];
+	fread(rom->data, 1, datasize, file);
 Lfclose:
 	fclose(file);
 	return rom;
