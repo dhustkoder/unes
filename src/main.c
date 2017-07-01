@@ -3,7 +3,6 @@
 #include "rom.h"
 
 
-
 int main(const int argc, const char* const * const argv)
 {
 	if (argc > 1) {
