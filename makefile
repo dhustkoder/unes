@@ -9,10 +9,20 @@ SRC=$(SRC_DIR)/%.c
 OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJS_DIR)/%.o, $(wildcard $(SRC_DIR)/*.c))
 
 
+ifeq ($(BUILD_TYPE),Debug)
+	CFLAGS += $(CFLAGS_DEBUG)
+else
+	CFLAGS += $(CFLAGS_RELEASE)
+endif
+
+ifeq ($(ENABLE_LTO),ON)
+	CFLAGS += -flto
+endif
+
+
 .PHONY: all clean
 
 
-all: CFLAGS += $(CFLAGS_RELEASE)
 all: $(BUILD_DIR)/unes
 
 
