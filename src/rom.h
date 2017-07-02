@@ -7,9 +7,9 @@
 #include <stdint.h>
 
 
-#define PRGROM_BANK_SIZE (((int_fast32_t)16) * ((int_fast32_t)1024))
-#define VROM_BANK_SIZE   (((int_fast32_t)8)  * ((int_fast32_t)1024))
-#define RAM_BANK_SIZE    (((int_fast32_t)8)  * ((int_fast32_t)1024))
+#define PRGROM_BANK_SIZE ((int_fast32_t)16384)
+#define VROM_BANK_SIZE   ((int_fast32_t)8192)
+#define RAM_BANK_SIZE    ((int_fast32_t)8192)
 
 
 typedef struct rom {
