@@ -9,10 +9,10 @@ SRC=$(SRC_DIR)/%.c
 OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJS_DIR)/%.o, $(wildcard $(SRC_DIR)/*.c))
 
 
-ifeq ($(BUILD_TYPE),Debug)
-	CFLAGS += $(CFLAGS_DEBUG)
-else
+ifeq ($(BUILD_TYPE),Release)
 	CFLAGS += $(CFLAGS_RELEASE)
+else
+	CFLAGS += $(CFLAGS_DEBUG)
 endif
 
 ifeq ($(ENABLE_LTO),ON)

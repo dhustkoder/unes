@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include "rom.h"
 
@@ -11,9 +12,9 @@ int main(const int argc, const char* const * const argv)
 		if (rom == NULL)
 			return EXIT_FAILURE;
 
-		printf("PRG-ROM BANKS: %d x 16Kib = %u\n"
-		       "VROM BANKS: %d x 8 Kib = %u\n"
-		       "RAM BANKS: %d x 8 Kib = %u\n"
+		printf("PRG-ROM BANKS: %" PRIu8 " x 16Kib = %" PRIiFAST32 "\n"
+		       "VROM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
+		       "RAM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
 		       "CTRL BYTE 1:\n"
 		       "\tMIRRORING: %d = %s\n"
 		       "\tBATTERY-BACKED RAM AT $6000-$7FFF: %d = %s\n"

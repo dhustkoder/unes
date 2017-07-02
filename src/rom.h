@@ -7,9 +7,9 @@
 #include <stdint.h>
 
 
-#define PRGROM_BANK_SIZE (16 * 1024)
-#define VROM_BANK_SIZE   (8  * 1024)
-#define RAM_BANK_SIZE    (8  * 1024)
+#define PRGROM_BANK_SIZE (((int_fast32_t)16) * ((int_fast32_t)1024))
+#define VROM_BANK_SIZE   (((int_fast32_t)8)  * ((int_fast32_t)1024))
+#define RAM_BANK_SIZE    (((int_fast32_t)8)  * ((int_fast32_t)1024))
 
 
 typedef struct rom {
@@ -41,7 +41,7 @@ static inline rom_t* openrom(const char* const path)
 		goto Lfclose;
 	}
 
-	const int datasize = ines_header[4] * PRGROM_BANK_SIZE +
+	const int_fast32_t datasize = ines_header[4] * PRGROM_BANK_SIZE +
 	                    ines_header[5] * VROM_BANK_SIZE +
 			    ines_header[8] * RAM_BANK_SIZE;
 
