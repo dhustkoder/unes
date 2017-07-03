@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <inttypes.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include "rom.h"
 
 
