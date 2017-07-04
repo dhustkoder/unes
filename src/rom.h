@@ -12,6 +12,7 @@
 #define RAM_BANK_SIZE    ((int_fast32_t)8192)
 #define TRAINER_SIZE     ((int_fast32_t)512)
 
+
 typedef struct rom {
 	uint8_t prgrom_num_banks;
 	uint8_t vrom_num_banks;
@@ -70,7 +71,6 @@ static inline void closerom(const rom_t* const rom)
 {
 	free((void*)rom);
 }
-
 
 
 #endif
