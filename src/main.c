@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include "rom.h"
+#include "disassembler.h"
 
 
 int main(const int argc, const char* const * const argv)
@@ -33,6 +34,10 @@ int main(const int argc, const char* const * const argv)
 		       (rom->ctrl1&0x08)>>3, (rom->ctrl1&0x08) ? "YES" : "NO",
 		       (rom->ctrl1&0xF0)>>4, rom->ctrl2&0x0F, (rom->ctrl2&0xF0)>>4);
 
+		printf("DISASSEMBLE:\n");
+		char* const buffer = disassemble(rom); // NULL for now...
+
+		free(buffer);                          // just for correctness
 		closerom(rom);
 		return EXIT_SUCCESS;
 	}
