@@ -4,14 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <stdint.h>
 #include "types.h"
-
-
-#define PRGROM_BANK_SIZE ((int_fast32_t)16384)
-#define VROM_BANK_SIZE   ((int_fast32_t)8192)
-#define RAM_BANK_SIZE    ((int_fast32_t)8192)
-#define TRAINER_SIZE     ((int_fast32_t)512)
 
 
 static inline rom_t* openrom(const char* const path)
