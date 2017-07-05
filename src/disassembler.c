@@ -14,7 +14,19 @@ static inline const char* opstr(const uint8_t data[], int_fast32_t *offset)
 	case 0x2B: str = "ANC #"; ++(*offset); break;
 	case 0x49: str = "EOR #"; ++(*offset); break;
 	case 0x4B: str = "ALR #"; ++(*offset); break;
+	
+
+	// ADC
 	case 0x69: str = "ADC #"; ++(*offset); break;
+	case 0x65: str = "ADC #"; ++(*offset); break;
+	case 0x75: str = "ADC #"; ++(*offset); break;
+	case 0x6D: str = "ADC #"; (*offset) += 2; break;
+	case 0x7D: str = "ADC #"; (*offset) += 2; break;
+	case 0x79: str = "ADC #"; (*offset) += 2; break;
+	case 0x61: str = "ADC #"; ++(*offset); break; 
+	case 0x71: str = "ADC #"; ++(*offset); break;
+
+
 	case 0x6B: str = "ARR #"; ++(*offset); break;
 	case 0x80: str = "NOP #"; ++(*offset); break;
 	case 0x82: str = "NOP #"; ++(*offset); break;
