@@ -58,6 +58,34 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "ASL";
+
+	// BCC
+	case 0x90:
+		++(*offset);
+		return "BCC";
+
+	// STA
+	case 0x85:
+	case 0x95:
+	case 0x8D:
+	case 0x9D:
+	case 0x99:
+	case 0x81:
+	case 0x91:
+		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+		return "STA";
+
+	// CMP
+	case 0xC9:
+	case 0xC5:
+	case 0xD5:
+	case 0xCD:
+	case 0xDD:
+	case 0xD9:
+	case 0xC1:
+	case 0xD1:
+		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+		return "CMP"; 
 	}
 
 	return "UNKNOWN";
