@@ -91,6 +91,15 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "LSR";
+	// ROL
+	case 0x2A:
+	case 0x26:
+	case 0x36:
+	case 0x2E:
+	case 0x3E:
+		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
+		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
+		return "ROL";
 
 	// BRANCH
 	case 0x90: // BCC
