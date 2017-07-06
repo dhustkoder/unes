@@ -92,7 +92,17 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xC1:
 	case 0xD1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "CMP"; 
+		return "CMP";
+	
+	// BIT
+	case 0x24:
+	case 0x2C:
+		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
+		return "BIT";
+
+	// BRK
+	case 0x00:
+		return "BRK";	
 	}
 
 	return "UNKNOWN";
