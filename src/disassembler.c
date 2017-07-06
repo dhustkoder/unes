@@ -59,10 +59,17 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "ASL";
 
-	// BCC
-	case 0x90:
+	// BRANCH
+	case 0x90: // BCC
+	case 0xB0: // BCS
+	case 0xF0: // BEQ
+	case 0x30: // BMI
+	case 0xD0: // BNE
+	case 0x10: // BPL
+	case 0x50: // BVC
+	case 0x70: // BVS
 		++(*offset);
-		return "BCC";
+		return "BRANCH";
 
 	// STA
 	case 0x85:
