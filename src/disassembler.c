@@ -49,6 +49,30 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "AND";
 
+	// ORA (OR)
+	case 0x09:
+	case 0x05:
+	case 0x15:
+	case 0x0D:
+	case 0x1D:
+	case 0x19:
+	case 0x01:
+	case 0x11:
+		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+		return "ORA";
+
+	// EOR (XOR)
+	case 0x49:
+	case 0x45:
+	case 0x55:
+	case 0x4D:
+	case 0x5D:
+	case 0x59:
+	case 0x41:
+	case 0x51:
+		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+		return "EOR";
+
 	// ASL
 	case 0x0A:
 	case 0x06:
@@ -58,6 +82,15 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "ASL";
+	// LSR
+	case 0x4A:
+	case 0x46:
+	case 0x56:
+	case 0x4E:
+	case 0x5E:
+		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
+		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
+		return "LSR";
 
 	// BRANCH
 	case 0x90: // BCC
@@ -70,6 +103,14 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x70: // BVS
 		++(*offset);
 		return "BRANCH";
+
+	// DEC
+	case 0xC6:
+	case 0xD6:
+	case 0xCE:
+	case 0xDE:
+		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
+		return "DEC";
 
 	// STA
 	case 0x85:
@@ -97,15 +138,27 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	// BIT
 	case 0x24:
 	case 0x2C:
-		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
+		(*offset) += (opcode == 0x2C) ? 2 : 1;
 		return "BIT";
 
 	// CPX
 	case 0xE0:
 	case 0xE4:
 	case 0xEC:
-		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
+		(*offset) += (opcode == 0xEC) ? 2 : 1;
 		return "CPX";
+
+	// CPY
+	case 0xC0:
+	case 0xC4:
+	case 0xCC:
+		(*offset) += (opcode == 0xCC) ? 2 : 1;
+		return "CPY";
+	
+	// JSR
+	case 0x20:
+		(*offset) += 2;
+		return "JSR";
 
 	// BRK
 	case 0x00: return "BRK";
@@ -121,7 +174,10 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xD8: return "CLD";
 	// SED
 	case 0xF8: return "SED";
-	
+	// DEX
+	case 0xCA: return "DEX";
+	// DEY
+	case 0x88: return "DEY";	
 	}
 
 	return "UNKNOWN";
