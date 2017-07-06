@@ -100,9 +100,28 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
 		return "BIT";
 
+	// CPX
+	case 0xE0:
+	case 0xE4:
+	case 0xEC:
+		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
+		return "CPX";
+
 	// BRK
-	case 0x00:
-		return "BRK";	
+	case 0x00: return "BRK";
+	// CLC
+	case 0x18: return "CLC";
+	// CLI
+	case 0x58: return "CLI";
+	// SEI
+	case 0x78: return "SEI";
+	// CLV
+	case 0xB8: return "CLV";
+	// CLD
+	case 0xD8: return "CLD";
+	// SED
+	case 0xF8: return "SED";
+	
 	}
 
 	return "UNKNOWN";
