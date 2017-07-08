@@ -3,7 +3,7 @@
 #include "types.h"
 
 
-extern char* disassemble(const rom_t* rom);
+extern void disassemble(const rom_t* rom);
 
 
 

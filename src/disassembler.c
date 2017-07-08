@@ -6,17 +6,13 @@
 static inline const char* opstr(const uint8_t* data, int_fast32_t* offset);
 
 
-char* disassemble(const rom_t* const rom)
+void disassemble(const rom_t* const rom)
 {
 	const int_fast32_t datasize = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
 	int_fast32_t offset = 0;
 
-	while (offset < datasize) {
-		const char* const str = opstr(rom->data, &offset);
-		printf("%s\n", str);
-	}
-
-	return NULL;
+	while (offset < datasize)
+		printf("%s\n", opstr(rom->data, &offset));
 }
 
 
