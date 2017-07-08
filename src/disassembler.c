@@ -177,7 +177,17 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xD1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "CMP";
-	
+
+	// ROR
+	case 0x6A:
+	case 0x66:
+	case 0x76:
+	case 0x6E:
+	case 0x7E:
+		(*offset) += opcode == 0x6A ? 0 :
+		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
+		return "ROR";
+
 	// BIT
 	case 0x24:
 	case 0x2C:
@@ -231,6 +241,16 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xE8: return "INX";
 	// INY
 	case 0xC8: return "INY";
+	// PHP
+	case 0x08: return "PHP";
+	// PLP
+	case 0x28: return "PLP";
+	// PHA
+	case 0x48: return "PHA";
+	// PLA
+	case 0x68: return "PLA";
+	// NOP
+	case 0xEA: return "NOP"; 
 	}
 
 	return "UNKNOWN";
