@@ -172,6 +172,12 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x20:
 		(*offset) += 2;
 		return "JSR";
+	
+	// JMP
+	case 0x4C:
+	case 0x6C:
+		(*offset) += 2;
+		return "JMP";
 
 	// BRK
 	case 0x00: return "BRK";
@@ -191,6 +197,10 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xCA: return "DEX";
 	// DEY
 	case 0x88: return "DEY";	
+	// INX
+	case 0xE8: return "INX";
+	// INY
+	case 0xC8: return "INY";
 	}
 
 	return "UNKNOWN";
