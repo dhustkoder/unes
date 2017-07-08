@@ -113,6 +113,14 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		++(*offset);
 		return "BRANCH";
 
+	// INC
+	case 0xE6:
+	case 0xF6:
+	case 0xEE:
+	case 0xFE:
+		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
+		return "INC";
+
 	// DEC
 	case 0xC6:
 	case 0xD6:
