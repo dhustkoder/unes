@@ -125,6 +125,36 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "DEC";
 
+	// LDA
+	case 0xA9:
+	case 0xA5:
+	case 0xB5:
+	case 0xAD:
+	case 0xBD:
+	case 0xB9:
+	case 0xA1:
+	case 0xB1:
+		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+		return "LDA";
+
+	// LDX
+	case 0xA2:
+	case 0xA6:
+	case 0xB6:
+	case 0xAE:
+	case 0xBE:
+		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
+		return "LDX";
+
+	// LDY
+	case 0xA0:
+	case 0xA4:
+	case 0xB4:
+	case 0xAC:
+	case 0xBC:
+		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
+		return "LDY";
+
 	// STA
 	case 0x85:
 	case 0x95:
