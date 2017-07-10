@@ -32,7 +32,17 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x71:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "ADC";
-
+	// SBC
+	case 0xE9:
+	case 0xE5:
+	case 0xF5:
+	case 0xED:
+	case 0xFD:
+	case 0xF9:
+	case 0xE1:
+	case 0xF1:
+		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+		return "SBC";
 	// AND
 	case 0x29:
 	case 0x25:
@@ -44,7 +54,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x31:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "AND";
-
 	// ORA (OR)
 	case 0x09:
 	case 0x05:
@@ -56,7 +65,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x11:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "ORA";
-
 	// EOR (XOR)
 	case 0x49:
 	case 0x45:
@@ -68,7 +76,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x51:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "EOR";
-
 	// ASL
 	case 0x0A:
 	case 0x06:
@@ -96,7 +103,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "ROL";
-
 	// BRANCH
 	case 0x90: // BCC
 	case 0xB0: // BCS
@@ -108,7 +114,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x70: // BVS
 		++(*offset);
 		return "BRANCH";
-
 	// INC
 	case 0xE6:
 	case 0xF6:
@@ -116,7 +121,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xFE:
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "INC";
-
 	// DEC
 	case 0xC6:
 	case 0xD6:
@@ -124,7 +128,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xDE:
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "DEC";
-
 	// LDA
 	case 0xA9:
 	case 0xA5:
@@ -136,7 +139,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xB1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "LDA";
-
 	// LDX
 	case 0xA2:
 	case 0xA6:
@@ -145,7 +147,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xBE:
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "LDX";
-
 	// LDY
 	case 0xA0:
 	case 0xA4:
@@ -154,7 +155,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xBC:
 		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
 		return "LDY";
-
 	// STA
 	case 0x85:
 	case 0x95:
@@ -165,7 +165,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x91:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "STA";
-
 	// CMP
 	case 0xC9:
 	case 0xC5:
@@ -177,7 +176,6 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xD1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "CMP";
-
 	// ROR
 	case 0x6A:
 	case 0x66:
@@ -187,38 +185,32 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 		(*offset) += opcode == 0x6A ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
 		return "ROR";
-
 	// BIT
 	case 0x24:
 	case 0x2C:
 		(*offset) += (opcode == 0x2C) ? 2 : 1;
 		return "BIT";
-
 	// CPX
 	case 0xE0:
 	case 0xE4:
 	case 0xEC:
 		(*offset) += (opcode == 0xEC) ? 2 : 1;
 		return "CPX";
-
 	// CPY
 	case 0xC0:
 	case 0xC4:
 	case 0xCC:
 		(*offset) += (opcode == 0xCC) ? 2 : 1;
 		return "CPY";
-	
 	// JSR
 	case 0x20:
 		(*offset) += 2;
 		return "JSR";
-	
 	// JMP
 	case 0x4C:
 	case 0x6C:
 		(*offset) += 2;
 		return "JMP";
-
 	// BRK
 	case 0x00: return "BRK";
 	// CLC
@@ -250,7 +242,11 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	// PLA
 	case 0x68: return "PLA";
 	// NOP
-	case 0xEA: return "NOP"; 
+	case 0xEA: return "NOP";
+	// RTI
+	case 0x40: return "RTI";
+	// RTS
+	case 0x60: return "RTS";	 
 	}
 
 	return "UNKNOWN";
