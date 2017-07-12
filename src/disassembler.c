@@ -11,8 +11,10 @@ void disassemble(const rom_t* const rom)
 	const int_fast32_t datasize = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
 	int_fast32_t offset = 0;
 
-	while (offset < datasize)
-		printf("%s\n", opstr(rom->data, &offset));
+	while (offset < datasize) {
+		const uint_fast8_t opcode = rom->data[offset];
+		printf("$%.2X => %s\n", opcode, opstr(rom->data, &offset));
+	}
 }
 
 
@@ -260,8 +262,19 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	// RTS
 	case 0x60: return "RTS";
 	// SEC
-	case 0x38: return "SEC";
-	 
+	case 0x38: return "SEC"; 
+	// TAX
+	case 0xAA: return "TAX";
+	// TXA
+	case 0x8A: return "TXA";
+	// TAY
+	case 0xA8: return "TAY";
+	// TSX
+	case 0xBA: return "TSX";
+	// TXS
+	case 0x9A: return "TXS";
+	// TYA
+	case 0x98: return "TYA";	   
 	}
 
 	return "UNKNOWN";
