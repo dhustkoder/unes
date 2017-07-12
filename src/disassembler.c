@@ -3,28 +3,28 @@
 #include "disassembler.h"
 
 
-static inline const char* opstr(const uint8_t* data, int_fast32_t* offset);
+static inline void opstr(const uint8_t* data, int_fast32_t* offset, char buffer[16]);
 
 
 void disassemble(const rom_t* const rom)
 {
 	const int_fast32_t datasize = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
 	int_fast32_t offset = 0;
-
+	char buffer[16];
 	while (offset < datasize) {
-		const uint_fast8_t opcode = rom->data[offset];
-		printf("$%.2X => %s\n", opcode, opstr(rom->data, &offset));
+		opstr(rom->data, &offset, buffer);
+		printf("%s\n", buffer);
 	}
 }
 
 
-static inline const char* opstr(const uint8_t* const data, int_fast32_t* const offset)
+static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, char buffer[16])
 {
 	const uint_fast8_t opcode = data[(*offset)++];
 
 	switch (opcode) {
 	// ADC
-	case 0x69:
+	case 0x69: sprintf(buffer, "ADC #$%x", data[(*offset)++]); break;
 	case 0x65:
 	case 0x75:
 	case 0x6D:
@@ -33,7 +33,7 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x61:
 	case 0x71:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "ADC";
+		break;
 	// SBC
 	case 0xE9:
 	case 0xE5:
@@ -44,7 +44,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xE1:
 	case 0xF1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "SBC";
+		sprintf(buffer, "SBC");
+		break;
 	// AND
 	case 0x29:
 	case 0x25:
@@ -55,7 +56,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x21:
 	case 0x31:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "AND";
+		sprintf(buffer, "AND");
+		break;
 	// ORA (OR)
 	case 0x09:
 	case 0x05:
@@ -66,7 +68,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x01:
 	case 0x11:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "ORA";
+		sprintf(buffer, "ORA");
+		break;
 	// EOR (XOR)
 	case 0x49:
 	case 0x45:
@@ -77,7 +80,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x41:
 	case 0x51:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "EOR";
+		sprintf(buffer, "EOR");
+		break;
 	// ASL
 	case 0x0A:
 	case 0x06:
@@ -86,7 +90,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x1E:
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "ASL";
+		sprintf(buffer, "ASL");
+		break;
 	// LSR
 	case 0x4A:
 	case 0x46:
@@ -95,7 +100,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x5E:
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "LSR";
+		sprintf(buffer, "LSR");
+		break;
 	// ROL
 	case 0x2A:
 	case 0x26:
@@ -104,7 +110,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x3E:
 		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "ROL";
+		sprintf(buffer, "ROL");
+		break;
 	// BRANCH
 	case 0x90: // BCC
 	case 0xB0: // BCS
@@ -115,21 +122,24 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x50: // BVC
 	case 0x70: // BVS
 		++(*offset);
-		return "BRANCH";
+		sprintf(buffer, "BRANCH");
+		break;
 	// INC
 	case 0xE6:
 	case 0xF6:
 	case 0xEE:
 	case 0xFE:
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "INC";
+		sprintf(buffer, "INC");
+		break;
 	// DEC
 	case 0xC6:
 	case 0xD6:
 	case 0xCE:
 	case 0xDE:
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "DEC";
+		sprintf(buffer, "DEC");
+		break;
 	// LDA
 	case 0xA9:
 	case 0xA5:
@@ -140,7 +150,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xA1:
 	case 0xB1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "LDA";
+		sprintf(buffer, "LDA");
+		break;
 	// LDX
 	case 0xA2:
 	case 0xA6:
@@ -148,7 +159,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xAE:
 	case 0xBE:
 		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "LDX";
+		sprintf(buffer, "LDX");
+		break;
 	// LDY
 	case 0xA0:
 	case 0xA4:
@@ -156,7 +168,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xAC:
 	case 0xBC:
 		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
-		return "LDY";
+		sprintf(buffer, "LDY");
+		break;
 	// STA
 	case 0x85:
 	case 0x95:
@@ -166,19 +179,22 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x81:
 	case 0x91:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "STA";
+		sprintf(buffer, "STA");
+		break;
 	// STX
 	case 0x86:
 	case 0x96:
 	case 0x8E:
 		(*offset) += (opcode == 0x8E) ? 2 : 1;
-		return "STX";
+		sprintf(buffer, "STX");
+		break;
 	// STY
 	case 0x84:
 	case 0x94:
 	case 0x8C:
 		(*offset) += (opcode == 0x8C) ? 2 : 1;
-		return "STY";
+		sprintf(buffer, "STY");
+		break;
 	// CMP
 	case 0xC9:
 	case 0xC5:
@@ -189,7 +205,8 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0xC1:
 	case 0xD1:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		return "CMP";
+		sprintf(buffer, "CMP");
+		break;
 	// ROR
 	case 0x6A:
 	case 0x66:
@@ -198,86 +215,92 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x7E:
 		(*offset) += opcode == 0x6A ? 0 :
 		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		return "ROR";
+		sprintf(buffer, "ROR");
+		break;
 	// BIT
 	case 0x24:
 	case 0x2C:
 		(*offset) += (opcode == 0x2C) ? 2 : 1;
-		return "BIT";
+		sprintf(buffer, "BIT");
+		break;
 	// CPX
 	case 0xE0:
 	case 0xE4:
 	case 0xEC:
 		(*offset) += (opcode == 0xEC) ? 2 : 1;
-		return "CPX";
+		sprintf(buffer, "CPX");
+		break;
 	// CPY
 	case 0xC0:
 	case 0xC4:
 	case 0xCC:
 		(*offset) += (opcode == 0xCC) ? 2 : 1;
-		return "CPY";
+		sprintf(buffer, "CPY");
+		break;
 	// JSR
 	case 0x20:
 		(*offset) += 2;
-		return "JSR";
+		sprintf(buffer, "JSR");
+		break;
 	// JMP
 	case 0x4C:
 	case 0x6C:
 		(*offset) += 2;
-		return "JMP";
+		sprintf(buffer, "JMP");
+		break;
 	// BRK
-	case 0x00: return "BRK";
+	case 0x00: sprintf(buffer, "BRK"); break;
 	// CLC
-	case 0x18: return "CLC";
+	case 0x18: sprintf(buffer, "CLC"); break;
 	// CLI
-	case 0x58: return "CLI";
+	case 0x58: sprintf(buffer, "CLI"); break;
 	// SEI
-	case 0x78: return "SEI";
+	case 0x78: sprintf(buffer, "SEI"); break;
 	// CLV
-	case 0xB8: return "CLV";
+	case 0xB8: sprintf(buffer, "CLV"); break;
 	// CLD
-	case 0xD8: return "CLD";
+	case 0xD8: sprintf(buffer, "CLD"); break;
 	// SED
-	case 0xF8: return "SED";
+	case 0xF8: sprintf(buffer, "SED"); break;
 	// DEX
-	case 0xCA: return "DEX";
+	case 0xCA: sprintf(buffer, "DEX"); break;
 	// DEY
-	case 0x88: return "DEY";	
+	case 0x88: sprintf(buffer, "DEY"); break;
 	// INX
-	case 0xE8: return "INX";
+	case 0xE8: sprintf(buffer, "INX"); break;
 	// INY
-	case 0xC8: return "INY";
+	case 0xC8: sprintf(buffer, "INY"); break;
 	// PHP
-	case 0x08: return "PHP";
+	case 0x08: sprintf(buffer, "PHP"); break;
 	// PLP
-	case 0x28: return "PLP";
+	case 0x28: sprintf(buffer, "PLP"); break;
 	// PHA
-	case 0x48: return "PHA";
+	case 0x48: sprintf(buffer, "PHA"); break;
 	// PLA
-	case 0x68: return "PLA";
+	case 0x68: sprintf(buffer, "PLA"); break;
 	// NOP
-	case 0xEA: return "NOP";
+	case 0xEA: sprintf(buffer, "NOP"); break;
 	// RTI
-	case 0x40: return "RTI";
+	case 0x40: sprintf(buffer, "RTI"); break;
 	// RTS
-	case 0x60: return "RTS";
+	case 0x60: sprintf(buffer, "RTS"); break;
 	// SEC
-	case 0x38: return "SEC"; 
+	case 0x38: sprintf(buffer, "SEC"); break;
 	// TAX
-	case 0xAA: return "TAX";
+	case 0xAA: sprintf(buffer, "TAX"); break;
 	// TXA
-	case 0x8A: return "TXA";
+	case 0x8A: sprintf(buffer, "TXA"); break;
 	// TAY
-	case 0xA8: return "TAY";
+	case 0xA8: sprintf(buffer, "TAY"); break;
 	// TSX
-	case 0xBA: return "TSX";
+	case 0xBA: sprintf(buffer, "TSX"); break;
 	// TXS
-	case 0x9A: return "TXS";
+	case 0x9A: sprintf(buffer, "TXS"); break;
 	// TYA
-	case 0x98: return "TYA";	   
-	}
+	case 0x98: sprintf(buffer, "TYA"); break;  
 
-	return "UNKNOWN";
+	default: sprintf(buffer, "UNKNOWN"); break;
+	}
 }
 
 
