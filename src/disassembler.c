@@ -13,27 +13,37 @@ void disassemble(const rom_t* const rom)
 	char buffer[16];
 	while (offset < datasize) {
 		opstr(rom->data, &offset, buffer);
-		printf("%s\n", buffer);
+		puts(buffer);
 	}
 }
 
 
 static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, char buffer[16])
 {
+	#define b16(msb, lsb) (((msb)<<8)|(lsb))
+
 	const uint_fast8_t opcode = data[(*offset)++];
 
 	switch (opcode) {
 	// ADC
-	case 0x69: sprintf(buffer, "ADC #$%x", data[(*offset)++]); break;
-	case 0x65:
-	case 0x75:
-	case 0x6D:
-	case 0x7D:
-	case 0x79:
-	case 0x61:
-	case 0x71:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
+	case 0x69: sprintf(buffer, "ADC #$%x", data[(*offset)++]); break;     // Immediate
+	case 0x65: sprintf(buffer, "ADC $%x", data[(*offset)++]); break;      // Zero Page
+	case 0x75: sprintf(buffer, "ADC $%x,X", data[(*offset)++]); break;    // Zero Page,X
+	case 0x61: sprintf(buffer, "ADC ($%x,X)", data[(*offset)++]); break;  // (Indirect,X) 
+	case 0x71: sprintf(buffer, "ADC ($%x),Y", data[(*offset)++]); break;  // (Indirect),Y
+	case 0x6D: // Absolute
+		sprintf(buffer, "ADC $%x", b16(data[*offset + 1], data[*offset]));
+		*offset += 2;
 		break;
+	case 0x7D: // Absolute, X
+		sprintf(buffer, "ADC $%x,X", b16(data[*offset + 1], data[*offset]));
+		*offset += 2;
+		break;
+	case 0x79: // Absolute, Y
+		sprintf(buffer, "ADC $%x,Y", b16(data[*offset + 1], data[*offset]));
+		*offset += 2;
+		break;
+
 	// SBC
 	case 0xE9:
 	case 0xE5:
