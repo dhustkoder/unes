@@ -165,6 +165,18 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	case 0x91:
 		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
 		return "STA";
+	// STX
+	case 0x86:
+	case 0x96:
+	case 0x8E:
+		(*offset) += (opcode == 0x8E) ? 2 : 1;
+		return "STX";
+	// STY
+	case 0x84:
+	case 0x94:
+	case 0x8C:
+		(*offset) += (opcode == 0x8C) ? 2 : 1;
+		return "STY";
 	// CMP
 	case 0xC9:
 	case 0xC5:
@@ -246,7 +258,10 @@ static inline const char* opstr(const uint8_t* const data, int_fast32_t* const o
 	// RTI
 	case 0x40: return "RTI";
 	// RTS
-	case 0x60: return "RTS";	 
+	case 0x60: return "RTS";
+	// SEC
+	case 0x38: return "SEC";
+	 
 	}
 
 	return "UNKNOWN";
