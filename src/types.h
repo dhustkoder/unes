@@ -7,6 +7,7 @@
 #define RAM_BANK_SIZE    ((int_fast32_t)8192)
 #define TRAINER_SIZE     ((int_fast32_t)512)
 
+
 typedef struct rom {
 	uint8_t prgrom_num_banks;
 	uint8_t vrom_num_banks;
@@ -15,12 +16,6 @@ typedef struct rom {
 	uint8_t ctrl2;
 	uint8_t data[];
 } rom_t;
-
-
-typedef struct opcode {
-	uint8_t code;
-	uint8_t bytes;
-} opcode_t;
 
 
 #endif
