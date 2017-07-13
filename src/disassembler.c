@@ -43,19 +43,25 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 		sprintf(buffer, "ADC $%x,Y", b16(data[*offset + 1], data[*offset]));
 		*offset += 2;
 		break;
-
 	// SBC
-	case 0xE9:
-	case 0xE5:
-	case 0xF5:
-	case 0xED:
-	case 0xFD:
-	case 0xF9:
-	case 0xE1:
-	case 0xF1:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "SBC");
+	case 0xE9: sprintf(buffer, "SBC #$%x", data[(*offset)++]); break;    // Immediate
+	case 0xE5: sprintf(buffer, "SBC $%x", data[(*offset)++]); break;     // Zero Page
+	case 0xF5: sprintf(buffer, "SBC $%x,X", data[(*offset)++]); break;   // Zero Page,X
+	case 0xE1: sprintf(buffer, "SBC ($%x,X)", data[(*offset)++]); break; // (Indirect,X)
+	case 0xF1: sprintf(buffer, "SBC ($%x),Y", data[(*offset)++]); break; // (Indirect), Y
+	case 0xED: // Absolute
+		sprintf(buffer, "SBC $%x", b16(data[*offset + 1], data[*offset]));
+		*offset += 2;
 		break;
+	case 0xFD: // Absolute,X
+		sprintf(buffer, "SBC $%x,X", b16(data[*offset + 1], data[*offset]));
+		*offset += 2;
+		break;
+	case 0xF9: // Absolute,Y
+		sprintf(buffer, "SBC $%x,Y", b16(data[*offset + 1], data[*offset]));
+		*offset += 2;
+		break;
+
 	// AND
 	case 0x29:
 	case 0x25:
