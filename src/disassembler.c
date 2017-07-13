@@ -20,15 +20,16 @@ void disassemble(const rom_t* const rom)
 
 static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, char buffer[16])
 {
-	#define b16(msb, lsb) (((msb)<<8)|(lsb))
-	#define immediate(nam) (sprintf(buffer, nam " #$%x", data[(*offset)++]))
-	#define zeropage(nam)  (sprintf(buffer, nam " $%x", data[(*offset)++]))
-	#define zeropagex(nam) (sprintf(buffer, nam " $%x,X", data[(*offset)++]))
-	#define indirectx(nam) (sprintf(buffer, nam " ($%x,X)", data[(*offset)++]))
-	#define indirecty(nam) (sprintf(buffer, nam " ($%x),Y", data[(*offset)++]))
-	#define absolute(nam)  (sprintf(buffer, nam " $%x", b16(data[*offset + 1], data[*offset])), *offset += 2)
-	#define absolutex(nam) (sprintf(buffer, nam " $%x,X", b16(data[*offset + 1], data[*offset])), *offset += 2)
-	#define absolutey(nam) (sprintf(buffer, nam " $%x,Y", b16(data[*offset + 1], data[*offset])), *offset += 2)
+	#define b16(msb, lsb)    (((msb)<<8)|(lsb))
+	#define immediate(nam)   (sprintf(buffer, nam" #$%.2x", data[(*offset)++]))
+	#define zeropage(nam)    (sprintf(buffer, nam" $%.2x", data[(*offset)++]))
+	#define zeropagex(nam)   (sprintf(buffer, nam" $%.2x,X", data[(*offset)++]))
+	#define indirectx(nam)   (sprintf(buffer, nam" ($%.2x,X)", data[(*offset)++]))
+	#define indirecty(nam)   (sprintf(buffer, nam" ($%.2x),Y", data[(*offset)++]))
+	#define absolute(nam)    (sprintf(buffer, nam" $%.4x", b16(data[*offset + 1], data[*offset])), *offset += 2)
+	#define absolutex(nam)   (sprintf(buffer, nam" $%.4x,X", b16(data[*offset + 1], data[*offset])), *offset += 2)
+	#define absolutey(nam)   (sprintf(buffer, nam" $%.4x,Y", b16(data[*offset + 1], data[*offset])), *offset += 2)
+	#define accumulator(nam) (sprintf(buffer, nam" A"))
 
 	const uint_fast8_t opcode = data[(*offset)++];
 
@@ -84,15 +85,12 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 	case 0x51: indirecty("EOR"); break;
 
 	// ASL
-	case 0x0A:
-	case 0x06:
-	case 0x16:
-	case 0x0E:
-	case 0x1E:
-		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
-		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "ASL");
-		break;
+	case 0x0A: accumulator("ASL"); break;
+	case 0x06: zeropage("ASL");    break;
+	case 0x16: zeropagex("ASL");   break;
+	case 0x0E: absolute("ASL");    break;
+	case 0x1E: absolutex("ASL");   break;
+
 	// LSR
 	case 0x4A:
 	case 0x46:
