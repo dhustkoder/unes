@@ -7,9 +7,9 @@
 
 static inline void opstr(const uint8_t* data,
                          int_fast32_t* offset,
-			 int_fast32_t labels[128],
-			 int* labels_idx,
-			 char buffer[24]);
+                         int_fast32_t labels[128],
+                         int* labels_idx,
+                         char buffer[32]);
 
 
 void disassemble(const rom_t* const rom)
@@ -18,7 +18,7 @@ void disassemble(const rom_t* const rom)
 	int_fast32_t offset = 0;
 	int_fast32_t labels[128];
 	int labels_idx = 0;
-	char buffer[24];
+	char buffer[32];
 
 	while (offset < datasize) {
 		opstr(rom->data, &offset, labels, &labels_idx, buffer);
@@ -27,11 +27,47 @@ void disassemble(const rom_t* const rom)
 }
 
 
+static void branch_op(const char* const mnemonic,
+                      const uint8_t* const data,
+                      const int_fast32_t offset,
+		      const int_fast32_t labels[],
+		      const int* const labels_idx,
+		      char buffer[])
+{
+	const int_fast32_t target = offset + 1 + ((int8_t)data[offset]);
+
+	if (labels != NULL) {
+		bool islabel = false;
+
+		if (target < (offset + 1)) {
+			int idx = *labels_idx - 1;
+			while (idx >= 0 && labels[idx] > target)
+				--idx;
+			if (idx >= 0 && labels[idx] == target)
+				islabel = true;
+		} else {
+			int_fast32_t p = offset + 1;
+			while (p < target)
+				opstr(data, &p, NULL, NULL, buffer);
+			if (p == target)
+				islabel = true;
+		}
+
+		if (!islabel) {
+			sprintf(buffer, ".hex %x %x", data[offset - 1], data[offset]);
+			return;
+		}
+	}
+
+	sprintf(buffer, "%s B%"PRIdFAST32"_%.4lx", mnemonic, offset / 0x4000, target);
+}
+
+
 static inline void opstr(const uint8_t* const data,
                          int_fast32_t* const offset,
 			 int_fast32_t labels[128],
 			 int* const labels_idx,
-			 char buffer[24])
+			 char buffer[32])
 {
 	#define b16(msb, lsb)    (((msb)<<8)|(lsb))
 	#define immediate(mn)   (sprintf(buffer, mn" #$%.2x", data[(*offset)++]))
@@ -42,41 +78,11 @@ static inline void opstr(const uint8_t* const data,
 	#define absolute(mn)    (sprintf(buffer, mn" $%.4x", b16(data[*offset + 1], data[*offset])), *offset += 2)
 	#define absolutex(mn)   (sprintf(buffer, mn" $%.4x,X", b16(data[*offset + 1], data[*offset])), *offset += 2)
 	#define absolutey(mn)   (sprintf(buffer, mn" $%.4x,Y", b16(data[*offset + 1], data[*offset])), *offset += 2)
-	#define accumulator(mn) (sprintf(buffer, mn" A"))
-	#define relative(mn)    (sprintf(buffer, mn" B%ld_%.4lx", *offset / 0xFFFF, (*offset + 1) + (int8_t)data[(*offset)]), *offset += 1)
-	#define branch(mn) do {                                                                      \
-		if (labels != NULL) {                                                                \
-			const int_fast32_t target = (*offset + 1) + ((int8_t)data[*offset]);         \
-			bool islabel = false;                                                        \
-			                                                                             \
-			if (target < (*offset + 1)) {                                                \
-				int i = *labels_idx - 1;                                             \
-				while (i >= 0 && labels[i] > target)                                 \
-					--i;                                                         \
-				if (i >= 0 && labels[i] == target)                                   \
-					islabel = true;                                              \
-			} else {                                                                     \
-				int_fast32_t p = *offset + 1;                                        \
-				while (p < target)                                                   \
-					opstr(data, &p, NULL, NULL, buffer);                         \
-				if (p == target)                                                     \
-					islabel = true;                                              \
-			}                                                                            \
-			                                                                             \
-			if (!islabel) {                                                              \
-				sprintf(buffer, ".hex %x %x", data[*offset - 1], data[*offset]);     \
-				*offset += 1;                                                        \
-			} else {                                                                     \
-				relative(mn);                                                        \
-			}                                                                            \
-		} else {                                                                             \
-			relative(mn);                                                                \
-		}			                                                             \
-	} while (0);
-
+	#define accumulator(mn) (sprintf(buffer, mn" A")) 
+	#define branch(mn)      (branch_op(mn, data, *offset, labels, labels_idx, buffer), *offset += 1)
 
 	if (labels != NULL) {
-		buffer += sprintf(buffer, "B%"PRIdFAST32"_%.4lx: ", *offset / 0xFFFF, *offset % 0xFFFF);
+		buffer += sprintf(buffer, "B%"PRIdFAST32"_%.4lx: ", *offset / 0x4000, *offset);
 		if (*labels_idx >= 128) {
 			for (int i = 0; i < 127; ++i)
 				labels[i] = labels[i + 1];
