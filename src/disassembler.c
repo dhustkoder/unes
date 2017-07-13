@@ -21,59 +21,48 @@ void disassemble(const rom_t* const rom)
 static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, char buffer[16])
 {
 	#define b16(msb, lsb) (((msb)<<8)|(lsb))
+	#define immediate(nam) (sprintf(buffer, nam " #$%x", data[(*offset)++]))
+	#define zeropage(nam)  (sprintf(buffer, nam " $%x", data[(*offset)++]))
+	#define zeropagex(nam) (sprintf(buffer, nam " $%x,X", data[(*offset)++]))
+	#define indirectx(nam) (sprintf(buffer, nam " ($%x,X)", data[(*offset)++]))
+	#define indirecty(nam) (sprintf(buffer, nam " ($%x),Y", data[(*offset)++]))
+	#define absolute(nam)  (sprintf(buffer, nam " $%x", b16(data[*offset + 1], data[*offset])), *offset += 2)
+	#define absolutex(nam) (sprintf(buffer, nam " $%x,X", b16(data[*offset + 1], data[*offset])), *offset += 2)
+	#define absolutey(nam) (sprintf(buffer, nam " $%x,Y", b16(data[*offset + 1], data[*offset])), *offset += 2)
 
 	const uint_fast8_t opcode = data[(*offset)++];
 
 	switch (opcode) {
 	// ADC
-	case 0x69: sprintf(buffer, "ADC #$%x", data[(*offset)++]); break;     // Immediate
-	case 0x65: sprintf(buffer, "ADC $%x", data[(*offset)++]); break;      // Zero Page
-	case 0x75: sprintf(buffer, "ADC $%x,X", data[(*offset)++]); break;    // Zero Page,X
-	case 0x61: sprintf(buffer, "ADC ($%x,X)", data[(*offset)++]); break;  // (Indirect,X) 
-	case 0x71: sprintf(buffer, "ADC ($%x),Y", data[(*offset)++]); break;  // (Indirect),Y
-	case 0x6D: // Absolute
-		sprintf(buffer, "ADC $%x", b16(data[*offset + 1], data[*offset]));
-		*offset += 2;
-		break;
-	case 0x7D: // Absolute, X
-		sprintf(buffer, "ADC $%x,X", b16(data[*offset + 1], data[*offset]));
-		*offset += 2;
-		break;
-	case 0x79: // Absolute, Y
-		sprintf(buffer, "ADC $%x,Y", b16(data[*offset + 1], data[*offset]));
-		*offset += 2;
-		break;
+	case 0x69: immediate("ADC"); break;
+	case 0x65: zeropage("ADC");  break;
+	case 0x75: zeropagex("ADC"); break;
+	case 0x61: indirectx("ADC"); break;
+	case 0x71: indirecty("ADC"); break;
+	case 0x6D: absolute("ADC");  break;
+	case 0x7D: absolutex("ADC"); break;
+	case 0x79: absolutey("ADC"); break;
+
 	// SBC
-	case 0xE9: sprintf(buffer, "SBC #$%x", data[(*offset)++]); break;    // Immediate
-	case 0xE5: sprintf(buffer, "SBC $%x", data[(*offset)++]); break;     // Zero Page
-	case 0xF5: sprintf(buffer, "SBC $%x,X", data[(*offset)++]); break;   // Zero Page,X
-	case 0xE1: sprintf(buffer, "SBC ($%x,X)", data[(*offset)++]); break; // (Indirect,X)
-	case 0xF1: sprintf(buffer, "SBC ($%x),Y", data[(*offset)++]); break; // (Indirect), Y
-	case 0xED: // Absolute
-		sprintf(buffer, "SBC $%x", b16(data[*offset + 1], data[*offset]));
-		*offset += 2;
-		break;
-	case 0xFD: // Absolute,X
-		sprintf(buffer, "SBC $%x,X", b16(data[*offset + 1], data[*offset]));
-		*offset += 2;
-		break;
-	case 0xF9: // Absolute,Y
-		sprintf(buffer, "SBC $%x,Y", b16(data[*offset + 1], data[*offset]));
-		*offset += 2;
-		break;
+	case 0xE9: immediate("SBC"); break;
+	case 0xE5: zeropage("SBC");  break;
+	case 0xF5: zeropagex("SBC"); break;
+	case 0xE1: indirectx("SBC"); break;
+	case 0xF1: indirecty("SBC"); break;
+	case 0xED: absolute("SBC");  break;
+	case 0xFD: absolutex("SBC"); break;
+	case 0xF9: absolutey("SBC"); break;
 
 	// AND
-	case 0x29:
-	case 0x25:
-	case 0x35:
-	case 0x2D:
-	case 0x3D:
-	case 0x39:
-	case 0x21:
-	case 0x31:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "AND");
-		break;
+	case 0x29: immediate("AND"); break;
+	case 0x25: zeropage("AND");  break;
+	case 0x35: zeropagex("AND"); break;
+	case 0x21: indirectx("AND"); break;
+	case 0x31: indirecty("AND"); break;
+	case 0x2D: absolute("AND");  break;
+	case 0x3D: absolutex("AND"); break;
+	case 0x39: absolutey("AND"); break;
+
 	// ORA (OR)
 	case 0x09:
 	case 0x05:
