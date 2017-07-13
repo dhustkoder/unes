@@ -1,24 +1,37 @@
 #include <stdio.h>
+#include <stdbool.h>
+#include <inttypes.h>
 #include "types.h"
 #include "disassembler.h"
 
 
-static inline void opstr(const uint8_t* data, int_fast32_t* offset, char buffer[16]);
+static inline void opstr(const uint8_t* data,
+                         int_fast32_t* offset,
+			 int_fast32_t labels[128],
+			 int* labels_idx,
+			 char buffer[24]);
 
 
 void disassemble(const rom_t* const rom)
 {
 	const int_fast32_t datasize = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
 	int_fast32_t offset = 0;
-	char buffer[16];
+	int_fast32_t labels[128];
+	int labels_idx = 0;
+	char buffer[24];
+
 	while (offset < datasize) {
-		opstr(rom->data, &offset, buffer);
+		opstr(rom->data, &offset, labels, &labels_idx, buffer);
 		puts(buffer);
 	}
 }
 
 
-static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, char buffer[16])
+static inline void opstr(const uint8_t* const data,
+                         int_fast32_t* const offset,
+			 int_fast32_t labels[128],
+			 int* const labels_idx,
+			 char buffer[24])
 {
 	#define b16(msb, lsb)    (((msb)<<8)|(lsb))
 	#define immediate(mn)   (sprintf(buffer, mn" #$%.2x", data[(*offset)++]))
@@ -30,6 +43,47 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 	#define absolutex(mn)   (sprintf(buffer, mn" $%.4x,X", b16(data[*offset + 1], data[*offset])), *offset += 2)
 	#define absolutey(mn)   (sprintf(buffer, mn" $%.4x,Y", b16(data[*offset + 1], data[*offset])), *offset += 2)
 	#define accumulator(mn) (sprintf(buffer, mn" A"))
+	#define relative(mn)    (sprintf(buffer, mn" B%ld_%.4lx", *offset / 0xFFFF, (*offset + 1) + (int8_t)data[(*offset)]), *offset += 1)
+	#define branch(mn) do {                                                                      \
+		if (labels != NULL) {                                                                \
+			const int_fast32_t target = (*offset + 1) + ((int8_t)data[*offset]);         \
+			bool islabel = false;                                                        \
+			                                                                             \
+			if (target < (*offset + 1)) {                                                \
+				int i = *labels_idx - 1;                                             \
+				while (i >= 0 && labels[i] > target)                                 \
+					--i;                                                         \
+				if (i >= 0 && labels[i] == target)                                   \
+					islabel = true;                                              \
+			} else {                                                                     \
+				int_fast32_t p = *offset + 1;                                        \
+				while (p < target)                                                   \
+					opstr(data, &p, NULL, NULL, buffer);                         \
+				if (p == target)                                                     \
+					islabel = true;                                              \
+			}                                                                            \
+			                                                                             \
+			if (!islabel) {                                                              \
+				sprintf(buffer, ".hex %x %x", data[*offset - 1], data[*offset]);     \
+				*offset += 1;                                                        \
+			} else {                                                                     \
+				relative(mn);                                                        \
+			}                                                                            \
+		} else {                                                                             \
+			relative(mn);                                                                \
+		}			                                                             \
+	} while (0);
+
+
+	if (labels != NULL) {
+		buffer += sprintf(buffer, "B%"PRIdFAST32"_%.4lx: ", *offset / 0xFFFF, *offset % 0xFFFF);
+		if (*labels_idx >= 128) {
+			for (int i = 0; i < 127; ++i)
+				labels[i] = labels[i + 1];
+			*labels_idx = 127;
+		}
+		labels[(*labels_idx)++] = *offset;
+	}
 
 	const uint_fast8_t opcode = data[(*offset)++];
 
@@ -106,17 +160,15 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 	case 0x3E: absolutex("ROL");   break;
 
 	// BRANCH
-	case 0x90: // BCC
-	case 0xB0: // BCS
-	case 0xF0: // BEQ
-	case 0x30: // BMI
-	case 0xD0: // BNE
-	case 0x10: // BPL
-	case 0x50: // BVC
-	case 0x70: // BVS
-		++(*offset);
-		sprintf(buffer, "BRANCH");
-		break;
+	case 0x90: branch("BCC"); break;
+	case 0xB0: branch("BCS"); break;
+	case 0xF0: branch("BEQ"); break;
+	case 0x30: branch("BMI"); break;
+	case 0xD0: branch("BNE"); break;
+	case 0x10: branch("BPL"); break;
+	case 0x50: branch("BVC"); break;
+	case 0x70: branch("BVS"); break;
+
 	// INC
 	case 0xE6:
 	case 0xF6:
@@ -290,9 +342,9 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 	// TXS
 	case 0x9A: sprintf(buffer, "TXS"); break;
 	// TYA
-	case 0x98: sprintf(buffer, "TYA"); break;  
+	case 0x98: sprintf(buffer, "TYA"); break;
 
-	default: sprintf(buffer, "UNKNOWN"); break;
+	default: sprintf(buffer, ".db $%x", data[*offset - 1]); break;
 	}
 }
 
