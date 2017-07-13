@@ -92,25 +92,19 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 	case 0x1E: absolutex("ASL");   break;
 
 	// LSR
-	case 0x4A:
-	case 0x46:
-	case 0x56:
-	case 0x4E:
-	case 0x5E:
-		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
-		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "LSR");
-		break;
+	case 0x4A: accumulator("LSR"); break;
+	case 0x46: zeropage("LSR");    break;
+	case 0x56: zeropagex("LSR");   break;
+	case 0x4E: absolute("LSR");    break;
+	case 0x5E: absolutex("LSR");   break;
+
 	// ROL
-	case 0x2A:
-	case 0x26:
-	case 0x36:
-	case 0x2E:
-	case 0x3E:
-		(*offset) += ((opcode&0x0F) == 0x0A) ? 0 :
-		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "ROL");
-		break;
+	case 0x2A: accumulator("ROL"); break;
+	case 0x26: zeropage("ROL");    break;
+	case 0x36: zeropagex("ROL");   break;
+	case 0x2E: absolute("ROL");    break;
+	case 0x3E: absolutex("ROL");   break;
+
 	// BRANCH
 	case 0x90: // BCC
 	case 0xB0: // BCS
