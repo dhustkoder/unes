@@ -37,56 +37,52 @@ static inline void opstr(const uint8_t* const data, int_fast32_t* const offset, 
 	case 0x69: immediate("ADC"); break;
 	case 0x65: zeropage("ADC");  break;
 	case 0x75: zeropagex("ADC"); break;
-	case 0x61: indirectx("ADC"); break;
-	case 0x71: indirecty("ADC"); break;
 	case 0x6D: absolute("ADC");  break;
 	case 0x7D: absolutex("ADC"); break;
 	case 0x79: absolutey("ADC"); break;
+	case 0x61: indirectx("ADC"); break;
+	case 0x71: indirecty("ADC"); break;
 
 	// SBC
 	case 0xE9: immediate("SBC"); break;
 	case 0xE5: zeropage("SBC");  break;
 	case 0xF5: zeropagex("SBC"); break;
-	case 0xE1: indirectx("SBC"); break;
-	case 0xF1: indirecty("SBC"); break;
 	case 0xED: absolute("SBC");  break;
 	case 0xFD: absolutex("SBC"); break;
 	case 0xF9: absolutey("SBC"); break;
+	case 0xE1: indirectx("SBC"); break;
+	case 0xF1: indirecty("SBC"); break;
 
 	// AND
 	case 0x29: immediate("AND"); break;
 	case 0x25: zeropage("AND");  break;
 	case 0x35: zeropagex("AND"); break;
-	case 0x21: indirectx("AND"); break;
-	case 0x31: indirecty("AND"); break;
 	case 0x2D: absolute("AND");  break;
 	case 0x3D: absolutex("AND"); break;
 	case 0x39: absolutey("AND"); break;
+	case 0x21: indirectx("AND"); break;
+	case 0x31: indirecty("AND"); break;
 
 	// ORA (OR)
-	case 0x09:
-	case 0x05:
-	case 0x15:
-	case 0x0D:
-	case 0x1D:
-	case 0x19:
-	case 0x01:
-	case 0x11:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "ORA");
-		break;
+	case 0x09: immediate("ORA"); break;
+	case 0x05: zeropage("ORA");  break;
+	case 0x15: zeropagex("ORA"); break;
+	case 0x0D: absolute("ORA");  break;
+	case 0x1D: absolutex("ORA"); break;
+	case 0x19: absolutey("ORA"); break;
+	case 0x01: indirectx("ORA"); break;
+	case 0x11: indirecty("ORA"); break;
+
 	// EOR (XOR)
-	case 0x49:
-	case 0x45:
-	case 0x55:
-	case 0x4D:
-	case 0x5D:
-	case 0x59:
-	case 0x41:
-	case 0x51:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "EOR");
-		break;
+	case 0x49: immediate("EOR"); break;
+	case 0x45: zeropage("EOR");  break;
+	case 0x55: zeropagex("EOR"); break;
+	case 0x4D: absolute("EOR");  break;
+	case 0x5D: absolutex("EOR"); break;
+	case 0x59: absolutey("EOR"); break;
+	case 0x41: indirectx("EOR"); break;
+	case 0x51: indirecty("EOR"); break;
+
 	// ASL
 	case 0x0A:
 	case 0x06:
