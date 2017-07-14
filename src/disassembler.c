@@ -73,6 +73,7 @@ static inline void opstr(const uint8_t* const data,
 	#define immediate(mn)   (sprintf(buffer, "%s #$%.2x", mn, data[(*offset)++]))
 	#define zeropage(mn)    (sprintf(buffer, "%s $%.2x", mn, data[(*offset)++]))
 	#define zeropagex(mn)   (sprintf(buffer, "%s $%.2x,X", mn, data[(*offset)++]))
+	#define zeropagey(mn)   (sprintf(buffer, "%s $%.2x,Y", mn, data[(*offset)++]))
 	#define indirectx(mn)   (sprintf(buffer, "%s ($%.2x,X)", mn, data[(*offset)++]))
 	#define indirecty(mn)   (sprintf(buffer, "%s ($%.2x),Y", mn, data[(*offset)++]))
 	#define absolute(mn)    (sprintf(buffer, "%s $%.4x", mn, b16(data[*offset + 1], data[*offset])), *offset += 2)
@@ -176,88 +177,70 @@ static inline void opstr(const uint8_t* const data,
 	case 0x70: branch("BVS"); break;
 
 	// INC
-	case 0xE6:
-	case 0xF6:
-	case 0xEE:
-	case 0xFE:
-		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "INC");
-		break;
+	case 0xE6: zeropage("INC");  break;
+	case 0xF6: zeropagex("INC"); break;
+	case 0xEE: absolute("INC");  break;
+	case 0xFE: absolutex("INC"); break;
+
 	// DEC
-	case 0xC6:
-	case 0xD6:
-	case 0xCE:
-	case 0xDE:
-		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "DEC");
-		break;
+	case 0xC6: zeropage("DEC");  break; 
+	case 0xD6: zeropagex("DEC"); break;
+	case 0xCE: absolute("DEC");  break;
+	case 0xDE: absolutex("DEC"); break;
+
 	// LDA
-	case 0xA9:
-	case 0xA5:
-	case 0xB5:
-	case 0xAD:
-	case 0xBD:
-	case 0xB9:
-	case 0xA1:
-	case 0xB1:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "LDA");
-		break;
+	case 0xA9: immediate("LDA"); break;
+	case 0xA5: zeropage("LDA");  break;
+	case 0xB5: zeropagex("LDA"); break;
+	case 0xAD: absolute("LDA");  break;
+	case 0xBD: absolutex("LDA"); break;
+	case 0xB9: absolutey("LDA"); break;
+	case 0xA1: indirectx("LDA"); break;
+	case 0xB1: indirecty("LDA"); break;
+	
 	// LDX
-	case 0xA2:
-	case 0xA6:
-	case 0xB6:
-	case 0xAE:
-	case 0xBE:
-		(*offset) += ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "LDX");
-		break;
+	case 0xA2: immediate("LDX"); break;
+	case 0xA6: zeropage("LDX");  break;
+	case 0xB6: zeropagey("LDX"); break;
+	case 0xAE: absolute("LDX");  break;
+	case 0xBE: absolutey("LDX"); break;
+
 	// LDY
-	case 0xA0:
-	case 0xA4:
-	case 0xB4:
-	case 0xAC:
-	case 0xBC:
-		(*offset) += ((opcode&0x0F) == 0x0C) ? 2 : 1;
-		sprintf(buffer, "LDY");
-		break;
+	case 0xA0: immediate("LDY"); break;
+	case 0xA4: zeropage("LDY");  break;
+	case 0xB4: zeropagex("LDY"); break;
+	case 0xAC: absolute("LDY");  break;
+	case 0xBC: absolutex("LDY"); break;
+
 	// STA
-	case 0x85:
-	case 0x95:
-	case 0x8D:
-	case 0x9D:
-	case 0x99:
-	case 0x81:
-	case 0x91:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "STA");
-		break;
+	case 0x85: zeropage("STA");   break;
+	case 0x95: zeropagex("STA");  break;
+	case 0x8D: absolute("STA");   break;
+	case 0x9D: absolutex("STA");  break;
+	case 0x99: absolutey("STA");  break;
+	case 0x81: indirectx("STA");  break;
+	case 0x91: indirecty("STA");  break;
+
 	// STX
-	case 0x86:
-	case 0x96:
-	case 0x8E:
-		(*offset) += (opcode == 0x8E) ? 2 : 1;
-		sprintf(buffer, "STX");
-		break;
+	case 0x86: zeropage("STX");  break;
+	case 0x96: zeropagey("STX"); break;
+	case 0x8E: absolute("STX");  break;
+
 	// STY
-	case 0x84:
-	case 0x94:
-	case 0x8C:
-		(*offset) += (opcode == 0x8C) ? 2 : 1;
-		sprintf(buffer, "STY");
-		break;
+	case 0x84: zeropage("STY");  break;
+	case 0x94: zeropagex("STY"); break;
+	case 0x8C: absolute("STY");  break;
+
 	// CMP
-	case 0xC9:
-	case 0xC5:
-	case 0xD5:
-	case 0xCD:
-	case 0xDD:
-	case 0xD9:
-	case 0xC1:
-	case 0xD1:
-		(*offset) += ((opcode&0x0F) >= 0x09) ? 2 : 1;
-		sprintf(buffer, "CMP");
-		break;
+	case 0xC9: immediate("CMP"); break;
+	case 0xC5: zeropage("CMP");  break;
+	case 0xD5: zeropagex("CMP"); break;
+	case 0xCD: absolute("CMP");  break;
+	case 0xDD: absolutex("CMP"); break;
+	case 0xD9: absolutey("CMP"); break;
+	case 0xC1: indirectx("CMP"); break;
+	case 0xD1: indirecty("CMP"); break;
+
 	// ROR
 	case 0x6A:
 	case 0x66:
