@@ -69,11 +69,12 @@ static inline void opstr(const uint8_t* const data,
 			 int* const labels_idx,
 			 char buffer[32])
 {
-	#define b16(msb, lsb)    (((msb)<<8)|(lsb))
+	#define b16(msb, lsb)   (((msb)<<8)|(lsb))
 	#define immediate(mn)   (sprintf(buffer, "%s #$%.2x", mn, data[(*offset)++]))
 	#define zeropage(mn)    (sprintf(buffer, "%s $%.2x", mn, data[(*offset)++]))
 	#define zeropagex(mn)   (sprintf(buffer, "%s $%.2x,X", mn, data[(*offset)++]))
 	#define zeropagey(mn)   (sprintf(buffer, "%s $%.2x,Y", mn, data[(*offset)++]))
+	#define indirect(mn)    (sprintf(buffer, "%s ($%.4x)", mn, b16(data[*offset + 1], data[*offset])), *offset += 2)
 	#define indirectx(mn)   (sprintf(buffer, "%s ($%.2x,X)", mn, data[(*offset)++]))
 	#define indirecty(mn)   (sprintf(buffer, "%s ($%.2x),Y", mn, data[(*offset)++]))
 	#define absolute(mn)    (sprintf(buffer, "%s $%.4x", mn, b16(data[*offset + 1], data[*offset])), *offset += 2)
@@ -213,13 +214,13 @@ static inline void opstr(const uint8_t* const data,
 	case 0xBC: absolutex("LDY"); break;
 
 	// STA
-	case 0x85: zeropage("STA");   break;
-	case 0x95: zeropagex("STA");  break;
-	case 0x8D: absolute("STA");   break;
-	case 0x9D: absolutex("STA");  break;
-	case 0x99: absolutey("STA");  break;
-	case 0x81: indirectx("STA");  break;
-	case 0x91: indirecty("STA");  break;
+	case 0x85: zeropage("STA");  break;
+	case 0x95: zeropagex("STA"); break;
+	case 0x8D: absolute("STA");  break;
+	case 0x9D: absolutex("STA"); break;
+	case 0x99: absolutey("STA"); break;
+	case 0x81: indirectx("STA"); break;
+	case 0x91: indirecty("STA"); break;
 
 	// STX
 	case 0x86: zeropage("STX");  break;
@@ -242,46 +243,33 @@ static inline void opstr(const uint8_t* const data,
 	case 0xD1: indirecty("CMP"); break;
 
 	// ROR
-	case 0x6A:
-	case 0x66:
-	case 0x76:
-	case 0x6E:
-	case 0x7E:
-		(*offset) += opcode == 0x6A ? 0 :
-		             ((opcode&0x0F) == 0x0E) ? 2 : 1;
-		sprintf(buffer, "ROR");
-		break;
+	case 0x6A: accumulator("ROR"); break;
+	case 0x66: zeropage("ROR");    break;
+	case 0x76: zeropagex("ROR");   break;
+	case 0x6E: absolute("ROR");    break;
+	case 0x7E: absolutex("ROR");   break;
+
 	// BIT
-	case 0x24:
-	case 0x2C:
-		(*offset) += (opcode == 0x2C) ? 2 : 1;
-		sprintf(buffer, "BIT");
-		break;
+	case 0x24: zeropage("BIT"); break;
+	case 0x2C: absolute("BIT"); break;
+
 	// CPX
-	case 0xE0:
-	case 0xE4:
-	case 0xEC:
-		(*offset) += (opcode == 0xEC) ? 2 : 1;
-		sprintf(buffer, "CPX");
-		break;
+	case 0xE0: immediate("CPX"); break;
+	case 0xE4: zeropage("CPX");  break;
+	case 0xEC: absolute("CPX");  break;
+
 	// CPY
-	case 0xC0:
-	case 0xC4:
-	case 0xCC:
-		(*offset) += (opcode == 0xCC) ? 2 : 1;
-		sprintf(buffer, "CPY");
-		break;
+	case 0xC0: immediate("CPY"); break;
+	case 0xC4: zeropage("CPY");  break;
+	case 0xCC: absolute("CPY");  break;
+
 	// JSR
-	case 0x20:
-		(*offset) += 2;
-		sprintf(buffer, "JSR");
-		break;
+	case 0x20: absolute("JSR"); break;
+
 	// JMP
-	case 0x4C:
-	case 0x6C:
-		(*offset) += 2;
-		sprintf(buffer, "JMP");
-		break;
+	case 0x4C: absolute("JMP"); break;
+	case 0x6C: indirect("JMP"); break;
+
 	// BRK
 	case 0x00: sprintf(buffer, "BRK"); break;
 	// CLC
