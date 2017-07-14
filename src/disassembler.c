@@ -70,6 +70,7 @@ static inline void opstr(const uint8_t* const data,
 			 char buffer[32])
 {
 	#define b16(msb, lsb)   (((msb)<<8)|(lsb))
+	#define implied(mn)     (sprintf(buffer, "%s", mn))
 	#define immediate(mn)   (sprintf(buffer, "%s #$%.2x", mn, data[(*offset)++]))
 	#define zeropage(mn)    (sprintf(buffer, "%s $%.2x", mn, data[(*offset)++]))
 	#define zeropagex(mn)   (sprintf(buffer, "%s $%.2x,X", mn, data[(*offset)++]))
@@ -167,7 +168,7 @@ static inline void opstr(const uint8_t* const data,
 	case 0x2E: absolute("ROL");    break;
 	case 0x3E: absolutex("ROL");   break;
 
-	// BRANCH
+	// branches
 	case 0x90: branch("BCC"); break;
 	case 0xB0: branch("BCS"); break;
 	case 0xF0: branch("BEQ"); break;
@@ -270,57 +271,32 @@ static inline void opstr(const uint8_t* const data,
 	case 0x4C: absolute("JMP"); break;
 	case 0x6C: indirect("JMP"); break;
 
-	// BRK
-	case 0x00: sprintf(buffer, "BRK"); break;
-	// CLC
-	case 0x18: sprintf(buffer, "CLC"); break;
-	// CLI
-	case 0x58: sprintf(buffer, "CLI"); break;
-	// SEI
-	case 0x78: sprintf(buffer, "SEI"); break;
-	// CLV
-	case 0xB8: sprintf(buffer, "CLV"); break;
-	// CLD
-	case 0xD8: sprintf(buffer, "CLD"); break;
-	// SED
-	case 0xF8: sprintf(buffer, "SED"); break;
-	// DEX
-	case 0xCA: sprintf(buffer, "DEX"); break;
-	// DEY
-	case 0x88: sprintf(buffer, "DEY"); break;
-	// INX
-	case 0xE8: sprintf(buffer, "INX"); break;
-	// INY
-	case 0xC8: sprintf(buffer, "INY"); break;
-	// PHP
-	case 0x08: sprintf(buffer, "PHP"); break;
-	// PLP
-	case 0x28: sprintf(buffer, "PLP"); break;
-	// PHA
-	case 0x48: sprintf(buffer, "PHA"); break;
-	// PLA
-	case 0x68: sprintf(buffer, "PLA"); break;
-	// NOP
-	case 0xEA: sprintf(buffer, "NOP"); break;
-	// RTI
-	case 0x40: sprintf(buffer, "RTI"); break;
-	// RTS
-	case 0x60: sprintf(buffer, "RTS"); break;
-	// SEC
-	case 0x38: sprintf(buffer, "SEC"); break;
-	// TAX
-	case 0xAA: sprintf(buffer, "TAX"); break;
-	// TXA
-	case 0x8A: sprintf(buffer, "TXA"); break;
-	// TAY
-	case 0xA8: sprintf(buffer, "TAY"); break;
-	// TSX
-	case 0xBA: sprintf(buffer, "TSX"); break;
-	// TXS
-	case 0x9A: sprintf(buffer, "TXS"); break;
-	// TYA
-	case 0x98: sprintf(buffer, "TYA"); break;
-
+	// implieds
+	case 0x00: implied("BRK"); break;
+	case 0x18: implied("CLC"); break;
+	case 0x58: implied("CLI"); break;
+	case 0x78: implied("SEI"); break;
+	case 0xB8: implied("CLV"); break;
+	case 0xD8: implied("CLD"); break;
+	case 0xF8: implied("SED"); break;
+	case 0xCA: implied("DEX"); break;
+	case 0x88: implied("DEY"); break;
+	case 0xE8: implied("INX"); break;
+	case 0xC8: implied("INY"); break;
+	case 0x08: implied("PHP"); break;
+	case 0x28: implied("PLP"); break;
+	case 0x48: implied("PHA"); break;
+	case 0x68: implied("PLA"); break;
+	case 0xEA: implied("NOP"); break;
+	case 0x40: implied("RTI"); break;
+	case 0x60: implied("RTS"); break;
+	case 0x38: implied("SEC"); break;
+	case 0xAA: implied("TAX"); break;
+	case 0x8A: implied("TXA"); break;
+	case 0xA8: implied("TAY"); break;
+	case 0xBA: implied("TSX"); break;
+	case 0x9A: implied("TXS"); break;
+	case 0x98: implied("TYA"); break;
 	default: sprintf(buffer, ".db $%x", data[*offset - 1]); break;
 	}
 }
