@@ -14,15 +14,29 @@ static inline void opstr(const uint8_t* data,
 
 void disassemble(const rom_t* const rom)
 {
-	const int_fast32_t datasize = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
+	const int_fast32_t prg_rom_size = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
 	int_fast32_t offset = 0;
 	int_fast32_t labels[128];
 	int labels_idx = 0;
 	char buffer[32];
 
-	while (offset < datasize) {
+	puts("\nPRG-ROM:\n");
+	while (offset < prg_rom_size) {
 		opstr(rom->data, &offset, labels, &labels_idx, buffer);
 		puts(buffer);
+	}
+
+	if (rom->vrom_num_banks > 0) {
+		const int_fast32_t vrom_size = rom->vrom_num_banks * VROM_BANK_SIZE;
+		const uint8_t* vrom = &rom->data[prg_rom_size];
+		printf("\n\nVROM:\n\n");
+		for (offset = 0; offset < vrom_size; ++offset) {
+			if ((offset % 16) == 0)
+				putchar('\n');
+			else if ((offset % 2) == 0)
+				putchar(' ');
+			printf("%.2x", vrom[offset]);
+		}
 	}
 }
 
@@ -34,9 +48,8 @@ static void branch_op(const char* const mnemonic,
 		      const int* const labels_idx,
 		      char buffer[])
 {
-	const int_fast32_t target = offset + 1 + ((int8_t)data[offset]);
-
 	if (labels != NULL) {
+		const int_fast32_t target = offset + 1 + ((int8_t)data[offset]);
 		bool islabel = false;
 
 		if (target < (offset + 1)) {
@@ -56,10 +69,10 @@ static void branch_op(const char* const mnemonic,
 		if (!islabel) {
 			sprintf(buffer, ".hex %x %x", data[offset - 1], data[offset]);
 			return;
+		} else {
+			sprintf(buffer, "%s B%"PRIdFAST32"_%.4lx", mnemonic, offset / 0x4000, target);
 		}
 	}
-
-	sprintf(buffer, "%s B%"PRIdFAST32"_%.4lx", mnemonic, offset / 0x4000, target);
 }
 
 
