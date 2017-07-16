@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include "rom.h"
 #include "disassembler.h"
 #include "mem.h"
 #include "cpu.h"
 
 
-static int unes(const char* const path)
+static int unes(const char* const path, const bool disass)
 {
 	rom_t* const rom = openrom(path);
 
@@ -35,14 +36,16 @@ static int unes(const char* const path)
 	       (rom->ctrl1&0x08)>>3, (rom->ctrl1&0x08) ? "YES" : "NO",
 	       (rom->ctrl1&0xF0)>>4, rom->ctrl2&0x0F, (rom->ctrl2&0xF0)>>4);
 
-	disassemble(rom);
+	if (disass) {
+		disassemble(rom);
+	} else {
+		initmem(rom);
+		initcpu();
 
-	initmem(rom);
-	initcpu();
-
-	do
-		stepcpu();
-	while (1);
+		for (;;) {
+			stepcpu();
+		}
+	}
 
 	closerom(rom);
 	return EXIT_SUCCESS;
@@ -51,10 +54,29 @@ static int unes(const char* const path)
 
 int main(const int argc, const char* const * const argv)
 {
-	if (argc > 1)
-		return unes(argv[1]);
+	if (argc > 1) {
+		const char* path = NULL;
+		bool disassemble = false;
 
-	fprintf(stderr, "Usage: %s [rom path]\n", argv[0]);
+		for (int i = 1; i < argc; ++i) {
+			if (argv[i][0] != '-') {
+				if (path == NULL) {
+					path = argv[i];
+				} else {
+					path = NULL;
+					break;
+				}
+			} else {
+				if (strcmp(argv[i], "-d") == 0)
+					disassemble = true;
+			}
+		}
+
+		if (path != NULL)
+			return unes(path, disassemble);
+	}
+
+	fprintf(stderr, "Usage: %s [rom path] [-d disassemble]\n", argv[0]);
 	return EXIT_FAILURE;
 }
 

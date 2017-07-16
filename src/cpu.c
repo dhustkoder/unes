@@ -41,9 +41,9 @@ static void adc(const uint_fast8_t value)
 
 }
 
-static void ld(int_fast32_t* const reg, const uint_fast8_t value)
+static void ld(int_fast32_t* const reg, const uint_fast8_t val)
 {
-	*reg = value;
+	*reg = val;
 	if (*reg == 0)
 		SET_FLAG(FLAG_Z);
 	else if ((*reg&0x80) == 0x80)
@@ -60,13 +60,14 @@ static void jmp(const uint_fast16_t addr)
 	pc = addr;
 }
 
-static inline void lda(const uint_fast8_t value) { ld(&a, value); }
-static inline void ldx(const uint_fast8_t value) { ld(&x, value); }
-static inline void ldy(const uint_fast8_t value) { ld(&y, value); }
+static inline void lda(const uint_fast8_t val) { ld(&a, val); }
+static inline void ldx(const uint_fast8_t val) { ld(&x, val); }
+static inline void ldy(const uint_fast8_t val) { ld(&y, val); }
 
-static inline void sta(const uint_fast8_t value) { st(&a, value); }
-static inline void stx(const uint_fast8_t value) { st(&x, value); }
-static inline void sty(const uint_fast8_t value) { st(&y, value); }
+static inline void sta(const uint_fast16_t addr) { st(&a, addr); }
+static inline void stx(const uint_fast16_t addr) { st(&x, addr); }
+static inline void sty(const uint_fast16_t addr) { st(&y, addr); }
+
 
 
 void initcpu(void)
@@ -78,29 +79,43 @@ void initcpu(void)
 
 void stepcpu(void)
 {
-	#define immediate() (memread(pc++))
-	#define zeropage()  (memread(memread(pc++)))
-	#define zeropagex() (memread((memread(pc++) + x)&0xFF))
-	#define zeropagey() (memread((memread(pc++) + y)&0xFF))
-	#define absolute()  (pc += 2, memread16(memread16(pc - 2)))
-	#define absolutex() (pc += 2, memread16(memread16(pc - 2) + x))
-	#define absolutey() (pc += 2, memread16(memread16(pc - 2) + y))
-	#define indirect()  (pc += 2, memread16(memread16(pc - 2)))
-	#define indirectx() (memread16(memread16(memread(pc++) + x)))
-	#define indirecty() (memread16(memread16(memread(pc++)) + y))
-	
-	const uint_fast8_t opcode = memread(pc++);
+	#define fetch8()     (memread(pc++))
+	#define fetch16()    (pc += 2, memread16(pc - 2))
+
+	#define immediate() (fetch8())
+
+	#define wzeropage()  (fetch8())
+	#define wzeropagex() ((fetch8() + x)&0xFF)
+	#define wzeropagey() ((fetch8() + y)&0xFF)
+	#define wabsolute()  (fetch16())
+	#define wabsolutex() (fetch16() + x)
+	#define wabsolutey() (fetch16() + y)
+	#define windirect()  (fetch16())
+	#define windirectx() (memread16(((fetch8() + x)&0xFF)))
+	#define windirecty() (memread16(fetch8()) + y)
+
+	#define rzeropage()  (memread(wzeropage()))
+	#define rzeropagex() (memread(wzeropagex()))
+	#define rzeropagey() (memread(wzeropagey()))
+	#define rabsolute()  (memread(wabsolute()))
+	#define rabsolutex() (memread(wabsolutex()))
+	#define rabsolutey() (memread(wabsolutey()))
+	#define rindirect()  (memread16(windirect()))
+	#define rindirectx() (memread(windirectx()))
+	#define rindirecty() (memread(windirecty()))
+
+	const uint_fast8_t opcode = fetch8();
 
 	switch (opcode) {
 	// ADC
-	case 0x69: adc(immediate()); break;
-	case 0x65: adc(zeropage());  break;
-	case 0x75: adc(zeropagex()); break;
-	case 0x6D: adc(absolute());  break;
-	case 0x7D: adc(absolutex()); break;
-	case 0x79: adc(absolutey()); break;
-	case 0x61: adc(indirectx()); break;
-	case 0x71: adc(indirecty()); break;
+	case 0x69: adc(immediate()); break;  // immediate
+	case 0x65: adc(rzeropage());  break; // zeropage
+	case 0x75: adc(rzeropagex()); break; // zeropage x
+	case 0x6D: adc(rabsolute());  break; // absolute
+	case 0x7D: adc(rabsolutex()); break; // absolute x
+	case 0x79: adc(rabsolutey()); break; // absolute y
+	case 0x61: adc(rindirectx()); break; // indirect x
+	case 0x71: adc(rindirecty()); break; // indirect y
 
 	/*
 	// SBC
@@ -188,37 +203,37 @@ void stepcpu(void)
 	*/
 
 	// LDA
-	case 0xA9: lda(immediate()); break;
-	case 0xA5: lda(zeropage());  break;
-	case 0xB5: lda(zeropagex()); break;
-	case 0xAD: lda(absolute());  break;
-	case 0xBD: lda(absolutex()); break;
-	case 0xB9: lda(absolutey()); break;
-	case 0xA1: lda(indirectx()); break;
-	case 0xB1: lda(indirecty()); break;
+	case 0xA9: lda(immediate());  break;
+	case 0xA5: lda(rzeropage());  break;
+	case 0xB5: lda(rzeropagex()); break;
+	case 0xAD: lda(rabsolute());  break;
+	case 0xBD: lda(rabsolutex()); break;
+	case 0xB9: lda(rabsolutey()); break;
+	case 0xA1: lda(rindirectx()); break;
+	case 0xB1: lda(rindirecty()); break;
 
 	// LDX
-	case 0xA2: ldx(immediate()); break;
-	case 0xA6: ldx(zeropage());  break;
-	case 0xB6: ldx(zeropagey()); break;
-	case 0xAE: ldx(absolute());  break;
-	case 0xBE: ldx(absolutey()); break;
+	case 0xA2: ldx(immediate());  break;
+	case 0xA6: ldx(rzeropage());  break;
+	case 0xB6: ldx(rzeropagey()); break;
+	case 0xAE: ldx(rabsolute());  break;
+	case 0xBE: ldx(rabsolutey()); break;
 
 	// LDY
-	case 0xA0: ldy(immediate()); break;
-	case 0xA4: ldy(zeropage());  break;
-	case 0xB4: ldy(zeropagex()); break;
-	case 0xAC: ldy(absolute());  break;
-	case 0xBC: ldy(absolutex()); break;
+	case 0xA0: ldy(immediate());  break;
+	case 0xA4: ldy(rzeropage());  break;
+	case 0xB4: ldy(rzeropagex()); break;
+	case 0xAC: ldy(rabsolute());  break;
+	case 0xBC: ldy(rabsolutex()); break;
 
 	// STA
-	case 0x85: sta(zeropage());  break;
-	case 0x95: sta(zeropagex()); break;
-	case 0x8D: sta(absolute());  break;
-	case 0x9D: sta(absolutex()); break;
-	case 0x99: sta(absolutey()); break;
-	case 0x81: sta(indirectx()); break;
-	case 0x91: sta(indirecty()); break;
+	case 0x85: sta(wzeropage());  break;
+	case 0x95: sta(wzeropagex()); break;
+	case 0x8D: sta(wabsolute());  break;
+	case 0x9D: sta(wabsolutex()); break;
+	case 0x99: sta(wabsolutey()); break;
+	case 0x81: sta(windirectx()); break;
+	case 0x91: sta(windirecty()); break;
 
 	/*
 	// STX
@@ -267,8 +282,8 @@ void stepcpu(void)
 	*/
 
 	// JMP
-	case 0x4C: jmp(absolute()); break;
-	case 0x6C: jmp(indirect()); break;
+	case 0x4C: jmp(wabsolute()); break;
+	case 0x6C: jmp(rindirect()); break;
 
 	/*
 	// implieds
@@ -298,7 +313,7 @@ void stepcpu(void)
 	case 0x9A: implied("TXS"); break;
 	case 0x98: implied("TYA"); break;
 	*/
-	default: fprintf(stderr, "UNKOWN OPCODE: %.2x", opcode);
+	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);
 	}
 }
 
