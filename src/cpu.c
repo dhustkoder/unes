@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "types.h"
 #include "mem.h"
 #include "cpu.h"
@@ -8,72 +9,69 @@
 #define FLAG_Z  (0x02)
 #define FLAG_I  (0x04)
 #define FLAG_D  (0x08)
+#define FLAG_B  (0x10)
+#define FLAG_U  (0x20)
 #define FLAG_V  (0x40)
 #define FLAG_N  (0x80) 
-#define SET_FLAG(flag)    (p |= (flag))
-#define UNSET_FLAG(flag)  (p &= ~(flag))
-#define IS_FLAG_SET(flag) ((p&(flag)) ? 1 : 0)
+#define SET_FLAG(flag)       (p |= (flag))
+#define CLEAR_FLAG(flag)     (p &= ~(flag))
+#define IS_FLAG_SET(flag)    ((p&(flag)) ? 1 : 0)
+#define ASSIGN_FLAG(flag, n) ((n) ? SET_FLAG(flag) : CLEAR_FLAG(flag))
 
 
 static int_fast32_t clk;
 static int_fast32_t pc;
-static int_fast32_t a, x, y, s, p;
+static int_fast16_t a, x, y, s, p;
 
 
-static void adc(const uint_fast8_t value)
-{
-	const int carry = IS_FLAG_SET(FLAG_C);
 
-	if (a > 0 && value > 0 && ((int8_t)(a + value + carry)) < 0)
-		SET_FLAG(FLAG_V);
-
-	a += value + carry;
-
-	if (a > 0xFF)
-		SET_FLAG(FLAG_C);
-
-	a &= 0xFF;
-
-	if (a == 0x00)
-		SET_FLAG(FLAG_Z);
-	else if ((a&0x80) == 0x80)
-		SET_FLAG(FLAG_N);
-
-}
-
-static void ld(int_fast32_t* const reg, const uint_fast8_t val)
+static inline void ld(int_fast16_t* const reg, const int_fast16_t val)
 {
 	*reg = val;
-	if (*reg == 0)
-		SET_FLAG(FLAG_Z);
-	else if ((*reg&0x80) == 0x80)
-		SET_FLAG(FLAG_N);
+	ASSIGN_FLAG(FLAG_Z, *reg == 0x00);
+	ASSIGN_FLAG(FLAG_N, ((*reg)&0x80) == 0x80);
 }
 
-static void st(const int_fast32_t* const reg, const uint_fast16_t addr)
+static inline void st(const int_fast16_t* const reg, const int_fast32_t addr)
 {
 	memwrite(*reg, addr);
-}
-
-static void jmp(const uint_fast16_t addr)
-{
-	pc = addr;
 }
 
 static inline void lda(const uint_fast8_t val) { ld(&a, val); }
 static inline void ldx(const uint_fast8_t val) { ld(&x, val); }
 static inline void ldy(const uint_fast8_t val) { ld(&y, val); }
 
-static inline void sta(const uint_fast16_t addr) { st(&a, addr); }
-static inline void stx(const uint_fast16_t addr) { st(&x, addr); }
-static inline void sty(const uint_fast16_t addr) { st(&y, addr); }
+static inline void sta(const int_fast32_t addr) { st(&a, addr); }
+static inline void stx(const int_fast32_t addr) { st(&x, addr); }
+static inline void sty(const int_fast32_t addr) { st(&y, addr); }
 
+
+static void adc(const int_fast16_t value)
+{
+	const int carry = IS_FLAG_SET(FLAG_C);
+	const bool overflow = a >= 0 && value >= 0 && ((int8_t)(a + value + carry)) < 0;
+	ASSIGN_FLAG(FLAG_V, overflow);
+
+	a += value + carry;
+
+	ASSIGN_FLAG(FLAG_C, a > 0xFF);
+
+	a &= 0xFF;
+
+	ASSIGN_FLAG(FLAG_Z, a == 0x00);
+	ASSIGN_FLAG(FLAG_N, (a&0x80) == 0x80);
+}
 
 
 void initcpu(void)
 {
 	pc = memread16(ADDR_RESET_VECTOR);
-	a = x = y = s = p = clk = 0;
+	a = 0x0000;
+	x = 0x0000;
+	y = 0x0000;
+	s = 0x01FD;
+	p = 0x0000;
+	SET_FLAG(FLAG_I);
 }
 
 
@@ -81,8 +79,7 @@ void stepcpu(void)
 {
 	#define fetch8()     (memread(pc++))
 	#define fetch16()    (pc += 2, memread16(pc - 2))
-
-	#define immediate() (fetch8())
+	#define immediate()  (fetch8())
 
 	#define wzeropage()  (fetch8())
 	#define wzeropagex() ((fetch8() + x)&0xFF)
@@ -282,17 +279,19 @@ void stepcpu(void)
 	*/
 
 	// JMP
-	case 0x4C: jmp(wabsolute()); break;
-	case 0x6C: jmp(rindirect()); break;
+	case 0x4C: pc = wabsolute(); break;
+	case 0x6C: pc = rindirect(); break;
 
 	/*
 	// implieds
 	case 0x00: implied("BRK"); break;
 	case 0x18: implied("CLC"); break;
 	case 0x58: implied("CLI"); break;
-	case 0x78: implied("SEI"); break;
-	case 0xB8: implied("CLV"); break;
-	case 0xD8: implied("CLD"); break;
+	*/
+	case 0x78: SET_FLAG(FLAG_I);   break; // SEI
+	case 0xB8: CLEAR_FLAG(FLAG_V); break; // CLV
+	case 0xD8: CLEAR_FLAG(FLAG_D); break; // CLD
+	/*
 	case 0xF8: implied("SED"); break;
 	case 0xCA: implied("DEX"); break;
 	case 0x88: implied("DEY"); break;
@@ -310,7 +309,9 @@ void stepcpu(void)
 	case 0x8A: implied("TXA"); break;
 	case 0xA8: implied("TAY"); break;
 	case 0xBA: implied("TSX"); break;
-	case 0x9A: implied("TXS"); break;
+	*/
+	case 0x9A: s = (0x100|(x&0xFF)); break; // TXS
+	/*
 	case 0x98: implied("TYA"); break;
 	*/
 	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);

@@ -18,10 +18,10 @@
 
 
 extern void initmem(rom_t* rom);
-extern uint_fast8_t memread(uint_fast16_t addr);
-extern void memwrite(uint_fast8_t value, uint_fast16_t addr);
+extern uint_fast8_t memread(int_fast32_t addr);
+extern void memwrite(uint_fast8_t value, int_fast32_t addr);
 
-static inline uint_fast16_t memread16(const uint_fast16_t addr)
+static inline uint_fast16_t memread16(const int_fast32_t addr)
 {
 	return (memread(addr + 1)<<8)|memread(addr);
 }

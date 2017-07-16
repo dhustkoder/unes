@@ -14,7 +14,7 @@ void initmem(rom_t* const rom_ptr)
 }
 
 
-uint_fast8_t memread(const uint_fast16_t addr)
+uint_fast8_t memread(const int_fast32_t addr)
 {
 	assert(addr <= 0xFFFF);
 
@@ -32,7 +32,7 @@ uint_fast8_t memread(const uint_fast16_t addr)
 }
 
 
-void memwrite(const uint_fast8_t value, const uint_fast16_t addr)
+void memwrite(const uint_fast8_t value, const int_fast32_t addr)
 {
 	assert(addr <= 0xFFFF);
 
