@@ -7,7 +7,12 @@ static uint8_t mem[0x10000] = { 0 };
 
 void initmem(const rom_t* const rom)
 {
-	memcpy(&mem[ADDR_PRGROM], rom->data, rom->prgrom_size);
+	if (rom->prgrom_num_banks > 1) {
+		memcpy(&mem[ADDR_PRGROM], rom->data, PRGROM_BANK_SIZE * 2);
+	} else {
+		memcpy(&mem[ADDR_PRGROM], rom->data, PRGROM_BANK_SIZE);
+		memcpy(&mem[ADDR_PRGROM_UPPER], rom->data, PRGROM_BANK_SIZE);
+	}
 }
 
 
