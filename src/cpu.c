@@ -339,7 +339,7 @@ void stepcpu(void)
 
 
 	// implieds
-	case 0x00: SET_FLAG(FLAG_B);   break; // BRK
+	case 0x00: ASSIGN_FLAG(FLAG_B, !IS_FLAG_SET(FLAG_I));   break; // BRK
 	case 0x18: CLEAR_FLAG(FLAG_C); break; // CLC
 	case 0x38: SET_FLAG(FLAG_C);   break; // SEC
 	case 0x58: CLEAR_FLAG(FLAG_I); break; // CLI

@@ -1,17 +1,9 @@
-  .inesprg 1
-  .ineschr 0
-  .inesmap 0 
-  .inesmir 0 
+ .include "setup.s"
 
-  .bank 0
-  .org $8000
+ .bank entry_bank
+ .org entry_addr
 
-start:
-	sei ; disable interrupts
-	cld ; clear decimal flag
-	ldx #$ff ; initialize ...
-	txs      ; the stack pointer to $1FF
-
+entry:
 	; put some values on zeropage
 	ldx #$01
 	ldy #$02
@@ -28,9 +20,3 @@ test:
 	adc $00,y   ; test adc absolute,y should add $65 from $0002
 	; the negative flag and the overflow flag should be set
 	jmp test
-
-  .bank 1
-  .org $FFFA
-  .dw start
-  .dw start
-  .dw 0
