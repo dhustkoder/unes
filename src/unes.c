@@ -9,7 +9,7 @@
 
 static int unes(const char* const path)
 {
-	const rom_t* const rom = openrom(path);
+	rom_t* const rom = openrom(path);
 
 	if (rom == NULL)
 		return EXIT_FAILURE;
