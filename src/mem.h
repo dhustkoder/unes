@@ -26,5 +26,10 @@ static inline uint_fast16_t memread16(const int_fast32_t addr)
 	return (memread(addr + 1)<<8)|memread(addr);
 }
 
+static inline void memwrite16(uint_fast16_t value, const int_fast32_t addr)
+{
+	memwrite(value&0xFF, addr);
+	memwrite((value&0xFF00)>>8, addr + 1);
+}
 
 #endif

@@ -24,12 +24,64 @@ static int_fast32_t pc;
 static int_fast16_t a, x, y, s, p;
 
 
+static inline void spush(const int_fast16_t val)
+{
+	memwrite(val, s--);
+}
+
+static inline void spush16(const int_fast32_t val)
+{
+	memwrite16(val, s);
+	s -= 2;
+}
+
+static inline int_fast16_t spop(void)
+{
+	return memread(++s);
+}
+
+static inline int_fast32_t spop16(void)
+{
+	const int_fast32_t dw = memread16(s);
+	s += 2;
+	return dw;
+}
 
 static inline void ld(int_fast16_t* const reg, const int_fast16_t val)
 {
 	*reg = val;
 	ASSIGN_FLAG(FLAG_Z, *reg == 0x00);
 	ASSIGN_FLAG(FLAG_N, ((*reg)&0x80) == 0x80);
+}
+
+static inline void inc(int_fast16_t* const val)
+{
+	++(*val);
+	*val &= 0xFF;
+	ASSIGN_FLAG(FLAG_Z, *val == 0);
+	ASSIGN_FLAG(FLAG_N, ((*val)&0x80) == 0x80);
+}
+
+static inline void dec(int_fast16_t* const val)
+{
+	--(*val);
+	*val &= 0xFF;
+	ASSIGN_FLAG(FLAG_Z, *val == 0);
+	ASSIGN_FLAG(FLAG_N, ((*val)&0x80) == 0x80);
+}
+
+static inline void incm(const int_fast32_t addr)
+{
+	int_fast16_t val = memread(addr);
+	inc(&val);
+	memwrite(val, addr);
+}
+
+static inline void decm(const int_fast32_t addr)
+{
+	int_fast16_t val = memread(addr);
+	dec(&val);
+	memwrite(val, addr);
 }
 
 static inline void st(const int_fast16_t* const reg, const int_fast32_t addr)
@@ -273,48 +325,48 @@ void stepcpu(void)
 	case 0xC0: immediate("CPY"); break;
 	case 0xC4: zeropage("CPY");  break;
 	case 0xCC: absolute("CPY");  break;
+	*/
 
 	// JSR
-	case 0x20: absolute("JSR"); break;
-	*/
+	case 0x20:
+		spush16(pc + 1);
+		pc = wabsolute();
+		break;
 
 	// JMP
 	case 0x4C: pc = wabsolute(); break;
 	case 0x6C: pc = rindirect(); break;
 
-	/*
+
 	// implieds
-	case 0x00: implied("BRK"); break;
-	case 0x18: implied("CLC"); break;
-	case 0x58: implied("CLI"); break;
-	*/
+	case 0x00: SET_FLAG(FLAG_B);   break; // BRK
+	case 0x18: CLEAR_FLAG(FLAG_C); break; // CLC
+	case 0x38: SET_FLAG(FLAG_C);   break; // SEC
+	case 0x58: CLEAR_FLAG(FLAG_I); break; // CLI
 	case 0x78: SET_FLAG(FLAG_I);   break; // SEI
 	case 0xB8: CLEAR_FLAG(FLAG_V); break; // CLV
 	case 0xD8: CLEAR_FLAG(FLAG_D); break; // CLD
-	/*
-	case 0xF8: implied("SED"); break;
-	case 0xCA: implied("DEX"); break;
-	case 0x88: implied("DEY"); break;
-	case 0xE8: implied("INX"); break;
-	case 0xC8: implied("INY"); break;
-	case 0x08: implied("PHP"); break;
-	case 0x28: implied("PLP"); break;
-	case 0x48: implied("PHA"); break;
-	case 0x68: implied("PLA"); break;
-	case 0xEA: implied("NOP"); break;
-	case 0x40: implied("RTI"); break;
-	case 0x60: implied("RTS"); break;
-	case 0x38: implied("SEC"); break;
-	case 0xAA: implied("TAX"); break;
-	case 0x8A: implied("TXA"); break;
-	case 0xA8: implied("TAY"); break;
-	case 0xBA: implied("TSX"); break;
-	*/
-	case 0x9A: s = (0x100|(x&0xFF)); break; // TXS
-	/*
-	case 0x98: implied("TYA"); break;
-	*/
-	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);
+	case 0xF8: SET_FLAG(FLAG_D);   break; // SED
+	case 0xCA: dec(&x);            break; // DEX
+	case 0x88: dec(&y);            break; // DEY
+	case 0xE8: inc(&x);            break; // INX
+	case 0xC8: inc(&y);            break; // INY
+	case 0x08: spush(p);           break; // PHP
+	case 0x28: p = spop();         break; // PLP
+	case 0x48: spush(a);           break; // PHA
+	case 0x68: lda(spop());        break; // PLA
+	case 0xEA:                     break; // NOP
+	case 0x40: p = spop(); pc = spop16(); break; // RTI
+	case 0x60: pc = spop16() + 1;         break; // RTS
+	case 0xAA: ldx(a);                    break; // TAX
+	case 0x8A: lda(x);                    break; // TXA
+	case 0xA8: ldy(a);                    break; // TAY
+	case 0xBA: ldx((s&0xFF));             break; // TSX
+	case 0x9A: s = (0x100|(x&0xFF));      break; // TXS
+	case 0x98: lda(y);                    break; // TYA
+
+	default:
+		fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);
 	}
 }
 
