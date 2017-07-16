@@ -39,7 +39,10 @@ static int unes(const char* const path)
 
 	initmem(rom);
 	initcpu();
-	stepcpu();
+
+	do
+		stepcpu();
+	while (1);
 
 	closerom(rom);
 	return EXIT_SUCCESS;
@@ -50,6 +53,7 @@ int main(const int argc, const char* const * const argv)
 {
 	if (argc > 1)
 		return unes(argv[1]);
+
 	fprintf(stderr, "Usage: %s [rom path]\n", argv[0]);
 	return EXIT_FAILURE;
 }
