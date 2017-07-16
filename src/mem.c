@@ -1,3 +1,4 @@
+#include <string.h>
 #include "mem.h"
 
 
@@ -10,8 +11,8 @@ void initmem(const rom_t* const rom)
 }
 
 
-uint_fast8_t read8(const uint_fast16_t addr)
+uint_fast8_t memread(const uint_fast16_t addr)
 {
-
+	return mem[addr];
 }
 

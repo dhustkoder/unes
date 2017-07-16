@@ -14,23 +14,21 @@ static inline void opstr(const uint8_t* data,
 
 void disassemble(const rom_t* const rom)
 {
-	const int_fast32_t prg_rom_size = rom->prgrom_num_banks * PRGROM_BANK_SIZE;
 	int_fast32_t offset = 0;
 	int_fast32_t labels[128];
 	int labels_idx = 0;
 	char buffer[32];
 
 	puts("\nPRG-ROM:\n");
-	while (offset < prg_rom_size) {
+	while (offset < rom->prgrom_size) {
 		opstr(rom->data, &offset, labels, &labels_idx, buffer);
 		puts(buffer);
 	}
 
 	if (rom->vrom_num_banks > 0) {
-		const int_fast32_t vrom_size = rom->vrom_num_banks * VROM_BANK_SIZE;
-		const uint8_t* vrom = &rom->data[prg_rom_size];
+		const uint8_t* const vrom = &rom->data[rom->prgrom_size];
 		printf("\n\nVROM:\n\n");
-		for (offset = 0; offset < vrom_size; ++offset) {
+		for (offset = 0; offset < rom->vrom_size; ++offset) {
 			if ((offset % 16) == 0)
 				putchar('\n');
 			else if ((offset % 2) == 0)
