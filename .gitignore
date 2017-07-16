@@ -5,3 +5,4 @@ asm/
 *.fns
 *.nes
 *.deb
+*.cdl

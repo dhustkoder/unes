@@ -31,7 +31,7 @@ static inline void spush(const int_fast16_t val)
 
 static inline void spush16(const int_fast32_t val)
 {
-	memwrite16(val, s);
+	memwrite16(val, s - 1);
 	s -= 2;
 }
 
@@ -42,7 +42,7 @@ static inline int_fast16_t spop(void)
 
 static inline int_fast32_t spop16(void)
 {
-	const int_fast32_t dw = memread16(s);
+	const int_fast32_t dw = memread16(s + 1);
 	s += 2;
 	return dw;
 }
