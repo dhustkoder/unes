@@ -9,6 +9,9 @@
 
 
 typedef struct rom {
+	int_fast32_t prgrom_size;
+	int_fast32_t vrom_size;
+	int_fast32_t ram_size;
 	uint8_t prgrom_num_banks;
 	uint8_t vrom_num_banks;
 	uint8_t ram_num_banks;	

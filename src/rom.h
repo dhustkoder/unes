@@ -39,6 +39,9 @@ static inline rom_t* openrom(const char* const path)
 		goto Lfclose;
 	}
 
+	rom->prgrom_size = prg_size;
+	rom->vrom_size = vrom_size;
+	rom->ram_size = ram_size;
 	rom->prgrom_num_banks = ines_header[4];
 	rom->vrom_num_banks = ines_header[5];
 	rom->ctrl1 = ines_header[6];
