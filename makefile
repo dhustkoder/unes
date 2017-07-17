@@ -1,7 +1,7 @@
 CC:=$(if $(CC),$(CC),gcc)
 CFLAGS=-std=c11 -Wall -Wextra -pedantic
-CFLAGS_DEBUG=-g -O0 -fsanitize=address
-CFLAGS_RELEASE=-O3
+CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
+CFLAGS_RELEASE=-O3 -DNDEBUG
 BUILD_DIR=./build
 OBJS_DIR=./objs
 ASM_DIR=./asm

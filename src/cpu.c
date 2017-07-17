@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <assert.h>
 #include "types.h"
 #include "mem.h"
 #include "cpu.h"
@@ -121,7 +122,7 @@ void initcpu(void)
 	a = 0x0000;
 	x = 0x0000;
 	y = 0x0000;
-	s = 0x01FD;
+	s = 0x01FA;
 	p = 0x0000;
 	SET_FLAG(FLAG_I);
 }
@@ -153,11 +154,14 @@ void stepcpu(void)
 	#define rindirectx() (memread(windirectx()))
 	#define rindirecty() (memread(windirecty()))
 
+	assert(pc <= 0xFFFF && a <= 0xFF && x <= 0xFF && 
+	       y <= 0xFF && s >= 0x100 && s <= 0x1FF);
+
 	const uint_fast8_t opcode = fetch8();
 
 	switch (opcode) {
 	// ADC
-	case 0x69: adc(immediate()); break;  // immediate
+	case 0x69: adc(immediate());  break; // immediate
 	case 0x65: adc(rzeropage());  break; // zeropage
 	case 0x75: adc(rzeropagex()); break; // zeropage x
 	case 0x6D: adc(rabsolute());  break; // absolute
@@ -340,33 +344,31 @@ void stepcpu(void)
 
 	// implieds
 	case 0x00: ASSIGN_FLAG(FLAG_B, !IS_FLAG_SET(FLAG_I));   break; // BRK
-	case 0x18: CLEAR_FLAG(FLAG_C); break; // CLC
-	case 0x38: SET_FLAG(FLAG_C);   break; // SEC
-	case 0x58: CLEAR_FLAG(FLAG_I); break; // CLI
-	case 0x78: SET_FLAG(FLAG_I);   break; // SEI
-	case 0xB8: CLEAR_FLAG(FLAG_V); break; // CLV
-	case 0xD8: CLEAR_FLAG(FLAG_D); break; // CLD
-	case 0xF8: SET_FLAG(FLAG_D);   break; // SED
-	case 0xCA: dec(&x);            break; // DEX
-	case 0x88: dec(&y);            break; // DEY
-	case 0xE8: inc(&x);            break; // INX
-	case 0xC8: inc(&y);            break; // INY
-	case 0x08: spush(p);           break; // PHP
-	case 0x28: p = spop();         break; // PLP
-	case 0x48: spush(a);           break; // PHA
-	case 0x68: lda(spop());        break; // PLA
-	case 0xEA:                     break; // NOP
-	case 0x40: p = spop(); pc = spop16(); break; // RTI
-	case 0x60: pc = spop16() + 1;         break; // RTS
-	case 0xAA: ldx(a);                    break; // TAX
-	case 0x8A: lda(x);                    break; // TXA
-	case 0xA8: ldy(a);                    break; // TAY
-	case 0xBA: ldx((s&0xFF));             break; // TSX
-	case 0x9A: s = (0x100|(x&0xFF));      break; // TXS
-	case 0x98: lda(y);                    break; // TYA
-
-	default:
-		fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);
+	case 0x18: CLEAR_FLAG(FLAG_C);                          break; // CLC
+	case 0x38: SET_FLAG(FLAG_C);                            break; // SEC
+	case 0x58: CLEAR_FLAG(FLAG_I);                          break; // CLI
+	case 0x78: SET_FLAG(FLAG_I);                            break; // SEI
+	case 0xB8: CLEAR_FLAG(FLAG_V);                          break; // CLV
+	case 0xD8: CLEAR_FLAG(FLAG_D);                          break; // CLD
+	case 0xF8: SET_FLAG(FLAG_D);                            break; // SED
+	case 0xCA: dec(&x);                                     break; // DEX
+	case 0x88: dec(&y);                                     break; // DEY
+	case 0xE8: inc(&x);                                     break; // INX
+	case 0xC8: inc(&y);                                     break; // INY
+	case 0x08: spush(p);                                    break; // PHP
+	case 0x28: p = spop();                                  break; // PLP
+	case 0x48: spush(a);                                    break; // PHA
+	case 0x68: lda(spop());                                 break; // PLA
+	case 0xEA:                                              break; // NOP
+	case 0x40: p = spop(); pc = spop16();                   break; // RTI
+	case 0x60: pc = spop16() + 1;                           break; // RTS
+	case 0xAA: ldx(a);                                      break; // TAX
+	case 0x8A: lda(x);                                      break; // TXA
+	case 0xA8: ldy(a);                                      break; // TAY
+	case 0xBA: ldx((s&0xFF));                               break; // TSX
+	case 0x9A: s = 0x100 + x;                               break; // TXS
+	case 0x98: lda(y);                                      break; // TYA
+	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode); break;
 	}
 }
 
