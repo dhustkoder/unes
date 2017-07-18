@@ -4,7 +4,7 @@
 
 NUM_TESTS = 1
 
-entry:
+_entry:
 	ldx #$00
 	ldy #$00
 @loop:

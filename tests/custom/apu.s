@@ -1,4 +1,4 @@
-.include "startup.s"
+.segment "CODE"
 
 init_apu:
 	; Init $4000-4013

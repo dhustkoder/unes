@@ -11,19 +11,20 @@
 .byte   $00, $00, $00, $00
 .byte   $00, $00, $00, $00
 
+
 .segment "CODE"
 
-startup:
+_startup:
 	sei      ; set INTERRUPT DISABLE flag
 	cld      ; clear DECIMAL flag
 	ldx #$ff ; initialize...
 	txs      ; the stack pointer
-
+	jmp _entry
 
 
 .segment "VECTORS"
-.word startup
-.word startup
+.word _startup
+.word _startup
 .word $0000
 
 
