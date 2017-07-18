@@ -7,9 +7,14 @@
 #include "cpu.h"
 
 
-static int unes(const char* const path)
+int unes(const int argc, const char* const* argv)
 {
-	rom_t* const rom = openrom(path);
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s [rom path]\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	rom_t* const rom = openrom(argv[1]);
 
 	if (rom == NULL)
 		return EXIT_FAILURE;
@@ -43,15 +48,5 @@ static int unes(const char* const path)
 
 	closerom(rom);
 	return EXIT_SUCCESS;
-}
-
-
-int main(const int argc, const char* const * const argv)
-{
-	if (argc > 1)
-		return unes(argv[1]);
-
-	fprintf(stderr, "Usage: %s [rom path]\n", argv[0]);
-	return EXIT_FAILURE;
 }
 
