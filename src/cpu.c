@@ -15,7 +15,7 @@
 #define FLAG_N  (0x80) 
 #define SET_FLAG(flag)       (p |= (flag))
 #define CLEAR_FLAG(flag)     (p &= ~(flag))
-#define IS_FLAG_SET(flag)    ((p&(flag)) ? 1 : 0)
+#define IS_FLAG_SET(flag)    ((p&(flag)) ? true : false)
 #define ASSIGN_FLAG(flag, n) ((n) ? SET_FLAG(flag) : CLEAR_FLAG(flag))
 
 
@@ -75,6 +75,15 @@ static inline void cmp(const int_fast16_t val)
 	ASSIGN_FLAG(FLAG_C, a >= val);
 	ASSIGN_FLAG(FLAG_Z, a == val);
 	ASSIGN_FLAG(FLAG_N, (a&0x80) == 0x80);	
+}
+
+static inline void branch(const uint_fast8_t flag, const bool eq)
+{
+	if (IS_FLAG_SET(flag) == eq) {
+		const int_fast8_t val = mmuread(pc);
+		++pc;
+		pc += val;
+	}
 }
 
 static inline void incm(const int_fast32_t addr)
@@ -244,7 +253,9 @@ void stepcpu(void)
 	case 0xF0: branch("BEQ"); break;
 	case 0x30: branch("BMI"); break;
 	case 0xD0: branch("BNE"); break;
-	case 0x10: branch("BPL"); break;
+	*/
+	case 0x10: branch(FLAG_N, false); break; // BPL
+	/*
 	case 0x50: branch("BVC"); break;
 	case 0x70: branch("BVS"); break;
 
