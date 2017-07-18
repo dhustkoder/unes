@@ -246,19 +246,19 @@ void stepcpu(void)
 	case 0x36: zeropagex("ROL");   break;
 	case 0x2E: absolute("ROL");    break;
 	case 0x3E: absolutex("ROL");   break;
+	*/
 
 	// branches
-	case 0x90: branch("BCC"); break;
-	case 0xB0: branch("BCS"); break;
-	case 0xF0: branch("BEQ"); break;
-	case 0x30: branch("BMI"); break;
-	case 0xD0: branch("BNE"); break;
-	*/
+	case 0x90: branch(FLAG_C, false); break; // BCC
+	case 0xB0: branch(FLAG_C, true);  break; // BCS
+	case 0xD0: branch(FLAG_Z, false); break; // BNE
+	case 0xF0: branch(FLAG_Z, true);  break; // BEQ
+	case 0x50: branch(FLAG_V, false); break; // BVC
+	case 0x70: branch(FLAG_V, true);  break; // BVS
 	case 0x10: branch(FLAG_N, false); break; // BPL
-	/*
-	case 0x50: branch("BVC"); break;
-	case 0x70: branch("BVS"); break;
+	case 0x30: branch(FLAG_N, true);  break; // BMI
 
+	/*
 	// INC
 	case 0xE6: zeropage("INC");  break;
 	case 0xF6: zeropagex("INC"); break;
