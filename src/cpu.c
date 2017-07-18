@@ -80,9 +80,10 @@ static inline void cmp(const int_fast16_t val)
 static inline void branch(const uint_fast8_t flag, const bool eq)
 {
 	if (IS_FLAG_SET(flag) == eq) {
-		const int_fast8_t val = mmuread(pc);
-		++pc;
+		const int_fast8_t val = mmuread(pc++);
 		pc += val;
+	} else {
+		++pc;
 	}
 }
 

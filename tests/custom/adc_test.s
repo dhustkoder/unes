@@ -2,7 +2,7 @@
 
 .segment "CODE"
 
-NUM_TESTS = 1
+NUM_TESTS = 2
 
 _entry:
 	ldx #$00
@@ -35,7 +35,11 @@ _entry:
 @add_values:
 	.byte $63
 	.byte $65
+	.byte -100
+	.byte 99
 @p_check_values:
+	.byte $f4
 	.byte $f4
 @a_check_values:
 	.byte $c8
+	.byte $ff
