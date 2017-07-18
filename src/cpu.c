@@ -115,13 +115,13 @@ static inline void stx(const int_fast32_t addr) { st(&x, addr); }
 static inline void sty(const int_fast32_t addr) { st(&y, addr); }
 
 
-static void adc(const int_fast16_t value)
+static void adc(const int_fast16_t val)
 {
-	const int carry = IS_FLAG_SET(FLAG_C);
-	const bool overflow = a >= 0 && value >= 0 && ((int8_t)(a + value + carry)) < 0;
+	const int_fast16_t carry = IS_FLAG_SET(FLAG_C);
+	const bool overflow = a >= 0 && val >= 0 && ((int8_t)(a + val + carry)) < 0;
 	ASSIGN_FLAG(FLAG_V, overflow);
 
-	a += value + carry;
+	a += val + carry;
 
 	ASSIGN_FLAG(FLAG_C, a > 0xFF);
 
