@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "types.h"
-#include "mem.h"
+#include "mmu.h"
 #include "cpu.h"
 
 
@@ -27,23 +26,23 @@ static int_fast16_t a, x, y, s, p;
 
 static inline void spush(const int_fast16_t val)
 {
-	memwrite(val, s--);
+	mmuwrite(val, s--);
 }
 
 static inline void spush16(const int_fast32_t val)
 {
-	memwrite16(val, s - 1);
+	mmuwrite16(val, s - 1);
 	s -= 2;
 }
 
 static inline int_fast16_t spop(void)
 {
-	return memread(++s);
+	return mmuread(++s);
 }
 
 static inline int_fast32_t spop16(void)
 {
-	const int_fast32_t dw = memread16(s + 1);
+	const int_fast32_t dw = mmuread16(s + 1);
 	s += 2;
 	return dw;
 }
@@ -80,21 +79,21 @@ static inline void cmp(const int_fast16_t val)
 
 static inline void incm(const int_fast32_t addr)
 {
-	int_fast16_t val = memread(addr);
+	int_fast16_t val = mmuread(addr);
 	inc(&val);
-	memwrite(val, addr);
+	mmuwrite(val, addr);
 }
 
 static inline void decm(const int_fast32_t addr)
 {
-	int_fast16_t val = memread(addr);
+	int_fast16_t val = mmuread(addr);
 	dec(&val);
-	memwrite(val, addr);
+	mmuwrite(val, addr);
 }
 
 static inline void st(const int_fast16_t* const reg, const int_fast32_t addr)
 {
-	memwrite(*reg, addr);
+	mmuwrite(*reg, addr);
 }
 
 static inline void lda(const uint_fast8_t val) { ld(&a, val); }
@@ -125,7 +124,7 @@ static void adc(const int_fast16_t value)
 
 void initcpu(void)
 {
-	pc = memread16(ADDR_RESET_VECTOR);
+	pc = mmuread16(ADDR_RESET_VECTOR);
 	a = 0x0000;
 	x = 0x0000;
 	y = 0x0000;
@@ -137,8 +136,8 @@ void initcpu(void)
 
 void stepcpu(void)
 {
-	#define fetch8()     (memread(pc++))
-	#define fetch16()    (pc += 2, memread16(pc - 2))
+	#define fetch8()     (mmuread(pc++))
+	#define fetch16()    (pc += 2, mmuread16(pc - 2))
 	#define immediate()  (fetch8())
 
 	#define wzeropage()  (fetch8())
@@ -148,18 +147,18 @@ void stepcpu(void)
 	#define wabsolutex() (fetch16() + x)
 	#define wabsolutey() (fetch16() + y)
 	#define windirect()  (fetch16())
-	#define windirectx() (memread16(((fetch8() + x)&0xFF)))
-	#define windirecty() (memread16(fetch8()) + y)
+	#define windirectx() (mmuread16(((fetch8() + x)&0xFF)))
+	#define windirecty() (mmuread16(fetch8()) + y)
 
-	#define rzeropage()  (memread(wzeropage()))
-	#define rzeropagex() (memread(wzeropagex()))
-	#define rzeropagey() (memread(wzeropagey()))
-	#define rabsolute()  (memread(wabsolute()))
-	#define rabsolutex() (memread(wabsolutex()))
-	#define rabsolutey() (memread(wabsolutey()))
-	#define rindirect()  (memread16(windirect()))
-	#define rindirectx() (memread(windirectx()))
-	#define rindirecty() (memread(windirecty()))
+	#define rzeropage()  (mmuread(wzeropage()))
+	#define rzeropagex() (mmuread(wzeropagex()))
+	#define rzeropagey() (mmuread(wzeropagey()))
+	#define rabsolute()  (mmuread(wabsolute()))
+	#define rabsolutex() (mmuread(wabsolutex()))
+	#define rabsolutey() (mmuread(wabsolutey()))
+	#define rindirect()  (mmuread16(windirect()))
+	#define rindirectx() (mmuread(windirectx()))
+	#define rindirecty() (mmuread(windirecty()))
 
 	assert(pc <= 0xFFFF && a <= 0xFF && x <= 0xFF && 
 	       y <= 0xFF && s >= 0x100 && s <= 0x1FF);
