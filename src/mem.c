@@ -21,12 +21,11 @@ uint_fast8_t memread(const int_fast32_t addr)
 	if (addr < ADDR_IOREGS1)
 		return mem[addr&0x7FF];
 	else if (addr >= ADDR_PRGROM_UPPER)
-		return rom->data[addr - ADDR_PRGROM_UPPER];
+		return rom->data[(rom->prgrom_num_banks == 1) ? (addr - ADDR_PRGROM_UPPER) : (addr - ADDR_PRGROM)];
 	else if (addr >= ADDR_PRGROM)
 		return rom->data[addr - ADDR_PRGROM];
 	else if (addr >= ADDR_SRAM)
 		return sram[addr - ADDR_SRAM];
-
 
 	return 0;
 }

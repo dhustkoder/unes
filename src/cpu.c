@@ -71,6 +71,13 @@ static inline void dec(int_fast16_t* const val)
 	ASSIGN_FLAG(FLAG_N, ((*val)&0x80) == 0x80);
 }
 
+static inline void cmp(const int_fast16_t val)
+{
+	ASSIGN_FLAG(FLAG_C, a >= val);
+	ASSIGN_FLAG(FLAG_Z, a == val);
+	ASSIGN_FLAG(FLAG_N, (a&0x80) == 0x80);	
+}
+
 static inline void incm(const int_fast32_t addr)
 {
 	int_fast16_t val = memread(addr);
@@ -298,17 +305,19 @@ void stepcpu(void)
 	case 0x84: zeropage("STY");  break;
 	case 0x94: zeropagex("STY"); break;
 	case 0x8C: absolute("STY");  break;
+	*/
 
 	// CMP
-	case 0xC9: immediate("CMP"); break;
-	case 0xC5: zeropage("CMP");  break;
-	case 0xD5: zeropagex("CMP"); break;
-	case 0xCD: absolute("CMP");  break;
-	case 0xDD: absolutex("CMP"); break;
-	case 0xD9: absolutey("CMP"); break;
-	case 0xC1: indirectx("CMP"); break;
-	case 0xD1: indirecty("CMP"); break;
+	case 0xC9: cmp(immediate());  break;
+	case 0xC5: cmp(rzeropage());  break;
+	case 0xD5: cmp(rzeropagex()); break;
+	case 0xCD: cmp(rabsolute());  break;
+	case 0xDD: cmp(rabsolutex()); break;
+	case 0xD9: cmp(rabsolutey()); break;
+	case 0xC1: cmp(rindirectx()); break;
+	case 0xD1: cmp(rindirecty()); break;
 
+	/*
 	// ROR
 	case 0x6A: accumulator("ROR"); break;
 	case 0x66: zeropage("ROR");    break;
@@ -355,7 +364,7 @@ void stepcpu(void)
 	case 0x88: dec(&y);                                     break; // DEY
 	case 0xE8: inc(&x);                                     break; // INX
 	case 0xC8: inc(&y);                                     break; // INY
-	case 0x08: spush(p);                                    break; // PHP
+	case 0x08: spush(p|0x30);                               break; // PHP
 	case 0x28: p = spop();                                  break; // PLP
 	case 0x48: spush(a);                                    break; // PHA
 	case 0x68: lda(spop());                                 break; // PLA

@@ -6,3 +6,5 @@ asm/
 *.nes
 *.deb
 *.cdl
+*.o
+
