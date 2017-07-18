@@ -28,9 +28,9 @@ PLATFORM_ASM=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_ASM_DIR)/%.asm, $(wi
 
 
 ifeq ($(PLATFORM),SDL2)
-	CFLAGS += $(sdl2-config --cflags)
-	LDFLAGS += $(sdl2-config --libs)
-endif	
+	CFLAGS += $(shell sdl2-config --cflags) -I$(PLATFORM_SRC_DIR)/
+	LDFLAGS += $(shell sdl2-config --libs)
+endif
 
 ifeq ($(BUILD_TYPE),Release)
 	CFLAGS += $(CFLAGS_RELEASE)
@@ -46,22 +46,20 @@ endif
 .PHONY: all clean asm
 
 
-all: mkdirs_bin $(BUILD_DIR)/unes
-asm: mkdirs_asm $(ASM)
+all: $(BUILD_DIR)/unes
+asm: $(ASM)
 
-mkdirs_bin:
-	@mkdir -p $(BUILD_DIR)
-	@mkdir -p $(PLATFORM_OBJS_DIR)
-mkdirs_asm:
-	@mkdir -p $(PLATFORM_ASM_DIR)
 
 $(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)
+	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
 $(OBJS_DIR)/%.o: $(SRC)
+	@mkdir -p $(PLATFORM_OBJS_DIR)
 	$(CC) $(CFLAGS) -MP -MD -c $< -o $@
 
 $(ASM_DIR)/%.asm: $(SRC)
+	@mkdir -p $(PLATFORM_ASM_DIR)
 	$(CC) $(CFLAGS) -S $< -o $@
 
 

@@ -6,10 +6,10 @@
 _entry:
 	jsr init_apu
 
-	lda #<$0117
+	lda $17
 	sta $4002
 
-	lda #>$0117
+	lda $01
 	sta $4003
 
 	lda #%10111111
