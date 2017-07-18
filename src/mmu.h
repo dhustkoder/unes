@@ -1,6 +1,13 @@
 #ifndef UNES_MMU_H_
 #define UNES_MMU_H_
-#include "rom.h"
+#include <stdint.h>
+#include <stdbool.h>
+
+
+#define PRGROM_BANK_SIZE   ((int_fast32_t)0x4000)
+#define CHR_BANK_SIZE      ((int_fast32_t)0x2000)
+#define CART_RAM_BANK_SIZE ((int_fast32_t)0x2000)
+#define TRAINER_SIZE       ((int_fast32_t)0x0200)
 
 
 #define ADDR_RESET_VECTOR (0xFFFC)
@@ -17,7 +24,9 @@
 #define ADDR_ZEROPAGE     (0x0000)
 
 
-extern void initmmu(rom_t* rom);
+extern bool initmmu(const char* const rompath);
+extern void termmmu(void);
+
 extern uint_fast8_t mmuread(int_fast32_t addr);
 extern void mmuwrite(uint_fast8_t value, int_fast32_t addr);
 

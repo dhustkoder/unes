@@ -101,19 +101,6 @@ static inline void decm(const int_fast32_t addr)
 	mmuwrite(val, addr);
 }
 
-static inline void st(const int_fast16_t* const reg, const int_fast32_t addr)
-{
-	mmuwrite(*reg, addr);
-}
-
-static inline void lda(const uint_fast8_t val) { ld(&a, val); }
-static inline void ldx(const uint_fast8_t val) { ld(&x, val); }
-static inline void ldy(const uint_fast8_t val) { ld(&y, val); }
-
-static inline void sta(const int_fast32_t addr) { st(&a, addr); }
-static inline void stx(const int_fast32_t addr) { st(&x, addr); }
-static inline void sty(const int_fast32_t addr) { st(&y, addr); }
-
 
 static void adc(const int_fast16_t val)
 {
@@ -132,7 +119,7 @@ static void adc(const int_fast16_t val)
 }
 
 
-void initcpu(void)
+void resetcpu(void)
 {
 	pc = mmuread16(ADDR_RESET_VECTOR);
 	a = 0x0000;
@@ -169,6 +156,14 @@ void stepcpu(void)
 	#define rindirect()  (mmuread16(windirect()))
 	#define rindirectx() (mmuread(windirectx()))
 	#define rindirecty() (mmuread(windirecty()))
+
+	#define lda(addr) (ld(&a, addr))
+	#define ldx(addr) (ld(&x, addr))
+	#define ldy(addr) (ld(&y, addr))
+
+	#define sta(addr) (mmuwrite(a, addr))
+	#define stx(addr) (mmuwrite(x, addr))
+	#define sty(addr) (mmuwrite(y, addr))
 
 	assert(pc <= 0xFFFF && a <= 0xFF && x <= 0xFF && 
 	       y <= 0xFF && s >= 0x100 && s <= 0x1FF);

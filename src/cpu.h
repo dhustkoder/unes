@@ -2,11 +2,8 @@
 #define UNES_CPU_H_
 
 
-extern void initcpu(void);
+extern void resetcpu(void);
 extern void stepcpu(void);
-
-
-
 
 
 #endif
