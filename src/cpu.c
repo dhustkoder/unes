@@ -316,7 +316,6 @@ void stepcpu(void)
 	case 0xD9: cmp(rabsolutey()); break;
 	case 0xC1: cmp(rindirectx()); break;
 	case 0xD1: cmp(rindirecty()); break;
-
 	/*
 	// ROR
 	case 0x6A: accumulator("ROR"); break;

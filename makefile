@@ -31,16 +31,16 @@ asm: $(ASM)
 
 $(BUILD_DIR)/unes: $(OBJS)
 	@mkdir -p $(BUILD_DIR) 
-	$(CC) $(CFLAGS) $(OBJS) -o $@
+	$(CC) $(CFLAGS) $^ -o $@
 
 $(OBJS_DIR)/%.o: $(SRC)
 	@mkdir -p $(OBJS_DIR)
-	$(CC) $(CFLAGS) -MP -MD -c $(SRC_DIR)/$*.c -o $(OBJS_DIR)/$*.o
+	$(CC) $(CFLAGS) -MP -MD -c $< -o $@
 
 
 $(ASM_DIR)/%.asm: $(SRC)
 	@mkdir -p $(ASM_DIR)
-	$(CC) $(CFLAGS) -S $(SRC_DIR)/$*.c -o $(ASM_DIR)/$*.asm
+	$(CC) $(CFLAGS) -S $< -o $@
 
 -include $(shell ls $(OBJS_DIR)/*.d 2>/dev/null)
 
