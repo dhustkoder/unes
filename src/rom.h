@@ -53,7 +53,12 @@ static inline rom_t* openrom(const char* const path)
 	const uint_fast32_t read_size = trainer_size + prg_size + vrom_size;
 
 	rom = malloc(sizeof(rom_t) + read_size + ram_size); 
-	fread(rom->data, 1, read_size, file);
+	if (fread(rom->data, 1, read_size, file) < read_size) {
+		fprintf(stderr, "Couldn't read \'%s\' properly\n", path);
+		free(rom);
+		rom = NULL;
+		goto Lfclose;
+	}
 
 	rom->prgrom_size = prg_size;
 	rom->vrom_size = vrom_size;
