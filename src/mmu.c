@@ -94,7 +94,7 @@ uint_fast8_t mmuread(const int_fast32_t addr)
 	assert(addr <= 0xFFFF);
 
 	if (addr < ADDR_IOREGS1)
-		return ram[addr&0x800]; // also handles mirrors
+		return ram[addr&0x7FF]; // also handles mirrors
 	else if (addr >= ADDR_PRGROM_UPPER)
 		return cartdata[(ines[4] == 1) ? addr - ADDR_PRGROM_UPPER : addr - ADDR_PRGROM];
 	else if (addr >= ADDR_PRGROM)
