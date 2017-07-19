@@ -47,14 +47,14 @@ static inline int_fast32_t spop16(void)
 	return dw;
 }
 
-static inline void ld(int_fast16_t* const reg, const int_fast16_t val)
+static void ld(int_fast16_t* const reg, const int_fast16_t val)
 {
 	*reg = val;
 	ASSIGN_FLAG(FLAG_Z, *reg == 0x00);
 	ASSIGN_FLAG(FLAG_N, ((*reg)&0x80) == 0x80);
 }
 
-static inline void inc(int_fast16_t* const val)
+static void inc(int_fast16_t* const val)
 {
 	++(*val);
 	*val &= 0xFF;
@@ -62,7 +62,7 @@ static inline void inc(int_fast16_t* const val)
 	ASSIGN_FLAG(FLAG_N, ((*val)&0x80) == 0x80);
 }
 
-static inline void dec(int_fast16_t* const val)
+static void dec(int_fast16_t* const val)
 {
 	--(*val);
 	*val &= 0xFF;
@@ -70,14 +70,36 @@ static inline void dec(int_fast16_t* const val)
 	ASSIGN_FLAG(FLAG_N, ((*val)&0x80) == 0x80);
 }
 
-static inline void cmp(const int_fast16_t val)
+static void lsr(int_fast16_t* const val)
+{
+	ASSIGN_FLAG(FLAG_C, ((*val)&0x01) == 0x01);
+	(*val) >>= 1;
+	ASSIGN_FLAG(FLAG_Z, *val == 0);
+	CLEAR_FLAG(FLAG_N);
+}
+
+static void rol(int_fast16_t* const val)
+{
+	const bool oldc = IS_FLAG_SET(FLAG_C);
+	ASSIGN_FLAG(FLAG_C, ((*val)&0x80) == 0x80);
+	(*val) <<= 1;
+
+	if (oldc)
+		(*val) |= 0x01;
+
+	(*val) &= 0xFF;
+	ASSIGN_FLAG(FLAG_Z, (*val) == 0x00);
+	ASSIGN_FLAG(FLAG_N, ((*val)&0x80) == 0x80);
+}
+
+static void cmp(const int_fast16_t val)
 {
 	ASSIGN_FLAG(FLAG_C, a >= val);
 	ASSIGN_FLAG(FLAG_Z, a == val);
 	ASSIGN_FLAG(FLAG_N, (a&0x80) == 0x80);	
 }
 
-static inline void branch(const uint_fast8_t flag, const bool eq)
+static void branch(const uint_fast8_t flag, const bool eq)
 {
 	if (IS_FLAG_SET(flag) == eq) {
 		const int_fast8_t val = mmuread(pc++);
@@ -86,21 +108,6 @@ static inline void branch(const uint_fast8_t flag, const bool eq)
 		++pc;
 	}
 }
-
-static inline void incm(const int_fast32_t addr)
-{
-	int_fast16_t val = mmuread(addr);
-	inc(&val);
-	mmuwrite(val, addr);
-}
-
-static inline void decm(const int_fast32_t addr)
-{
-	int_fast16_t val = mmuread(addr);
-	dec(&val);
-	mmuwrite(val, addr);
-}
-
 
 static void adc(const int_fast16_t val)
 {
@@ -116,6 +123,13 @@ static void adc(const int_fast16_t val)
 
 	ASSIGN_FLAG(FLAG_Z, a == 0x00);
 	ASSIGN_FLAG(FLAG_N, (a&0x80) == 0x80);
+}
+
+static inline void opm(void(*op)(int_fast16_t*), const int_fast32_t addr)
+{
+	int_fast16_t val = mmuread(addr);
+	op(&val);
+	mmuwrite(val, addr);
 }
 
 
@@ -156,14 +170,6 @@ void stepcpu(void)
 	#define rindirect()  (mmuread16(windirect()))
 	#define rindirectx() (mmuread(windirectx()))
 	#define rindirecty() (mmuread(windirecty()))
-
-	#define lda(val) (ld(&a, val))
-	#define ldx(val) (ld(&x, val))
-	#define ldy(val) (ld(&y, val))
-
-	#define sta(addr) (mmuwrite(a, addr))
-	#define stx(addr) (mmuwrite(x, addr))
-	#define sty(addr) (mmuwrite(y, addr))
 
 
 	assert(pc <= 0xFFFF && a <= 0xFF && x <= 0xFF && 
@@ -229,21 +235,21 @@ void stepcpu(void)
 	case 0x16: zeropagex("ASL");   break;
 	case 0x0E: absolute("ASL");    break;
 	case 0x1E: absolutex("ASL");   break;
+	*/
 
 	// LSR
-	case 0x4A: accumulator("LSR"); break;
-	case 0x46: zeropage("LSR");    break;
-	case 0x56: zeropagex("LSR");   break;
-	case 0x4E: absolute("LSR");    break;
-	case 0x5E: absolutex("LSR");   break;
+	case 0x4A: lsr(&a);                 break;
+	case 0x46: opm(lsr, wzeropage());   break;
+	case 0x56: opm(lsr, wzeropagex());  break;
+	case 0x4E: opm(lsr, wabsolute());   break;
+	case 0x5E: opm(lsr, wabsolutex());  break;
 
 	// ROL
-	case 0x2A: accumulator("ROL"); break;
-	case 0x26: zeropage("ROL");    break;
-	case 0x36: zeropagex("ROL");   break;
-	case 0x2E: absolute("ROL");    break;
-	case 0x3E: absolutex("ROL");   break;
-	*/
+	case 0x2A: rol(&a);                  break;
+	case 0x26: opm(rol, wzeropage());    break;
+	case 0x36: opm(rol, wzeropagex());   break;
+	case 0x2E: opm(rol, wabsolute());    break;
+	case 0x3E: opm(rol, wabsolutex());   break;
 
 	// branches
 	case 0x90: branch(FLAG_C, false); break; // BCC
@@ -257,10 +263,10 @@ void stepcpu(void)
 
 
 	// INC
-	case 0xE6: incm(wzeropage());  break;
-	case 0xF6: incm(wzeropagex()); break;
-	case 0xEE: incm(wabsolute());  break;
-	case 0xFE: incm(wabsolutex()); break;
+	case 0xE6: opm(inc, wzeropage());  break;
+	case 0xF6: opm(inc, wzeropagex()); break;
+	case 0xEE: opm(inc, wabsolute());  break;
+	case 0xFE: opm(inc, wabsolutex()); break;
 
 	/*
 	// DEC
@@ -271,49 +277,47 @@ void stepcpu(void)
 	*/
 
 	// LDA
-	case 0xA9: lda(immediate());  break;
-	case 0xA5: lda(rzeropage());  break;
-	case 0xB5: lda(rzeropagex()); break;
-	case 0xAD: lda(rabsolute());  break;
-	case 0xBD: lda(rabsolutex()); break;
-	case 0xB9: lda(rabsolutey()); break;
-	case 0xA1: lda(rindirectx()); break;
-	case 0xB1: lda(rindirecty()); break;
+	case 0xA9: ld(&a, immediate());  break;
+	case 0xA5: ld(&a, rzeropage());  break;
+	case 0xB5: ld(&a, rzeropagex()); break;
+	case 0xAD: ld(&a, rabsolute());  break;
+	case 0xBD: ld(&a, rabsolutex()); break;
+	case 0xB9: ld(&a, rabsolutey()); break;
+	case 0xA1: ld(&a, rindirectx()); break;
+	case 0xB1: ld(&a, rindirecty()); break;
 
 	// LDX
-	case 0xA2: ldx(immediate());  break;
-	case 0xA6: ldx(rzeropage());  break;
-	case 0xB6: ldx(rzeropagey()); break;
-	case 0xAE: ldx(rabsolute());  break;
-	case 0xBE: ldx(rabsolutey()); break;
+	case 0xA2: ld(&x, immediate());  break;
+	case 0xA6: ld(&x, rzeropage());  break;
+	case 0xB6: ld(&x, rzeropagey()); break;
+	case 0xAE: ld(&x, rabsolute());  break;
+	case 0xBE: ld(&x, rabsolutey()); break;
 
 	// LDY
-	case 0xA0: ldy(immediate());  break;
-	case 0xA4: ldy(rzeropage());  break;
-	case 0xB4: ldy(rzeropagex()); break;
-	case 0xAC: ldy(rabsolute());  break;
-	case 0xBC: ldy(rabsolutex()); break;
+	case 0xA0: ld(&y, immediate());  break;
+	case 0xA4: ld(&y, rzeropage());  break;
+	case 0xB4: ld(&y, rzeropagex()); break;
+	case 0xAC: ld(&y, rabsolute());  break;
+	case 0xBC: ld(&y, rabsolutex()); break;
 
 	// STA
-	case 0x85: sta(wzeropage());  break;
-	case 0x95: sta(wzeropagex()); break;
-	case 0x8D: sta(wabsolute());  break;
-	case 0x9D: sta(wabsolutex()); break;
-	case 0x99: sta(wabsolutey()); break;
-	case 0x81: sta(windirectx()); break;
-	case 0x91: sta(windirecty()); break;
+	case 0x85: mmuwrite(a, wzeropage());  break;
+	case 0x95: mmuwrite(a, wzeropagex()); break;
+	case 0x8D: mmuwrite(a, wabsolute());  break;
+	case 0x9D: mmuwrite(a, wabsolutex()); break;
+	case 0x99: mmuwrite(a, wabsolutey()); break;
+	case 0x81: mmuwrite(a, windirectx()); break;
+	case 0x91: mmuwrite(a, windirecty()); break;
 
-	/*
 	// STX
-	case 0x86: zeropage("STX");  break;
-	case 0x96: zeropagey("STX"); break;
-	case 0x8E: absolute("STX");  break;
+	case 0x86: mmuwrite(x, wzeropage());  break;
+	case 0x96: mmuwrite(x, wzeropagey()); break;
+	case 0x8E: mmuwrite(x, wabsolute());  break;
 
 	// STY
-	case 0x84: zeropage("STY");  break;
-	case 0x94: zeropagex("STY"); break;
-	case 0x8C: absolute("STY");  break;
-	*/
+	case 0x84: mmuwrite(y, wzeropage());  break;
+	case 0x94: mmuwrite(y, wzeropagex()); break;
+	case 0x8C: mmuwrite(y, wabsolute());  break;
 
 	// CMP
 	case 0xC9: cmp(immediate());  break;
@@ -324,6 +328,7 @@ void stepcpu(void)
 	case 0xD9: cmp(rabsolutey()); break;
 	case 0xC1: cmp(rindirectx()); break;
 	case 0xD1: cmp(rindirecty()); break;
+
 	/*
 	// ROR
 	case 0x6A: accumulator("ROR"); break;
@@ -374,16 +379,16 @@ void stepcpu(void)
 	case 0x08: spush(p|0x30);                               break; // PHP
 	case 0x28: p = spop();                                  break; // PLP
 	case 0x48: spush(a);                                    break; // PHA
-	case 0x68: lda(spop());                                 break; // PLA
+	case 0x68: ld(&a, spop());                              break; // PLA
 	case 0xEA:                                              break; // NOP
 	case 0x40: p = spop(); pc = spop16();                   break; // RTI
 	case 0x60: pc = spop16() + 1;                           break; // RTS
-	case 0xAA: ldx(a);                                      break; // TAX
-	case 0x8A: lda(x);                                      break; // TXA
-	case 0xA8: ldy(a);                                      break; // TAY
-	case 0xBA: ldx((s&0xFF));                               break; // TSX
+	case 0xAA: ld(&x, a);                                   break; // TAX
+	case 0x8A: ld(&a, x);                                   break; // TXA
+	case 0xA8: ld(&y, a);                                   break; // TAY
+	case 0xBA: ld(&x, (s&0xFF));                            break; // TSX
 	case 0x9A: s = 0x100 + x;                               break; // TXS
-	case 0x98: lda(y);                                      break; // TYA
+	case 0x98: ld(&a, y);                                   break; // TYA
 	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode); break;
 	}
 }
