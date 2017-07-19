@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
+#include <signal.h>
 #include "mmu.h"
 #include "cpu.h"
 
@@ -17,7 +18,7 @@ static struct {
 
 static uint_fast8_t getflags(void)
 {
-	return (flags.n<<7)|(flags.v<<6)|(flags.b<<4)|
+	return (flags.n<<7)|(flags.v<<6)|0x20|(flags.b<<4)|
 	(flags.d<<3)|(flags.i<<2)|(flags.z<<1)|(flags.c);
 }
 
@@ -229,6 +230,9 @@ void stepcpu(void)
 	       (flags.b == 0 || flags.b == 1) &&
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
+	
+	if (pc == 0x03A0)
+		raise(SIGTRAP);
 
 	const uint_fast8_t opcode = fetch8();
 
@@ -407,8 +411,20 @@ void stepcpu(void)
 		break;
 
 	// JMP
-	case 0x4C: pc = wabsolute(); break;
-	case 0x6C: pc = rindirect(); break;
+	case 0x4C: {
+		const int_fast32_t addr = wabsolute();
+		if (addr == 0xE7F3)
+			raise(SIGTRAP);
+		pc = addr;
+		break;
+	}
+	case 0x6C: { 
+		const int_fast32_t addr = rindirect();
+		if (addr == 0xE7F3)
+			raise(SIGTRAP);
+		pc = addr;
+		break;
+	}
 
 
 	// implieds
