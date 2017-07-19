@@ -157,13 +157,14 @@ void stepcpu(void)
 	#define rindirectx() (mmuread(windirectx()))
 	#define rindirecty() (mmuread(windirecty()))
 
-	#define lda(addr) (ld(&a, addr))
-	#define ldx(addr) (ld(&x, addr))
-	#define ldy(addr) (ld(&y, addr))
+	#define lda(val) (ld(&a, val))
+	#define ldx(val) (ld(&x, val))
+	#define ldy(val) (ld(&y, val))
 
 	#define sta(addr) (mmuwrite(a, addr))
 	#define stx(addr) (mmuwrite(x, addr))
 	#define sty(addr) (mmuwrite(y, addr))
+
 
 	assert(pc <= 0xFFFF && a <= 0xFF && x <= 0xFF && 
 	       y <= 0xFF && s >= 0x100 && s <= 0x1FF);
@@ -254,13 +255,14 @@ void stepcpu(void)
 	case 0x10: branch(FLAG_N, false); break; // BPL
 	case 0x30: branch(FLAG_N, true);  break; // BMI
 
-	/*
-	// INC
-	case 0xE6: zeropage("INC");  break;
-	case 0xF6: zeropagex("INC"); break;
-	case 0xEE: absolute("INC");  break;
-	case 0xFE: absolutex("INC"); break;
 
+	// INC
+	case 0xE6: incm(wzeropage());  break;
+	case 0xF6: incm(wzeropagex()); break;
+	case 0xEE: incm(wabsolute());  break;
+	case 0xFE: incm(wabsolutex()); break;
+
+	/*
 	// DEC
 	case 0xC6: zeropage("DEC");  break; 
 	case 0xD6: zeropagex("DEC"); break;

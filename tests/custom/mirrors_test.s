@@ -56,10 +56,12 @@ _entry:
 	jmp @cmp_ram_mirror_reset_y
 
 @failure:
+	brk
 	lda #-1
 	jmp @failure
 
 @success:
+	brk
 	lda #0
 	jmp @success
 
