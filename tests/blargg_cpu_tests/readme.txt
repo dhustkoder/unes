@@ -1,23 +1,70 @@
-NES CPU Tests
--------------
-These test most of the instruction behavior fairly thoroughly, including unofficial instructions. Failing instructions are listed by their opcode and name. Serious errors in basic opcodes might cause massive erroneous errors.
+NES CPU Instruction Behavior Tests
+----------------------------------
+These tests verify most instruction behavior fairly thoroughly,
+including unofficial instructions. Failing instructions are listed by
+their opcode and name. Serious errors in behavior of basic opcodes might
+cause many false errors. These tests will NOT help you figure out what
+is wrong with your implementation of the failed instructions, simply
+whether you are failing any, and which those are.
 
-cpu.nes			Tests all instructions
-official.nes	Tests official only
+all_instrs.nes tests (almost) all instructions, including unofficial
+ones, while official_only.nes tests only official ("documented")
+instructions. The *_singles/ test all instructions, but test the
+official ones first, so you can tell whether you pass those even if your
+emulator hangs on the unofficial ones.
 
-Most instructions are tested by setting many combinations of input values for registers, flags, and memory, running the instruction under test, then updating a running checksum with the resulting values. After trying all interesting input combinations, the checksum is compared with the correct one (what a NES gives) to find if the instruction passed.
+The nsf_singles builds audibly report the opcodes of any failed
+instructions before the final result.
 
-This approach makes it very easy to write the tests, since the instructions don't have to be each coded for separately; instead, only the different addressing modes need separate tests.
+
+Internal operation
+------------------
+Instructions are tested by setting many combinations of input values for
+registers, flags, and memory, running the instruction under test, then
+updating a running checksum with the resulting values. After trying all
+interesting input combinations, the checksum is compared with the
+correct one to find whether the instruction passed.
+
+This approach is used for all instructions, even those that shouldn't
+care the value of any registers or modify them. This catches an emulator
+incorrectly looking at or modifying registers in those instructions.
+
+This approach makes it very easy to write the tests, since the
+instructions don't have to be each coded for separately; instead, only
+the different addressing modes need separate tests.
+
+instrs: what opcodes to test, along with their names.
+
+instr_template: template for instructions. First byte is replaced with
+opcode. After executing instruction and anything after, it should jump
+to instr_done.
+
+operand: where to place byte operand for instruction. This value comes
+from the table of values to test, using an index separate from that used
+to set the other registers before executing the instruction.
+
+set_in: things to execute before the instruction. On entry, A is value
+put in operand, and Y is index used in table.
+
+check_out: things to execute after the instruction.
+
+values2: if defined, set of values to use for operand. Default uses same
+set as for other registers.
+
+test_values: routine to actually run the tests. test_normal does what's
+described above.
+
+correct_checksums: list of checksums for each instruction. Generated
+when CALIBRATE=1 is uncommented.
 
 
 Instructions
 ------------
 U = Unofficial
-- = Not tested yet
-X = Freezes CPU
-? = Unreliable
+X = Freezes CPU, so not tested
+? = Inconsistent/unknown behavior, so not tested
 
-00 - BRK #n
+00   BRK #n
 01   ORA (z,X)
 02 X KIL
 03 U SLO (z,X)
@@ -49,7 +96,7 @@ X = Freezes CPU
 1D   ORA a,X
 1E   ASL a,X
 1F U SLO abs,X
-20 - JSR a
+20   JSR a
 21   AND (z,X)
 22 X KIL
 23 U RLA (z,X)
@@ -81,7 +128,7 @@ X = Freezes CPU
 3D   AND a,X
 3E   ROL a,X
 3F U RLA abs,X
-40 - RTI
+40   RTI
 41   EOR (z,X)
 42 X KIL
 43 U SRE (z,X)
@@ -93,7 +140,7 @@ X = Freezes CPU
 49   EOR #n
 4A   LSR A
 4B U ASR #n
-4C - JMP a
+4C   JMP a
 4D   EOR a
 4E   LSR a
 4F U SRE abs
@@ -113,7 +160,7 @@ X = Freezes CPU
 5D   EOR a,X
 5E   LSR a,X
 5F U SRE abs,X
-60 - RTS
+60   RTS
 61   ADC (z,X)
 62 X KIL
 63 U RRA (z,X)
@@ -125,7 +172,7 @@ X = Freezes CPU
 69   ADC #n
 6A   ROR A
 6B U ARR #n
-6C - JMP (a)
+6C   JMP (a)
 6D   ADC a
 6E   ROR a
 6F U RRA abs
@@ -273,6 +320,68 @@ FC U TOP abs,X
 FD   SBC a,X
 FE   INC a,X
 FF U ISC abs,X
+
+
+Multi-tests
+-----------
+The NES/NSF builds in the main directory consist of multiple sub-tests.
+When run, they list the subtests as they are run. The final result code
+refers to the first sub-test that failed. For more information about any
+failed subtests, run them individually from rom_singles/ and
+nsf_singles/.
+
+
+Flashes, clicks, other glitches
+-------------------------------
+If a test prints "passed", it passed, even if there were some flashes or
+odd sounds. Only a test which prints "done" at the end requires that you
+watch/listen while it runs in order to determine whether it passed. Such
+tests involve things which the CPU cannot directly test.
+
+
+Alternate output
+----------------
+Tests generally print information on screen, but also report the final
+result audibly, and output text to memory, in case the PPU doesn't work
+or there isn't one, as in an NSF or a NES emulator early in development.
+
+After the tests are done, the final result is reported as a series of
+beeps (see below). For NSF builds, any important diagnostic bytes are
+also reported as beeps, before the final result.
+
+
+Output at $6000
+---------------
+All text output is written starting at $6004, with a zero-byte
+terminator at the end. As more text is written, the terminator is moved
+forward, so an emulator can print the current text at any time.
+
+The test status is written to $6000. $80 means the test is running, $81
+means the test needs the reset button pressed, but delayed by at least
+100 msec from now. $00-$7F means the test has completed and given that
+result code.
+
+To allow an emulator to know when one of these tests is running and the
+data at $6000+ is valid, as opposed to some other NES program, $DE $B0
+$G1 is written to $6001-$6003.
+
+
+Audible output
+--------------
+A byte is reported as a series of tones. The code is in binary, with a
+low tone for 0 and a high tone for 1, and with leading zeroes skipped.
+The first tone is always a zero. A final code of 0 means passed, 1 means
+failure, and 2 or higher indicates a specific reason. See the source
+code of the test for more information about the meaning of a test code.
+They are found after the set_test macro. For example, the cause of test
+code 3 would be found in a line containing set_test 3. Examples:
+
+	Tones         Binary  Decimal  Meaning
+	- - - - - - - - - - - - - - - - - - - - 
+	low              0      0      passed
+	low high        01      1      failed
+	low high low   010      2      error 2
+
 
 -- 
 Shay Green <gblargg@gmail.com>

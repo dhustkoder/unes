@@ -1,5 +1,4 @@
-;CALIBRATE=1
-.include "instr_test.a"
+.include "instr_test.inc"
 
 instrs:
 	entry $48,"PHA"
@@ -92,7 +91,7 @@ zp_byte save5
 	jsr update_crc_fast
 .endmacro
 
-.include "instr_test_end.a"
+.include "instr_test_end.s"
 
 test_values:
 	; Values for SP
@@ -105,14 +104,14 @@ test_values:
 	lda #$FF
 	jsr :+
 	lda #$FE
-:	sta in_s
+:       sta in_s
 	test_normal
 	rts
 
 correct_checksums:
-.dword $AA53E72F
-.dword $F46D6C3F
-.dword $4B0D5E27
-.dword $A1AB7B53
-.dword $8A5B86A7
-.dword $6157E3AF
+.dword $798D2DB5
+.dword $0CA6FC29
+.dword $68C636F1
+.dword $D35DB3D5
+.dword $F1159742
+.dword $A3EBB2D7

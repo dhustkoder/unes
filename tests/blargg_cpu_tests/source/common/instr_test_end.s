@@ -1,14 +1,18 @@
-zp_byte	instrs_idx
+; Offset of current instruction
+zp_byte instrs_idx
+
 zp_byte failed_count
 
-main:	ldx #$A2
+main:
+	; Stack slightly lower than top
+	ldx #$A2
 	txs
 	
 	jsr init_crc_fast
 	
 	; Test each instruction
 	lda #0
-@loop:	sta instrs_idx
+@loop:  sta instrs_idx
 	tay
 	
 	jsr reset_crc
@@ -22,29 +26,34 @@ main:	ldx #$A2
 	cmp #instrs_size
 	bne @loop
 	
+.ifdef BUILD_DEVCART
+	lda #0
+	jmp exit
+.endif
+
 	lda failed_count
 	jne test_failed
 	jmp tests_passed
-	
+
 ; Check result of test
 check_result:
-.ifdef CALIBRATE
+.ifdef BUILD_DEVCART
 	; Print correct CRC
-	crc_off
+	jsr crc_off
 	print_str ".dword $"
 	ldx #0
-:	lda checksum,x
+:       lda checksum,x
 	jsr print_hex
 	inx
 	cpx #4
 	bne :-
 	jsr print_newline
-	crc_on
+	jsr crc_on
 .else
 	; Verify CRC
 	ldx #3
 	ldy instrs_idx
-:	lda checksum,x
+:       lda checksum,x
 	cmp correct_checksums,y
 	bne @wrong
 	iny
@@ -54,10 +63,11 @@ check_result:
 	rts
 
 ; Print failed opcode and name
-@wrong:	
+@wrong: 
 	ldy instrs_idx
 	lda instrs,y
 	jsr print_a
+	jsr play_byte
 	lda instrs+2,y
 	sta addr
 	lda instrs+3,y
@@ -67,22 +77,27 @@ check_result:
 	inc failed_count
 	rts
 
-bss_res instr,instr_template_size
+; Place where instruction is executed
+instr = $3A0
 
 ; Tests instr A
 test_instr:
 	sta instr
+	jsr avoid_silent_nsf
 	
 	; Copy rest of template
 	ldx #instr_template_size - 1
-:	lda instr_template,x
+:       lda instr_template,x
 	sta instr,x
 	dex
 	bne :-
 	
-	; Disable and clear frame IRQ
-	lda #$40
-	sta SNDMODE
+	; Disable and be sure APU IRQs are clear, since
+	; I flag gets cleared during testing.
+	setb SNDMODE,$C0 
+	setb $4010,0
+	nop
+	lda SNDCHN
 	
 	; Default stack
 	lda #$90
@@ -96,13 +111,14 @@ test_instr:
 	
 	rts
 
+; Position in operand table
 zp_byte operand_idx
 
 test_flags:
 	sta in_p
 	
 	ldy #values_size-1
-:	sty operand_idx
+:       sty operand_idx
 
 	lda values,y
 	sta in_a
@@ -133,14 +149,17 @@ zp_byte saved_s
 	tsx
 	stx saved_s
 	
+	set_stack
+	
 	ldy #values2_size-1
-inner:	sty a_idx
+inner:  sty a_idx
 	
 	lda values2,y
 	sta operand
 	
 	set_in
-	
+
+; For debugging 
 .if 0
 	; P A X Y S O (z,x) (z),y
 	jsr print_p
@@ -172,6 +191,8 @@ instr_done:
 	ldy a_idx
 	dey
 	bpl inner
+	
+	check_stack
 	
 	ldx saved_s
 	txs

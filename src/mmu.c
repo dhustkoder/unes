@@ -38,6 +38,9 @@ static uint8_t io[0x28]     = { 0 };   // all io registers
 static void romwrite(const uint_fast8_t val, const int_fast32_t addr)
 {
 	switch (mapper_num) {
+	case NROM:
+		break;
+
 	case MMC1:
 		if ((val&0x80) == 0x80)
 			map.mmc1.shift_n = 0;
@@ -58,6 +61,7 @@ static void romwrite(const uint_fast8_t val, const int_fast32_t addr)
 		}
 
 		break;
+
 	default:
 		fprintf(stderr, "Mapper write not supported.\n");
 		exit(EXIT_FAILURE);
@@ -68,10 +72,9 @@ static uint_fast8_t romread(const int_fast32_t addr)
 {
 	switch (mapper_num) {
 	case NROM:
-		if (addr >= ADDR_PRGROM_UPPER)
-			return cartdata[(ines[4] == 1) ? addr - ADDR_PRGROM_UPPER : addr - ADDR_PRGROM];
-		else
-			return cartdata[addr - ADDR_PRGROM];
+		if (addr >= ADDR_PRGROM_UPPER && ines[4] == 1)
+			return cartdata[addr - ADDR_PRGROM_UPPER];
+		return cartdata[addr - ADDR_PRGROM];
 	}
 	
 	fprintf(stderr, "Mapper read not supported.\n");

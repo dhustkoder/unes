@@ -1,5 +1,4 @@
-;CALIBRATE=1
-.include "instr_test.a"
+.include "instr_test.inc"
 
 instrs:
 	entry $BD,"LDA a,X" ; AXY = a,XY
@@ -84,61 +83,61 @@ instr_template_size = * - instr_template
 	jsr update_crc_fast
 .endmacro
 
-.include "instr_test_end.a"
+.include "instr_test_end.s"
 
 test_values:
 	lda #1
 	jsr :+
 	lda #2
-:	sta in_x
+:       sta in_x
 	eor #3
 	sta in_y
 	test_normal
 	rts
 
 correct_checksums:
-.dword $E9468A6E
-.dword $7EE7005C
-.dword $4FA75F54
-.dword $19F17935
-.dword $D7775153
-.dword $A7756BFC
-.dword $1DD34BF8
-.dword $4CF654EB
-.dword $167DC608
-.dword $7989FBE2
-.dword $70451E61
-.dword $ED3AA6EF
-.dword $E5328CF1
-.dword $D287638B
-.dword $6FC54B7A
-.dword $8774BACC
-.dword $05331E96
-.dword $8DF442A1
-.dword $71FB6ACE
-.dword $5396E16A
-.dword $0CA28045
-.dword $C1F44777
-.dword $A8D5E376
-.dword $C32624B7
-.dword $EE62210F
-.dword $EE62210F
-.dword $EE62210F
-.dword $EE62210F
-.dword $EE62210F
-.dword $EE62210F
-.dword $E893AB95
-.dword $8946938D
-.dword $5C5BC0E7
-.dword $2B4CFDCF
-.dword $973A2CEA
-.dword $3203662F
-.dword $92BD9042
-.dword $BE321B27
-.dword $72EDF2C3
-.dword $98728C4F
-.dword $0BD391C9
-.dword $CAA64F06
-.dword $F6E1B339
-.dword $577C9968
-.dword $980F0B56
+.dword $8B53FA6E
+.dword $ED606C6A
+.dword $63FE045F
+.dword $B6C7BA63
+.dword $B374C422
+.dword $CE7ABA24
+.dword $771C915B
+.dword $71675CF6
+.dword $DD12400E
+.dword $808A4BF5
+.dword $54FC683C
+.dword $46392060
+.dword $6C804870
+.dword $CD587E36
+.dword $EF2A694B
+.dword $E0D6DFA5
+.dword $BFA7B86E
+.dword $D37908FE
+.dword $AAE1A597
+.dword $7F54BFF0
+.dword $D37CC347
+.dword $94C851D4
+.dword $539CBA74
+.dword $56D05064
+.dword $FEBE0BFF
+.dword $FEBE0BFF
+.dword $FEBE0BFF
+.dword $FEBE0BFF
+.dword $FEBE0BFF
+.dword $FEBE0BFF
+.dword $14AA08E6
+.dword $BF4BF92E
+.dword $C2207461
+.dword $F34758B1
+.dword $7DA6ABE2
+.dword $E62C1F92
+.dword $A3FD5073
+.dword $234A2B6E
+.dword $84467B6B
+.dword $CED1ADC0
+.dword $6655FFC6
+.dword $9E821698
+.dword $47579BB5
+.dword $49B176EB
+.dword $A72DC04B

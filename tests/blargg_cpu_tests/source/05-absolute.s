@@ -1,5 +1,4 @@
-;CALIBRATE=1
-.include "instr_test.a"
+.include "instr_test.inc"
 
 instrs:
 	entry $AD,"LDA a" ; AXY = a
@@ -51,40 +50,40 @@ instr_template_size = * - instr_template
 .define set_in    set_paxyso
 .define check_out check_paxyso
 
-.include "instr_test_end.a"
+.include "instr_test_end.s"
 
 test_values:
 	test_normal
 	rts
 
 correct_checksums:
-.dword $AB3E4F82
-.dword $7B121231
-.dword $E544DF3D
-.dword $6C920797
-.dword $D813DA7E
-.dword $B656C54F
-.dword $E6708F26
-.dword $E7A8F852
-.dword $2980FD5C
-.dword $5CA561A6
-.dword $354CDEB5
-.dword $6C7D266C
-.dword $86046BF5
-.dword $999E9E48
-.dword $DC562F7E
-.dword $6BF08A00
-.dword $D2A32FD6
-.dword $7DF1D50B
-.dword $C0066908
-.dword $751D8339
-.dword $A451BD7A
-.dword $ACE6BAE4
-.dword $7CA30777
-.dword $8254F5DE
-.dword $A75B33F1
-.dword $6DB4854B
-.dword $466B9DCC
-.dword $1D8ACEF5
-.dword $E44BA262
-.dword $BD2619BF
+.dword $5D5728B8
+.dword $EA228F76
+.dword $7C0C60CB
+.dword $47422599
+.dword $5AC36C4F
+.dword $34B566BB
+.dword $2FEC251E
+.dword $2D40B32D
+.dword $13852B6A
+.dword $53AEB6C8
+.dword $5F3FDB23
+.dword $DC0B06BF
+.dword $49288BFC
+.dword $14C7EA46
+.dword $42684E66
+.dword $EA1D7F06
+.dword $512F9D2A
+.dword $70AA1B34
+.dword $59C741E9
+.dword $D3DC4002
+.dword $6675067C
+.dword $6CB13BC0
+.dword $E8A350DF
+.dword $BB4C5C90
+.dword $02F88F3F
+.dword $9749194D
+.dword $15C5F146
+.dword $D311C870
+.dword $F0A1F923
+.dword $46252975

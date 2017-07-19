@@ -3,58 +3,119 @@ NES Tests Source Code
 
 Building with ca65
 ------------------
-To assemble a test with ca65, use the following commands:
+To assemble a test ROM with ca65, use the following commands:
 
-	ca65 -I common -o rom.o source_filename_here.a
-	ld65 -C nes.cfg rom.o -o rom.nes
-	your_favorite_nes_emulator rom.nes
+	ca65 -I common -o test.o source_filename_here.s
+	ld65 -C nes.cfg test.o -o test.nes
 
-Don't bother trying to build a multi-test ROM, since it's not worth the complexity. Also, tests you build won't print their name if they fail, since that requires special arrangements.
+To assemble as an NSF music file:
+
+	ca65 -I common -o test.o source_filename_here.s -D BUILD_NSF
+	ld65 -C nsf.cfg test.o -o test.nsf
+
+Note that some tests might only work when built as a ROM or NSF file,
+but not both.
+
+Some tests might include a ROM/NSF that has all the tests combined.
+Building such a multi-test is complex and the necessary files aren't
+included. Also, tests you build won't print their name if they fail,
+since that requires special arrangements due to ca65's inability to
+define strings on the command-line.
 
 
-Framework
----------
-Each test is in a single source file, and makes use of several library source files from common/. This framework provides common services and reduces code to only that which performs the actual test. Virtually all tests include "common.a" at the beginning, which sets things up and includes all the appropriate library files.
+Shell
+-----
+Most tests are in a single source file, and make use of several library
+source files from common/. This framework provides common services and
+reduces code to only that which performs the actual test. Virtually all
+tests include "shell.inc" at the beginning, which sets things up and
+includes all the appropriate library files.
 
-The reset handler does minimal NES hardware initialization, clears RAM, sets up the text console, then runs main. Main can exit by returning or jumping to "exit" with a code in A. Exit reports the code then goes into an infinite loop. If the code is 0, it doesn't do anything, otherwise it reports the code. Code 1 is reported as "Failed", and the rest as "Error <code>".
+The reset handler does NES hardware initialization, clears RAM and PPU
+nametables, then runs main. Main can exit by returning or jumping to
+"exit" with an error code in A. Exit reports the code then goes into an
+infinite loop. If the code is 0, it doesn't do anything, otherwise it
+reports the code. Code 1 is reported as "Failed", and the rest as "Error
+<code>".
 
-Several routines are available to print values and text to the console. Most update a running CRC-32 checksum which can be checked with check_crc, allowing ALL the output to be checked very easily. If the checksum doesn't match, it is printed, so you can run the code on a NES and paste the correct checksum into your code.
+Several routines are available to print values and text to the console.
+The first time a line of text is completed, the console initializes the
+PPU. Most print routines update a running CRC-32 checksum which can be
+checked with check_crc. This allows ALL the output to be checked very
+easily. If the checksum doesn't match, it is printed, so during
+development the code can be run on a NES to get the correct checksum,
+which is then typed into the test code. The checksum is also useful when
+comparing different outputs; rather than having to examine all the
+output, one need only compare checksums.
 
-The default is to build a normal iNES ROM, with other options build types not documented well. My nes.cfg file puts the code at $E000 since my devcart requires it, and I don't want the normal ROM to differ in any way from what I've tested.
+The default is to build an iNES ROM. Defining BUILD_NSF will build as an
+NSF. The other build types aren't supported by the included code, due to
+their complexity.
 
-I use symbolic constants for NES registers. Use of these raises the level of the code, reduces room for error, and makes it easier for less-experienced NES programmers to understand. I recently switched to using them and have no regrets.
 
-Library routines are organized by function into several files, each with short documentation. Each routine may also optionally list registers which are preserved, rather than those which are modified (trashed) as is more commonly done. This is because it's best for the caller to assume that ALL registers are NOT preserved unless noted. Also, preserving registers is part of the interface, and making that guarantee requires extra effort that isn't warranted except for often-used small routines that would be tedious to use if they didn't preserve registers. Also, it's easier for the caller to save and restore A, so it's best if a routine only modifies A, if possible.
+Macros
+------
+Some macros are used to make common operations more convenient, defined
+in common/macros.inc. The left is equivalent to the right:
 
-I couldn't help using some macros for common operations. The left is equivalent to the right:
-
-	Macro			Equivalent
-	-------------------------------------
-	blt				bcc
+	Macro               Equivalent
+	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+	blt                 bcc
 	
-	bge				bcs
+	bge                 bcs
 	
-	jne label		beq skip
-					jmp label
-					skip:
+	jne label           beq skip
+						jmp label
+						skip:
 	etc.
 	
-	zp_byte name	.zeropage
-					name: .res 1
-					.code
+	setb addr,byte      lda #byte
+						sta addr
 	
-	zp_res name,n	.zeropage
-					name: .res n
-					.code
+	setw addr,word      lda #<word
+						sta addr
+						lda #>word
+						sta addr+1
 	
-	bss_res name,n	.bss
-					name: .res n
-					.code
+	ldxy #value         ldx #>value
+						ldy #<value
 	
-	ram_res name,n	.zeropage or .bss (unspecified)
-					name: .res n
-					.code
+	incw addr           inc addr
+						bne skip
+						inc addr+1
+						skip:
+	
+	inxy                iny         ; actual macro differs slightly,
+						bne skip    ; to always take 7 clocks
+						inx
+						skip:
+	
+	zp_byte name        .zeropage
+						name: .res 1
+						.code
+	
+	zp_res name,n       .zeropage   ; if n is omitted, uses 1
+						name: .res n
+						.code
+	
+	bss_res name,n      .bss        ; if n is omitted, uses 1
+						name: .res n
+						.code
+	
+	nv_res name,n       .segment "NVRAM"    ; if n is omitted, uses 1
+						name: .res n
+						.code
+	
+	for_loop routine,begin,end,step
+						calls routine with A set to successive values
+						from begin through end, with given step
+	
+	loop_n_times routine,count
+						calls routine with A from 0 to count-1
 
+"NVRAM" is a section for variables that aren't cleared by the shell.
+This is useful for values that are written in a custom reset handler and
+later read from main, or values that are saved across resets.
 
 -- 
 Shay Green <gblargg@gmail.com>

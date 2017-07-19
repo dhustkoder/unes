@@ -1,5 +1,4 @@
-;CALIBRATE=1
-.include "instr_test.a"
+.include "instr_test.inc"
 
 instrs:
 	entry $A1,"LDA (z,X)" ; A = (z,X)
@@ -25,7 +24,7 @@ instrs:
 .endif
 instrs_size = * - instrs
 
-address = $FF
+address = <$FF
 operand = $2FF
 
 instr_template:
@@ -56,7 +55,7 @@ instr_template_size = * - instr_template
 	jsr update_crc_fast
 .endmacro
 
-.include "instr_test_end.a"
+.include "instr_test_end.s"
 
 test_values:
 	lda #<operand
@@ -69,27 +68,33 @@ test_values:
 	lda #>(operand+1)
 	sta <(address+3)
 	
+	; Be sure X doesn't have values other than
+	; 0 or 2
 	lda #0
 	jsr :+
 	lda #2
-:	sta in_x
+:       sta in_x
+	lda #$A5
+	sta address+1
+	sta address+2
+	sta address+3
 	test_normal
 	rts
 
 correct_checksums:
-.dword $B9D16BC6
-.dword $DBC21F73
-.dword $84827E50
-.dword $FE9A8B04
-.dword $9EEFAAD8
-.dword $65F6C5BB
-.dword $82C41B16
-.dword $DC68A9E8
-.dword $04A09668
-.dword $417BDD05
-.dword $9A40C4E4
-.dword $0CB8C16E
-.dword $EC8492F8
-.dword $AFC77201
-.dword $5BFDAB74
-.dword $C62D3147
+.dword $C7123EFB
+.dword $A914111E
+.dword $78FDC202
+.dword $727A1EC0
+.dword $0CCBE904
+.dword $918A9806
+.dword $47A2405D
+.dword $9D5AE8F0
+.dword $57CC5810
+.dword $686F6585
+.dword $41CCD775
+.dword $1CCC0373
+.dword $54931D9E
+.dword $D221ACE3
+.dword $2F5C514E
+.dword $47A96694

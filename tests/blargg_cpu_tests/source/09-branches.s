@@ -1,5 +1,4 @@
-;CALIBRATE=1
-.include "instr_test.a"
+.include "instr_test.inc"
 
 instrs:
 	entry $90,"BCC r" ; PC = PC op flags
@@ -17,7 +16,7 @@ zp_byte operand
 instr_template:
 	bne :+
 	sta operand
-:	jmp instr_done
+:       jmp instr_done
 instr_template_size = * - instr_template
 
 values2:
@@ -31,18 +30,18 @@ values2_size = * - values2
 
 .define check_out check_paxyso
 
-.include "instr_test_end.a"
+.include "instr_test_end.s"
 
 test_values:
 	test_normal
 	rts
 
 correct_checksums:
-.dword $D5B22EE0
-.dword $9CEB0A7E
-.dword $DE8DEFE5
-.dword $D704F89C
-.dword $AD3F7EB0
-.dword $A4B669C9
-.dword $AF89A8CC
-.dword $E6D08C52
+.dword $70FED976
+.dword $423DD402
+.dword $EFA864F5
+.dword $987425C4
+.dword $3095ECE9
+.dword $4749ADD8
+.dword $D81F105B
+.dword $EADC1D2F

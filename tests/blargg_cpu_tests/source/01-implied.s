@@ -1,5 +1,4 @@
-;CALIBRATE=1
-.include "instr_test.a"
+.include "instr_test.inc"
 instrs:
 	entry $2A,"ROL A" ; A = op A
 	entry $0A,"ASL A"
@@ -46,36 +45,36 @@ operand = in_a
 .define set_in    set_paxyso
 .define check_out check_paxyso
 
-.include "instr_test_end.a"
+.include "instr_test_end.s"
 
 test_values:
 	test_normal
 	rts
 
 correct_checksums:
-.dword $013A2933
-.dword $A38733B0
-.dword $6EC2BCA6
-.dword $763FEBC5
-.dword $0FF1C1E6
-.dword $5B2EB5B7
-.dword $1D8ACEF5
-.dword $83DC03F9
-.dword $8EBDF63B
-.dword $F34CAA18
-.dword $9123FF08
-.dword $48897445
-.dword $4BE14840
-.dword $E7C7ECC0
-.dword $408EF097
-.dword $A6AEF749
-.dword $8F06AD7B
-.dword $FC96AE14
-.dword $28F10ADA
-.dword $CA7E6620
-.dword $CA7E6620
-.dword $CA7E6620
-.dword $CA7E6620
-.dword $CA7E6620
-.dword $CA7E6620
-.dword $CA7E6620
+.dword $B129E6BE
+.dword $965A320E
+.dword $905D41EE
+.dword $51FA7AD7
+.dword $A60AE5B1
+.dword $8FA16B44
+.dword $D311C870
+.dword $453F27CD
+.dword $4F91B466
+.dword $604DB29C
+.dword $4BCFE982
+.dword $8E0D1602
+.dword $26DBEBEC
+.dword $49214BA2
+.dword $8C4FB749
+.dword $37962351
+.dword $99E7216C
+.dword $6408D38D
+.dword $C334A2A7
+.dword $55827CC6
+.dword $55827CC6
+.dword $55827CC6
+.dword $55827CC6
+.dword $55827CC6
+.dword $55827CC6
+.dword $55827CC6
