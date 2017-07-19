@@ -6,10 +6,27 @@
 #include <errno.h>
 #include "mmu.h"
 
+enum {
+	NROM = 0x00,
+	MMC1 = 0x01
+};
+
+static union {
+	struct {
+		uint_fast8_t r0;
+		uint_fast8_t r1;
+		uint_fast8_t r2;
+		uint_fast8_t r3;
+		uint_fast8_t tmp;
+		int_fast8_t shift_n;
+	} mmc1;
+} map;
+
 
 static int_fast32_t prg_size;
 static int_fast32_t chr_size;
 static int_fast32_t cart_ram_size;
+static uint_fast8_t mapper_num;
 static const char* rompath;
 
 static uint8_t ines[0x10]   = { 0 };   // ines header
@@ -18,9 +35,53 @@ static uint8_t ram[0x800]   = { 0 };   // zeropage,stack,ram
 static uint8_t io[0x28]     = { 0 };   // all io registers
 
 
+static void romwrite(const uint_fast8_t val, const int_fast32_t addr)
+{
+	switch (mapper_num) {
+	case MMC1:
+		if ((val&0x80) == 0x80)
+			map.mmc1.shift_n = 0;
+
+		map.mmc1.tmp |= ((val&0x01)<<map.mmc1.shift_n);
+
+		if ((++map.mmc1.shift_n) == 0x04) {
+			map.mmc1.shift_n = 0;
+			if (addr >= 0xE000)
+				map.mmc1.r3 = map.mmc1.tmp;
+			else if (addr >= 0xC000)
+				map.mmc1.r2 = map.mmc1.tmp;
+			else if (addr >= 0xA000)
+				map.mmc1.r1 = map.mmc1.tmp;
+			else if (addr >= 0x8000)
+				map.mmc1.r0 = map.mmc1.tmp;
+			map.mmc1.tmp = 0x00;
+		}
+
+		break;
+	default:
+		fprintf(stderr, "Mapper write not supported.\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static uint_fast8_t romread(const int_fast32_t addr)
+{
+	switch (mapper_num) {
+	case NROM:
+		if (addr >= ADDR_PRGROM_UPPER)
+			return cartdata[(ines[4] == 1) ? addr - ADDR_PRGROM_UPPER : addr - ADDR_PRGROM];
+		else
+			return cartdata[addr - ADDR_PRGROM];
+	}
+	
+	fprintf(stderr, "Mapper read not supported.\n");
+	exit(EXIT_FAILURE);
+}
+
+
 static bool loadrom(const char* const path)
 {
-	bool ret = true;
+	bool ret = false;
 
 	rompath = path;
 	FILE* const file = fopen(rompath, "r");
@@ -28,7 +89,7 @@ static bool loadrom(const char* const path)
 	if (file == NULL) {
 		fprintf(stderr, "Couldn't open rom \'%s\': %s\n",
 		        rompath, strerror(errno));
-		return NULL;
+		return false;
 	}
 
 	const uint8_t ines_match[] = { 'N', 'E', 'S', 0x1A };
@@ -38,6 +99,7 @@ static bool loadrom(const char* const path)
 		goto Lfclose;
 	}
 
+	mapper_num = ((ines[6]&0xF0)>>0x04)|(ines[7]&0xF0);
 	prg_size = ines[4] * PRGROM_BANK_SIZE;
 	chr_size = ines[5] * CHR_BANK_SIZE;
 	cart_ram_size  = (ines[8] != 0) ? ines[8] * CART_RAM_BANK_SIZE : CART_RAM_BANK_SIZE;
@@ -47,7 +109,6 @@ static bool loadrom(const char* const path)
 	if (fread((uint8_t*)cartdata, 1, read_size, file) < read_size) {
 		fprintf(stderr, "Couldn't read \'%s\' properly\n", rompath);
 		free((void*)cartdata);
-		ret = false;
 		goto Lfclose;
 	}
 
@@ -62,7 +123,8 @@ static bool loadrom(const char* const path)
 	       "\tFOUR LOWER BITS OF MAPPER NUMBER: $%.1x\n"
 	       "CTRL BYTE 2:\n"
 	       "\tBITS 0-3 RESERVED FOR FUTURE USE AND SHOULD ALL BE 0: $%.1x\n"
-	       "\tFOUR UPPER BITS OF MAPPER NUMBER: $%.1x\n",
+	       "\tFOUR UPPER BITS OF MAPPER NUMBER: $%.1x\n"
+	       "MAPPER NUM %" PRIuFAST8 "\n",
 	       ines[4], prg_size,
 	       ines[5], chr_size,
 	       ines[8], cart_ram_size,
@@ -70,8 +132,10 @@ static bool loadrom(const char* const path)
 	       (ines[6]&0x02)>>1, (ines[6]&0x02) ? "YES" : "NO",
 	       (ines[6]&0x04)>>2, (ines[6]&0x04) ? "YES" : "NO",
 	       (ines[6]&0x08)>>3, (ines[6]&0x08) ? "YES" : "NO",
-	       (ines[6]&0xF0)>>4, ines[7]&0x0F, (ines[7]&0xF0)>>4);
+	       (ines[6]&0xF0)>>4, ines[7]&0x0F, (ines[7]&0xF0)>>4, mapper_num);
 
+	ret = true;
+	
 Lfclose:
 	fclose(file);
 	return ret;
@@ -95,10 +159,8 @@ uint_fast8_t mmuread(const int_fast32_t addr)
 
 	if (addr < ADDR_IOREGS1)
 		return ram[addr&0x7FF]; // also handles mirrors
-	else if (addr >= ADDR_PRGROM_UPPER)
-		return cartdata[(ines[4] == 1) ? addr - ADDR_PRGROM_UPPER : addr - ADDR_PRGROM];
 	else if (addr >= ADDR_PRGROM)
-		return cartdata[addr - ADDR_PRGROM];
+		return romread(addr);
 	else if (addr >= ADDR_IOREGS2 && addr < ADDR_EXPROM)
 		return io[0x08 + (addr - ADDR_IOREGS2)]; // IOREGS2
 	else if (addr >= ADDR_IOREGS1 && addr < ADDR_IOREGS2)
@@ -106,6 +168,7 @@ uint_fast8_t mmuread(const int_fast32_t addr)
 
 	return 0;
 }
+
 
 void mmuwrite(const uint_fast8_t value, const int_fast32_t addr)
 {
@@ -117,5 +180,7 @@ void mmuwrite(const uint_fast8_t value, const int_fast32_t addr)
 		io[(addr - ADDR_IOREGS1)&0x08] = value; // also handles mirrors
 	else if (addr < ADDR_EXPROM)
 		io[0x08 + (addr - ADDR_IOREGS2)] = value;
+	else if (addr >= ADDR_PRGROM)
+		romwrite(value, addr);
 }
 
