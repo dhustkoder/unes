@@ -9,7 +9,27 @@
 #include "cpu.h"
 
 
-static int_fast32_t clk;
+static const uint8_t cycles[0x100] = {
+//	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+/*0*/	7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
+/*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+/*2*/	6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
+/*3*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+/*4*/	6, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6,
+/*5*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+/*6*/	6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6,
+/*7*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+/*8*/	2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+/*9*/	2, 6, 2, 6, 4, 4, 4, 4, 2, 5, 2, 5, 5, 5, 5, 5,
+/*A*/	2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
+/*B*/	2, 5, 2, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4,
+/*C*/	2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+/*D*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+/*E*/	2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
+/*F*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
+};
+
+int_fast32_t clk;
 static int_fast32_t pc;
 static int_fast16_t a, x, y, s;
 
@@ -195,22 +215,26 @@ void resetcpu(void)
 	flags.i = 1;
 }
 
-
 void stepcpu(void)
 {
 	#define fetch8()     (mmuread(pc++))
 	#define fetch16()    (pc += 2, mmuread16(pc - 2))
-	#define immediate()  (fetch8())
 
+	// check for page cross in adding register to addr
+	// add 1 to clk if it does cross a page
+	#define chkpagecross(addr, reg) \
+		(clk += (((addr&0xFF) + reg) > 0xFF ? 1 : 0), addr + reg)
+
+	#define immediate()  (fetch8())
 	#define wzeropage()  (fetch8())
 	#define wzeropagex() ((fetch8() + x)&0xFF)
 	#define wzeropagey() ((fetch8() + y)&0xFF)
 	#define wabsolute()  (fetch16())
-	#define wabsolutex() (fetch16() + x)
-	#define wabsolutey() (fetch16() + y)
+	#define wabsolutex() (chkpagecross(fetch16(), x))
+	#define wabsolutey() (chkpagecross(fetch16(), y))
 	#define windirect()  (fetch16())
 	#define windirectx() (mmuread16(((fetch8() + x)&0xFF)))
-	#define windirecty() (mmuread16(fetch8()) + y)
+	#define windirecty() (chkpagecross(mmuread16(fetch8()), y))
 
 	#define rzeropage()  (mmuread(wzeropage()))
 	#define rzeropagex() (mmuread(wzeropagex()))
@@ -234,14 +258,8 @@ void stepcpu(void)
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
 
-	static long long int testn = 0;
-
-	if (pc == 0x03A0) {
-		printf("test %lld: opcode $%.2x\n",
-		       testn++, mmuread(pc));
-	}
-
 	const uint_fast8_t opcode = fetch8();
+	clk += cycles[opcode];
 
 	switch (opcode) {
 	// ADC
@@ -265,7 +283,7 @@ void stepcpu(void)
 	case 0xF1: sbc(rindirecty()); break;
 
 	// AND
-	case 0x29: and(immediate()); break;
+	case 0x29: and(immediate());  break;
 	case 0x25: and(rzeropage());  break;
 	case 0x35: and(rzeropagex()); break;
 	case 0x2D: and(rabsolute());  break;
@@ -275,7 +293,7 @@ void stepcpu(void)
 	case 0x31: and(rindirecty()); break;
 
 	// ORA (OR)
-	case 0x09: ora(immediate()); break;
+	case 0x09: ora(immediate());  break;
 	case 0x05: ora(rzeropage());  break;
 	case 0x15: ora(rzeropagex()); break;
 	case 0x0D: ora(rabsolute());  break;
@@ -285,7 +303,7 @@ void stepcpu(void)
 	case 0x11: ora(rindirecty()); break;
 
 	// EOR (XOR)
-	case 0x49: eor(immediate()); break;
+	case 0x49: eor(immediate());  break;
 	case 0x45: eor(rzeropage());  break;
 	case 0x55: eor(rzeropagex()); break;
 	case 0x4D: eor(rabsolute());  break;
@@ -418,18 +436,8 @@ void stepcpu(void)
 		break;
 
 	// JMP
-	case 0x4C: {
-		const int_fast32_t addr = wabsolute();
-		if (addr == 0xE7F3) {
-			printf("EXIT CODE: $%.2lx\n", a);
-			exit(a);
-		}
-		pc = addr;
-		break;
-	}
-
+	case 0x4C: pc = wabsolute(); break;
 	case 0x6C: pc = rindirect(); break;
-
 
 	// implieds
 	case 0x00: flags.b = !flags.i;                          break; // BRK
