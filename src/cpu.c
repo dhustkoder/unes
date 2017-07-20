@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
 #include <signal.h>
+#include <inttypes.h>
 #include "mmu.h"
 #include "cpu.h"
 
@@ -60,7 +62,7 @@ static void ld(int_fast16_t* const reg, const int_fast16_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
-	flags.n = *reg < 0;
+	flags.n = (*reg)>>7;
 }
 
 static void inc(int_fast16_t* const val)
@@ -68,7 +70,7 @@ static void inc(int_fast16_t* const val)
 	++(*val);
 	*val &= 0xFF;
 	flags.z = *val == 0x00;
-	flags.n = ((*val)>>7);
+	flags.n = (*val)>>7;
 }
 
 static void dec(int_fast16_t* const val)
@@ -76,7 +78,7 @@ static void dec(int_fast16_t* const val)
 	--(*val);
 	*val &= 0xFF;
 	flags.z = *val == 0x00;
-	flags.n = ((*val)>>7);
+	flags.n = (*val)>>7;
 }
 
 static void and(const int_fast16_t val)
@@ -114,7 +116,7 @@ static void rol(int_fast16_t* const val)
 	flags.c = (*val)>>8;
 	*val &= 0xFF;
 	flags.z = *val == 0x00;
-	flags.n = *val < 0;
+	flags.n = (*val)>>7;
 }
 
 static void ror(int_fast16_t* const val)
@@ -123,7 +125,7 @@ static void ror(int_fast16_t* const val)
 	flags.c = (*val)&0x01;
 	(*val) = ((*val)>>1)|(oldc<<7);
 	flags.z = *val == 0x00;
-	flags.n = *val < 0;
+	flags.n = *(val)>>7;
 }
 
 static void asl(int_fast16_t* const val)
@@ -139,14 +141,14 @@ static void bit(const int_fast16_t val)
 {
 	flags.z = (a&val) == 0x00;
 	flags.v = (val&0x40)>>6;
-	flags.n = (val&0x80)>>7;
+	flags.n = val>>7;
 }
 
 static void cmp(const int_fast16_t reg, const int_fast16_t val)
 {
 	flags.c = reg >= val;
 	flags.z = reg == val;
-	flags.n = ((reg - val)&0xFF)>>7;
+	flags.n = ((reg - val)&0x80)>>7;
 }
 
 static void branch(const uint_fast8_t flag, const bool eq)
@@ -162,10 +164,11 @@ static void branch(const uint_fast8_t flag, const bool eq)
 static void adc(const int_fast16_t val)
 {
 	const int_fast16_t tmp = a + val + flags.c;
-	flags.v = (~(a ^ val) & (a ^ tmp) & 0x80)>>7;
-	flags.c = ((tmp&0x80)>>7) & 0x01;
+	flags.v = (~(a ^ val) & (a ^ tmp))>>7;
+	flags.c = tmp>>8;
 	a = tmp&0xFF;
 	flags.z = a == 0;
+	flags.n = a>>7;
 }
 
 static inline void sbc(const int_fast16_t val)
@@ -230,9 +233,13 @@ void stepcpu(void)
 	       (flags.b == 0 || flags.b == 1) &&
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
-	
-	if (pc == 0x03A0)
-		raise(SIGTRAP);
+
+	static long long int testn = 0;
+
+	if (pc == 0x03A0) {
+		printf("test %lld: opcode $%.2x\n",
+		       testn++, mmuread(pc));
+	}
 
 	const uint_fast8_t opcode = fetch8();
 
@@ -413,18 +420,15 @@ void stepcpu(void)
 	// JMP
 	case 0x4C: {
 		const int_fast32_t addr = wabsolute();
-		if (addr == 0xE7F3)
-			raise(SIGTRAP);
+		if (addr == 0xE7F3) {
+			printf("EXIT CODE: $%.2lx\n", a);
+			exit(a);
+		}
 		pc = addr;
 		break;
 	}
-	case 0x6C: { 
-		const int_fast32_t addr = rindirect();
-		if (addr == 0xE7F3)
-			raise(SIGTRAP);
-		pc = addr;
-		break;
-	}
+
+	case 0x6C: pc = rindirect(); break;
 
 
 	// implieds
