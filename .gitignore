@@ -1,7 +1,7 @@
 build/
 objs/
 asm/
-
+tests/blargg_cpu_tests/
 *.fns
 *.nes
 *.deb

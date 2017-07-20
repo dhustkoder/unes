@@ -133,7 +133,7 @@ static void asl(int_fast16_t* const val)
 	flags.c = (*val)>>7;
 	*val <<= 1;
 	*val &= 0xFF;
-	flags.z = *val == 0;
+	flags.z = *val == 0x00;
 	flags.n = (*val)>>7;
 }
 

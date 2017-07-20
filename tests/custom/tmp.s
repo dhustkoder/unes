@@ -3,9 +3,8 @@
 .segment "CODE"
 
 _entry:
-	clv
-	lda #$7f
-	sec
-	adc #$00
-	jmp _entry
+	lda #$01
+	sbc #$ff
+@forever:
+	jmp @forever
 
