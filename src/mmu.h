@@ -24,9 +24,6 @@
 #define ADDR_ZEROPAGE     (0x0000)
 
 
-extern bool initmmu(const char* const rompath);
-extern void termmmu(void);
-
 extern uint_fast8_t mmuread(int_fast32_t addr);
 extern void mmuwrite(uint_fast8_t value, int_fast32_t addr);
 

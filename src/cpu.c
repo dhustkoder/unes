@@ -9,7 +9,7 @@
 #include "cpu.h"
 
 
-static const uint8_t cycles[0x100] = {
+static const uint8_t cpuclk_table[0x100] = {
 //	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 /*0*/	7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
 /*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
@@ -29,7 +29,7 @@ static const uint8_t cycles[0x100] = {
 /*F*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
 };
 
-int_fast32_t clk;
+int_fast32_t cpuclk;
 static int_fast32_t pc;
 static int_fast16_t a, x, y, s;
 
@@ -206,15 +206,16 @@ static inline void opm(void(*const op)(int_fast16_t*), const int_fast32_t addr)
 static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast16_t reg)
 {
 	// check for page cross in adding register to addr
-	// add 1 to clk if it does cross a page
+	// add 1 to cpuclk if it does cross a page
 	if (((addr&0xFF) + reg) > 0xFF)
-		++clk;
+		++cpuclk;
 	return addr + reg;
 }
 
 
 void resetcpu(void)
 {
+	cpuclk = 0;
 	pc = mmuread16(ADDR_RESET_VECTOR);
 	a = 0x0000;
 	x = 0x0000;
@@ -263,7 +264,7 @@ void stepcpu(void)
 	       (flags.n == 0 || flags.n == 1));
 
 	const uint_fast8_t opcode = fetch8();
-	clk += cycles[opcode];
+	cpuclk += cpuclk_table[opcode];
 
 	switch (opcode) {
 	// ADC
