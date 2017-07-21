@@ -7,6 +7,17 @@
 #include "cpu.h"
 
 
+static void runfor(const int_fast32_t clock_cycles)
+{
+	do {
+		stepcpu();
+		//stepapu();
+		//stepppu();
+	} while (get_cpu_clock() < clock_cycles);
+	set_cpu_clock(get_cpu_clock() - clock_cycles);
+}
+
+
 int unes(const int argc, const char* const* argv)
 {
 	if (argc < 2) {
@@ -20,12 +31,15 @@ int unes(const int argc, const char* const* argv)
 	resetcpu();
 
 	uint_fast32_t time = gettime();
+	int_fast8_t fps = 0;
+
 	for (;;) {
-		stepcpu();
-		if (get_cpu_clock() >= 1789773) {
+		runfor(29830); // 1 frame
+		//renderppu();
+		if (++fps >= 60) {
 			delay(1000 - (gettime() - time));
 			time = gettime();
-			set_cpu_clock(get_cpu_clock() - 1789773);
+			fps = 0;
 		}
 	}
 

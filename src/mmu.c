@@ -6,11 +6,13 @@
 #include <errno.h>
 #include "mmu.h"
 
-enum {
+
+enum RomType {
 	NROM = 0x00,
 	MMC1 = 0x01
 };
 
+// rom chips registers
 static union {
 	struct {
 		uint_fast8_t r0;
@@ -26,18 +28,18 @@ static union {
 static int_fast32_t prg_size;
 static int_fast32_t chr_size;
 static int_fast32_t cart_ram_size;
-static uint_fast8_t mapper_num;
+static uint_fast8_t romtype;
 static const char* rompath;
 
 static uint8_t ines[0x10]   = { 0 };   // ines header
 static const uint8_t* cartdata;        // prgrom,chrdata,cart_ram
 static uint8_t ram[0x800]   = { 0 };   // zeropage,stack,ram
-static uint8_t io[0x28]     = { 0 };   // all io registers
+uint8_t io[0x28]            = { 0 };   // all io registers
 
 
 static void romwrite(const uint_fast8_t val, const int_fast32_t addr)
 {
-	switch (mapper_num) {
+	switch (romtype) {
 	case NROM:
 		break;
 
@@ -70,7 +72,7 @@ static void romwrite(const uint_fast8_t val, const int_fast32_t addr)
 
 static uint_fast8_t romread(const int_fast32_t addr)
 {
-	switch (mapper_num) {
+	switch (romtype) {
 	case NROM:
 		if (addr >= ADDR_PRGROM_UPPER && ines[4] == 1)
 			return cartdata[addr - ADDR_PRGROM_UPPER];
@@ -102,7 +104,7 @@ static bool loadrom(const char* const path)
 		goto Lfclose;
 	}
 
-	mapper_num = ((ines[6]&0xF0)>>0x04)|(ines[7]&0xF0);
+	romtype = (ines[7]&0xF0)|((ines[6]&0xF0)>>0x04);
 	prg_size = ines[4] * PRGROM_BANK_SIZE;
 	chr_size = ines[5] * CHR_BANK_SIZE;
 	cart_ram_size  = (ines[8] != 0) ? ines[8] * CART_RAM_BANK_SIZE : CART_RAM_BANK_SIZE;
@@ -135,7 +137,7 @@ static bool loadrom(const char* const path)
 	       (ines[6]&0x02)>>1, (ines[6]&0x02) ? "YES" : "NO",
 	       (ines[6]&0x04)>>2, (ines[6]&0x04) ? "YES" : "NO",
 	       (ines[6]&0x08)>>3, (ines[6]&0x08) ? "YES" : "NO",
-	       (ines[6]&0xF0)>>4, ines[7]&0x0F, (ines[7]&0xF0)>>4, mapper_num);
+	       (ines[6]&0xF0)>>4, ines[7]&0x0F, (ines[7]&0xF0)>>4, romtype);
 
 	ret = true;
 	

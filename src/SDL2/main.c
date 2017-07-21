@@ -13,7 +13,11 @@ int main(const int argc, const char* const* const argv)
 		return EXIT_FAILURE;
 	}
 
-	return unes(argc, argv);
+	const int exitcode = unes(argc, argv);
+
+	SDL_Quit();
+
+	return exitcode;
 }
 
 

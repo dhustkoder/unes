@@ -203,6 +203,15 @@ static inline void opm(void(*const op)(int_fast16_t*), const int_fast32_t addr)
 	mmuwrite(val, addr);
 }
 
+static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast16_t reg)
+{
+	// check for page cross in adding register to addr
+	// add 1 to clk if it does cross a page
+	if (((addr&0xFF) + reg) > 0xFF)
+		++clk;
+	return addr + reg;
+}
+
 
 void resetcpu(void)
 {
@@ -219,11 +228,6 @@ void stepcpu(void)
 {
 	#define fetch8()     (mmuread(pc++))
 	#define fetch16()    (pc += 2, mmuread16(pc - 2))
-
-	// check for page cross in adding register to addr
-	// add 1 to clk if it does cross a page
-	#define chkpagecross(addr, reg) \
-		(clk += (((addr&0xFF) + reg) > 0xFF ? 1 : 0), addr + reg)
 
 	#define immediate()  (fetch8())
 	#define wzeropage()  (fetch8())
