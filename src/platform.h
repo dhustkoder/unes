@@ -5,8 +5,6 @@
 #ifdef PLATFORM_SDL2
 #include <stdint.h>
 #include <SDL2/SDL.h>
-#include "SDL2/audio.h"
-#include "SDL2/video.h"
 
 
 // platform utils

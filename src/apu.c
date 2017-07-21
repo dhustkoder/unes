@@ -8,23 +8,39 @@ int_fast32_t apuclk;
 
 static struct Pulse {
 	uint_fast16_t timer;
+	uint_fast16_t timer_cnt;
 	uint_fast8_t duty;
 	uint_fast8_t vol;
 } p1;
 
 static const uint_fast8_t duties[4] = { 0x40, 0x60, 0x78, 0x9F };
 static uint8_t output[100];
+static uint8_t output_idx;
 
 void resetapu(void)
 {
 	apuclk = 0;
+	output_idx = 0;
 	memset(&p1, 0x00, sizeof(p1));
+	memset(output, 0x00, sizeof(output));
 }
 
 
 void stepapu(void)
 {
-
+	extern const int_fast32_t cpuclk;
+	do {
+		output[output_idx] = (duties[p1.duty]>>(output_idx%8));
+		--p1.timer_cnt;
+		if (p1.timer_cnt == 0) {
+			p1.timer_cnt = p1.timer;
+			++output_idx;
+			if (output_idx == 100) {
+				output_idx = 0;
+				playaudio(output);
+			}
+		}
+	} while (++apuclk < cpuclk);
 }
 
 
