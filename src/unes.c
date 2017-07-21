@@ -11,7 +11,7 @@ static void runfor(const int_fast32_t clock_cycles)
 {
 	do {
 		stepcpu();
-		//stepapu();
+		stepapu();
 		//stepppu();
 	} while (get_cpu_clock() < clock_cycles);
 	set_cpu_clock(get_cpu_clock() - clock_cycles);
