@@ -6,7 +6,8 @@ ifeq ($(PLATFORM),)
 	PLATFORM:=SDL2
 endif
 
-CFLAGS=-std=c11 -Wall -Wextra -pedantic
+
+CFLAGS=-std=c11 -Wall -Wextra -pedantic -I $(SRC_DIR)
 CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
 CFLAGS_RELEASE=-O3 -DNDEBUG
 LDFLAGS=-lm

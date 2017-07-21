@@ -184,7 +184,7 @@ static void branch(const uint_fast8_t flag, const bool eq)
 static void adc(const int_fast16_t val)
 {
 	const int_fast16_t tmp = a + val + flags.c;
-	flags.v = (~(a ^ val) & (a ^ tmp))>>7;
+	flags.v = (((~(a ^ val) & (a ^ tmp)))&0x80)>>7;
 	flags.c = tmp>>8;
 	a = tmp&0xFF;
 	flags.z = a == 0;
@@ -220,9 +220,10 @@ void resetcpu(void)
 	a = 0x0000;
 	x = 0x0000;
 	y = 0x0000;
-	s = 0x01FA;
+	s = 0x01FD;
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
+	flags.b = 1;
 }
 
 void stepcpu(void)

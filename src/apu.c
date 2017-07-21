@@ -4,42 +4,137 @@
 #include "cpu.h"
 #include "apu.h"
 
+
 int_fast32_t apuclk;
 
+static bool apu_clk1_is_high;
+static bool channel_updated;
+static uint_fast8_t status;
+
+
+// Pulse channels
+
 static struct Pulse {
-	uint_fast16_t timer;
-	uint_fast16_t timer_cnt;
+	int_fast32_t period_cnt;
+	int_fast32_t len_cnt;
+	uint_fast16_t period;
+	int_fast8_t waveform_pos;
 	uint_fast8_t duty;
 	uint_fast8_t vol;
-} p1;
+	bool output_level;
+	bool enabled;
+} pulse[2];
 
-static const uint_fast8_t duties[4] = { 0x40, 0x60, 0x78, 0x9F };
-static uint8_t output[100];
-static uint8_t output_idx;
+static const uint8_t pulse_duties[4][8] = {
+	{ 0, 1, 0, 0, 0, 0, 0, 0 },
+	{ 0, 1, 1, 0, 0, 0, 0, 0 },
+	{ 0, 1, 1, 1, 1, 0, 0, 0 },
+	{ 1, 0, 0, 1, 1, 1, 1, 1 }
+};
+
+static float pulse_mixer_table[31];
+
+static void update_pulse_output_level(const uint_fast8_t n)
+{
+	const uint8_t prev_output_level = pulse[n].output_level;
+	if (pulse[n].len_cnt == 0 || pulse[n].period < 8 || 
+	    !pulse_duties[pulse[n].duty][pulse[n].waveform_pos]) {
+		pulse[n].output_level = 0;
+	} else {
+		pulse[n].output_level = pulse[n].vol;
+	}
+
+	if (prev_output_level != pulse[n].output_level)
+		channel_updated = true;
+}
+
+static void write_pulse_reg0(const uint_fast8_t n, const uint_fast8_t val)
+{
+	pulse[n].duty = val>>6;
+	pulse[n].vol  = val&0x0F;
+	update_pulse_output_level(n);
+}
+
+static void write_pulse_reg2(const uint_fast8_t n, uint_fast8_t val)
+{
+	pulse[n].period = (pulse[n].period&0x0F00)|val;
+	update_pulse_output_level(n);
+}
+
+static void write_pulse_reg3(const uint_fast8_t n, uint_fast8_t val)
+{
+	pulse[n].period = (pulse[n].period&0x00FF)|((val&0x07)<<8);
+	update_pulse_output_level(n);
+}
+
+static void clock_pulse_generator(const uint_fast8_t n)
+{
+	pulse[n].waveform_pos = (pulse[n].waveform_pos + 1) % 8;
+	update_pulse_output_level(n);
+}
+
+
+static void write_apu_status(const uint_fast8_t val)
+{
+	for (int n = 0; n < 2; ++n) {
+		if (!(pulse[n].enabled = val&(1<<n))) {
+			pulse[n].len_cnt = 0;
+			update_pulse_output_level(n);
+		}
+	}
+}
+
+static uint_fast8_t read_apu_status(void)
+{
+	return ((pulse[1].len_cnt > 0)<<1) |
+	       (pulse[0].len_cnt > 0);
+}
+
+
 
 void resetapu(void)
 {
+	apu_clk1_is_high = false;
 	apuclk = 0;
-	output_idx = 0;
-	memset(&p1, 0x00, sizeof(p1));
-	memset(output, 0x00, sizeof(output));
+	status = 0;
+
+	// Pulse channels init
+	memset(pulse, 0x00, sizeof(struct Pulse) * 2);
+
+	for (int n = 0; n < 2; ++n)
+		pulse[n].period_cnt = 1;
+	
+	pulse_mixer_table[0] = 0;
+	for (int n = 1; n < 31; ++n)
+		pulse_mixer_table[n] = 95.52 / (8128.0 / n + 100.0);
 }
 
 
 void stepapu(void)
 {
 	extern const int_fast32_t cpuclk;
+
 	do {
-		output[output_idx] = (duties[p1.duty]>>(output_idx%8));
-		--p1.timer_cnt;
-		if (p1.timer_cnt == 0) {
-			p1.timer_cnt = p1.timer;
-			++output_idx;
-			if (output_idx == 100) {
-				output_idx = 0;
-				playaudio(output);
+		apu_clk1_is_high = !apu_clk1_is_high;
+
+		if (!apu_clk1_is_high) {
+			for (int n = 0; n < 2; ++n) {
+				if (--pulse[n].period_cnt == 0) {
+					pulse[n].period_cnt = pulse[n].period + 1;
+					clock_pulse_generator(n);
+				}
 			}
 		}
+
+		if (channel_updated) {
+			const int signal_level = INT16_MIN +
+				(pulse_mixer_table[pulse[0].output_level + pulse[1].output_level]);
+
+			// set_audio_signal_level(signal_level); ...
+
+			channel_updated = false;
+		}
+
 	} while (++apuclk < cpuclk);
 }
 
@@ -47,30 +142,19 @@ void stepapu(void)
 void apuwrite(const uint_fast8_t val, const int_fast32_t addr)
 {
 	switch (addr) {
-	case 0x4000:
-		p1.duty = (val&0xC0)>>6;
-		p1.vol  = val&0x0F;
-		break;
-	case 0x4002:
-		p1.timer = (p1.timer&0x0700)|val;
-		break;
-	case 0x4003:
-		p1.timer = (p1.timer&0x00FF)|(((uint_fast16_t)val)<<8);
-		p1.timer &= 0x07FF;
-		break;
+	case 0x4000: write_pulse_reg0(0, val); break;
+	case 0x4002: write_pulse_reg2(0, val); break;
+	case 0x4003: write_pulse_reg3(0, val); break;
+	case 0x4015: write_apu_status(val);    break;
 	}
 }
-
 
 uint_fast8_t apuread(const int_fast32_t addr)
 {
 	switch (addr) {
-	case 0x4000:
-		break;
-	case 0x4002:
-		break;
-	case 0x4003:
-		break;
+	case 0x4015: return read_apu_status();
 	}
+
 	return 0;
 }
+
