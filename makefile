@@ -9,7 +9,7 @@ endif
 CFLAGS=-std=c11 -Wall -Wextra -pedantic
 CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
 CFLAGS_RELEASE=-O3 -DNDEBUG
-LDFLAGS=
+LDFLAGS=-lm
 BUILD_DIR=./build
 OBJS_DIR=./objs
 ASM_DIR=./asm
