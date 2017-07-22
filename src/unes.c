@@ -39,7 +39,8 @@ int unes(const int argc, const char* const* argv)
 
 	resetcpu();
 	resetapu();
-
+	resetppu();
+	
 	uint_fast32_t time = gettime();
 
 	for (;;) {

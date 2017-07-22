@@ -18,7 +18,7 @@ static struct Pulse {
 	int_fast8_t waveform_pos;
 	uint_fast8_t duty;
 	uint_fast8_t vol;
-	uint_fast8_t output_level;
+	uint_fast8_t output;
 	bool enabled;
 } pulse[2];
 
@@ -31,61 +31,55 @@ static const uint8_t pulse_duties[4][8] = {
 
 
 static double pulse_mixer_table[31];
-static double pulse_samples[21];
+static double pulse_samples[40];
+static int_fast8_t pulse_samples_index;
 static int16_t sound_buffer[1024];
 static int_fast16_t sound_buffer_index;
-static int_fast8_t counter;
 
 
-static void update_pulse_output_level(const uint_fast8_t n)
+static void update_pulse_output(const uint_fast8_t n)
 {
-	if (pulse[n].period_cnt < 8 || !pulse_duties[pulse[n].duty][pulse[n].waveform_pos])
-		pulse[n].output_level = 0;
+	if (!pulse[n].enabled ||
+	    pulse[n].period_cnt < 8 ||
+	    !pulse_duties[pulse[n].duty][pulse[n].waveform_pos])
+		pulse[n].output = 0;
 	else
-		pulse[n].output_level = pulse[n].vol;
+		pulse[n].output = pulse[n].vol;
 }
 
-static void clock_pulse_generator(const uint_fast8_t n)
-{
-	pulse[n].waveform_pos = (pulse[n].waveform_pos + 1) & 0x07;
-	update_pulse_output_level(n);
-}
-
-static void write_pulse_reg0(const uint_fast8_t n, const uint_fast8_t val)
-{
-	pulse[n].duty = val>>6;
-	pulse[n].vol  = val&0x0F;
-	update_pulse_output_level(n);
-}
-
-static void write_pulse_reg2(const uint_fast8_t n, uint_fast8_t val)
-{
-	pulse[n].period = (pulse[n].period&0x0F00)|val;
-	update_pulse_output_level(n);
-}
-
-static void write_pulse_reg3(const uint_fast8_t n, uint_fast8_t val)
-{
-	pulse[n].period = (pulse[n].period&0x00FF)|((val&0x07)<<8);
-	update_pulse_output_level(n);
-}
-
-
-
-static void write_apu_status(const uint_fast8_t val)
+static void steppulse(void)
 {
 	for (int n = 0; n < 2; ++n) {
-		if (!(pulse[n].enabled = val&(1<<n))) {
-			pulse[n].len_cnt = 0;
-			update_pulse_output_level(n);
+		if (--pulse[n].period_cnt == 0) {
+			pulse[n].period_cnt = pulse[n].period + 1;
+			pulse[n].waveform_pos = (pulse[n].waveform_pos + 1) & 0x07;
+			update_pulse_output(n);
 		}
 	}
 }
 
-static uint_fast8_t read_apu_status(void)
+static void mixaudio(void)
 {
-	return ((pulse[1].len_cnt > 0)<<1) |
-	       (pulse[0].len_cnt > 0);
+	pulse_samples[pulse_samples_index++] = pulse_mixer_table[pulse[0].output + pulse[1].output];
+	const int numsamples = (int)sizeof(pulse_samples)/sizeof(pulse_samples[0]);
+
+	if (pulse_samples_index >= numsamples) {
+		double avg = 0;
+		for (int i = 0; i < numsamples; ++i)
+			avg += pulse_samples[i];
+		avg /= (double)numsamples;
+
+		const int_fast16_t sample = INT16_MIN + avg * (INT16_MAX - INT16_MIN);
+
+		sound_buffer[sound_buffer_index++] = sample;
+
+		if (sound_buffer_index >= (int)(sizeof(sound_buffer)/sizeof(sound_buffer[0]))) {
+			playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
+			sound_buffer_index = 0;
+		}
+
+		pulse_samples_index = 0;
+	}
 }
 
 
@@ -95,7 +89,7 @@ void resetapu(void)
 	apuclk = 0;
 	status = 0;
 	sound_buffer_index = 0;
-	counter = 0;
+	pulse_samples_index = 0;
 	memset(sound_buffer, 0x00, sizeof(sound_buffer));
 
 	// Pulse channels init
@@ -112,36 +106,46 @@ void stepapu(void)
 	extern const int_fast32_t cpuclk;
 
 	do {
-		for (int n = 0; n < 2; ++n) {
-			if (--pulse[n].period_cnt == 0) {
-				pulse[n].period_cnt = pulse[n].period + 1;
-				clock_pulse_generator(n);
-			}
+		steppulse();
+		mixaudio();
+	} while (++apuclk <= cpuclk);
+}
+
+
+
+static void write_pulse_reg0(const uint_fast8_t n, const uint_fast8_t val)
+{
+	pulse[n].duty = val>>6;
+	pulse[n].vol  = val&0x0F;
+	update_pulse_output(n);
+}
+
+static void write_pulse_reg2(const uint_fast8_t n, uint_fast8_t val)
+{
+	pulse[n].period = (pulse[n].period&0x0F00)|val;
+	update_pulse_output(n);
+}
+
+static void write_pulse_reg3(const uint_fast8_t n, uint_fast8_t val)
+{
+	pulse[n].period = (pulse[n].period&0x00FF)|((val&0x07)<<8);
+	update_pulse_output(n);
+}
+
+static void write_apu_status(const uint_fast8_t val)
+{
+	for (int n = 0; n < 2; ++n) {
+		if (!(pulse[n].enabled = val&(1<<n))) {
+			pulse[n].len_cnt = 0;
+			update_pulse_output(n);
 		}
-	
-		pulse_samples[counter++] = pulse_mixer_table[pulse[0].output_level + pulse[1].output_level];
-		const int numsamples = (int)sizeof(pulse_samples)/sizeof(pulse_samples[0]);
-		if (counter == numsamples) {
-			double avg = 0;
+	}
+}
 
-			for (int i = 0; i < numsamples; ++i)
-				avg += pulse_samples[i];
-
-			avg /= (double)numsamples;
-
-			const int_fast16_t sample = INT16_MIN + avg * (INT16_MAX - INT16_MIN);
-
-			sound_buffer[sound_buffer_index++] = sample;
-
-			if (sound_buffer_index >= (int)(sizeof(sound_buffer)/sizeof(sound_buffer[0]))) {
-				playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
-				sound_buffer_index = 0;
-			}
-
-			counter = 0;
-		}
-	
-	} while (++apuclk < cpuclk);
+static uint_fast8_t read_apu_status(void)
+{
+	return ((pulse[1].len_cnt > 0)<<1) |
+	       (pulse[0].len_cnt > 0);
 }
 
 
