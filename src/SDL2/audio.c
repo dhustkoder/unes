@@ -5,13 +5,17 @@
 
 #define SAMPLE_RATE  (44100)
 
+static int16_t sndbuffer[1024];
 
-
-static void audio_callback(void* const userdata, uint8_t* const buffer, const int len)
+static void audio_callback(void* const userdata, uint8_t* const buffer, const int buflen)
 {
+	((void)userdata);
+	int16_t* const dst = (int16_t*)buffer;
+	const int len = buflen / sizeof(int16_t);
+
+	for (int i = 0; i < len; ++i)
+		dst[i] = sndbuffer[i];
 }
-
-
 
 bool initaudio(void)
 {
@@ -33,11 +37,19 @@ bool initaudio(void)
 		return false;
 	}
 
+	SDL_PauseAudio(0);
 	return true;
 }
 
 void termaudio(void)
 {
 	SDL_CloseAudio();
+}
+
+void playbuffer(const int16_t* const buffer)
+{
+	SDL_LockAudio();
+	memcpy(sndbuffer, buffer, sizeof(sndbuffer));
+	SDL_UnlockAudio();
 }
 

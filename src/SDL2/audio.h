@@ -6,6 +6,6 @@
 
 extern bool initaudio(void);
 extern void termaudio(void);
-extern void set_audio_signal_level(const int_fast16_t level);
+extern void playbuffer(const int16_t* buffer);
 
 #endif
