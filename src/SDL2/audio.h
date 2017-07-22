@@ -6,6 +6,6 @@
 
 extern bool initaudio(void);
 extern void termaudio(void);
-extern void playbuffer(const uint8_t* buffer);
+extern void playbuffer(const uint8_t* buffer, const uint_fast32_t len);
 
 #endif

@@ -2,21 +2,23 @@
 #include <SDL2/SDL_audio.h>
 #include "audio.h"
 
-SDL_AudioDeviceID audio_device;
+
+static SDL_AudioDeviceID audio_device;
+
 
 bool initaudio(void)
 {
 	SDL_AudioSpec want, have;
 	SDL_zero(want);
-	want.freq = 44100;              // number of samples per second
-	want.format = AUDIO_S16SYS;     // sample type (here: signed short i.e. 16 bit)
-	want.channels = 1;              // only one channel
-	want.samples = 2048;            // buffer-size
+	want.freq = 44100;               // number of samples per second
+	want.format = AUDIO_S16SYS;      // sample type (here: signed short i.e. 16 bit)
+	want.channels = 1;               // only one channel
+	want.samples = 2048;             // buffer-size
 
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0)) == 0) {	
 		SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "Failed to open audio: %s", SDL_GetError());
 		return false;
-	} else if (want.format != have.format) {
+	} else if (want.format != have.format || want.freq != have.freq) {
 		SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "Failed to get the desired AudioSpec");
 		SDL_CloseAudioDevice(audio_device);
 		return false;
@@ -31,8 +33,8 @@ void termaudio(void)
 	SDL_CloseAudioDevice(audio_device);
 }
 
-void playbuffer(const uint8_t* const buffer)
+void playbuffer(const uint8_t* const buffer, const uint_fast32_t len)
 {
-	SDL_QueueAudio(audio_device, buffer, 2048);
+	SDL_QueueAudio(audio_device, buffer, len);
 }
 

@@ -7,20 +7,22 @@
 #include "rom.h"
 #include "cpu.h"
 #include "apu.h"
+#include "ppu.h"
 
 
 static void runfor(const int_fast32_t clock_cycles)
 {
-	extern int_fast32_t cpuclk, apuclk;
+	extern int_fast32_t cpuclk, apuclk, ppuclk;
 
 	do {
 		stepcpu();
 		stepapu();
-		//stepppu();
+		stepppu();
 	} while (cpuclk < clock_cycles);
 
-	cpuclk = cpuclk - clock_cycles;
-	apuclk = apuclk - clock_cycles;
+	cpuclk -= clock_cycles;
+	apuclk -= clock_cycles;
+	ppuclk -= clock_cycles;
 }
 
 
@@ -39,16 +41,12 @@ int unes(const int argc, const char* const* argv)
 	resetapu();
 
 	uint_fast32_t time = gettime();
-	int_fast8_t fps = 0;
 
 	for (;;) {
-		runfor(29830); // run for 1 frame
+		runfor(CPU_FREQ); // run for 1 second
 		//renderppu();
-		if (++fps >= 60) {
-			delay(1000 - (gettime() - time));
-			time = gettime();
-			fps = 0;
-		}
+		delay(1000 - (gettime() - time));
+		time = gettime();
 	}
 
 	freerom();
