@@ -6,7 +6,12 @@
 #define SAMPLE_RATE  (44100)
 
 
-void audio_callback();
+
+static void audio_callback(void* const userdata, uint8_t* const buffer, const int len)
+{
+}
+
+
 
 bool initaudio(void)
 {
@@ -34,9 +39,5 @@ bool initaudio(void)
 void termaudio(void)
 {
 	SDL_CloseAudio();
-}
-
-void audio_callback()
-{
 }
 

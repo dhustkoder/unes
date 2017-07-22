@@ -33,6 +33,10 @@ static const uint8_t pulse_duties[4][8] = {
 };
 
 static float pulse_mixer_table[31];
+static int16_t sound_buffer[1024];
+static int_fast16_t sound_buffer_index;
+static int_fast8_t counter;
+
 
 static void update_pulse_output_level(const uint_fast8_t n)
 {
@@ -69,7 +73,7 @@ static void write_pulse_reg3(const uint_fast8_t n, uint_fast8_t val)
 
 static void clock_pulse_generator(const uint_fast8_t n)
 {
-	pulse[n].waveform_pos = (pulse[n].waveform_pos + 1) % 8;
+	pulse[n].waveform_pos = (pulse[n].waveform_pos + 1) & 0x07;
 	update_pulse_output_level(n);
 }
 
@@ -97,6 +101,9 @@ void resetapu(void)
 	apu_clk1_is_high = false;
 	apuclk = 0;
 	status = 0;
+	sound_buffer_index = 0;
+	counter = 0;
+	memset(sound_buffer, 0x00, sizeof(sound_buffer));
 
 	// Pulse channels init
 	memset(pulse, 0x00, sizeof(struct Pulse) * 2);
@@ -126,13 +133,12 @@ void stepapu(void)
 			}
 		}
 
-		if (channel_updated) {
-			const int signal_level = INT16_MIN +
-				(pulse_mixer_table[pulse[0].output_level + pulse[1].output_level]);
-
-			// set_audio_signal_level(signal_level); ...
-
-			channel_updated = false;
+		if (++counter == 41) {
+			const int16_t pulse_out = pulse_mixer_table[pulse[0].output_level + pulse[1].output_level];
+			sound_buffer[sound_buffer_index++] = pulse_out;
+			if (sound_buffer_index >= 1024)
+				sound_buffer_index = 0;
+			counter = 0;
 		}
 
 	} while (++apuclk < cpuclk);
