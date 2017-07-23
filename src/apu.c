@@ -5,9 +5,9 @@
 #include "apu.h"
 
 
-int_fast32_t apuclk;
+static int_fast32_t cpuclk_last;
+static bool apuclk_high;
 static uint_fast8_t status;
-
 
 // Pulse channels
 
@@ -33,7 +33,7 @@ static const uint8_t pulse_duties[4][8] = {
 static double pulse_mixer_table[31];
 static double pulse_samples[40];
 static int_fast8_t pulse_samples_index;
-static int16_t sound_buffer[1024];
+static int8_t sound_buffer[1024];
 static int_fast16_t sound_buffer_index;
 
 
@@ -44,7 +44,7 @@ static void update_pulse_output(const uint_fast8_t n)
 	    !pulse_duties[pulse[n].duty][pulse[n].waveform_pos])
 		pulse[n].output = 0;
 	else
-		pulse[n].output = pulse[n].vol;
+		pulse[n].output = 0x0f;//pulse[n].vol;
 }
 
 static void steppulse(void)
@@ -69,8 +69,7 @@ static void mixaudio(void)
 			avg += pulse_samples[i];
 		avg /= (double)numsamples;
 
-		const int_fast16_t sample = INT16_MIN + avg * (INT16_MAX - INT16_MIN);
-
+		const int8_t sample = INT8_MIN + avg * (INT8_MAX - INT8_MIN);
 		sound_buffer[sound_buffer_index++] = sample;
 
 		if (sound_buffer_index >= (int)(sizeof(sound_buffer)/sizeof(sound_buffer[0]))) {
@@ -86,15 +85,15 @@ static void mixaudio(void)
 
 void resetapu(void)
 {
-	apuclk = 0;
+	cpuclk_last = 0;
 	status = 0;
+	apuclk_high = false;
 	sound_buffer_index = 0;
-	pulse_samples_index = 0;
 	memset(sound_buffer, 0x00, sizeof(sound_buffer));
 
-	// Pulse channels init
+	// Pulse
+	pulse_samples_index = 0;
 	memset(pulse, 0x00, sizeof(pulse));
-
 	for (int n = 0; n < 2; ++n)
 		pulse[n].period_cnt = 1;
 	for (int n = 0; n < 31; ++n)
@@ -105,10 +104,15 @@ void stepapu(void)
 {
 	extern const int_fast32_t cpuclk;
 
-	do {
-		steppulse();
+	const int_fast32_t ticks = cpuclk >= cpuclk_last ? cpuclk - cpuclk_last : cpuclk;
+	cpuclk_last = cpuclk;
+
+	for (int_fast32_t i = 0; i < ticks; ++i) {
+		apuclk_high = !apuclk_high;
+		if (apuclk_high)
+			steppulse();
 		mixaudio();
-	} while (++apuclk <= cpuclk);
+	}
 }
 
 

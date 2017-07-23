@@ -12,7 +12,7 @@
 
 static void runfor(const int_fast32_t clock_cycles)
 {
-	extern int_fast32_t cpuclk, apuclk, ppuclk;
+	extern int_fast32_t cpuclk;
 
 	do {
 		stepcpu();
@@ -21,8 +21,6 @@ static void runfor(const int_fast32_t clock_cycles)
 	} while (cpuclk < clock_cycles);
 
 	cpuclk -= clock_cycles;
-	apuclk -= clock_cycles;
-	ppuclk -= clock_cycles;
 }
 
 
