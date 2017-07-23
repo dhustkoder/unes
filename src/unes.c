@@ -10,7 +10,7 @@
 #include "ppu.h"
 
 
-static void runfor(const int_fast32_t clock_cycles)
+static void runfor(const int_fast32_t cpu_clk_cycles)
 {
 	extern int_fast32_t cpuclk;
 
@@ -18,9 +18,9 @@ static void runfor(const int_fast32_t clock_cycles)
 		stepcpu();
 		stepapu();
 		stepppu();
-	} while (cpuclk < clock_cycles);
+	} while (cpuclk < cpu_clk_cycles);
 
-	cpuclk -= clock_cycles;
+	cpuclk -= cpu_clk_cycles;
 }
 
 

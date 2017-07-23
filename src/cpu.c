@@ -9,6 +9,9 @@
 #include "cpu.h"
 
 
+int_fast32_t cpuclk;
+
+
 static const uint8_t cpuclk_table[0x100] = {
 //	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 /*0*/	7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
@@ -29,7 +32,6 @@ static const uint8_t cpuclk_table[0x100] = {
 /*F*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
 };
 
-int_fast32_t cpuclk;
 static int_fast32_t pc;
 static int_fast16_t a, x, y, s;
 
@@ -224,6 +226,26 @@ void resetcpu(void)
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
 	flags.b = 1;
+}
+
+void handle_irq(void)
+{
+	if (!flags.i) {
+		spush16(pc);
+		spush(getflags());
+		flags.i = 1;
+		pc = mmuread16(ADDR_IRQ_VECTOR);
+	}
+}
+
+void handle_nmi(void)
+{
+	if (!flags.i) {
+		spush16(pc);
+		spush(getflags());
+		flags.i = 1;
+		pc = mmuread16(ADDR_NMI_VECTOR);
+	}
 }
 
 void stepcpu(void)

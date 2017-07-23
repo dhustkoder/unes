@@ -4,13 +4,9 @@
 #include <stdbool.h>
 
 
-#define PRGROM_BANK_SIZE   ((int_fast32_t)0x4000)
-#define CHR_BANK_SIZE      ((int_fast32_t)0x2000)
-#define CART_RAM_BANK_SIZE ((int_fast32_t)0x2000)
-#define TRAINER_SIZE       ((int_fast32_t)0x0200)
-
-
+#define ADDR_NMI_VECTOR   (0xFFFA)
 #define ADDR_RESET_VECTOR (0xFFFC)
+#define ADDR_IRQ_VECTOR   (0xFFFE)
 #define ADDR_PRGROM_UPPER (0xC000)
 #define ADDR_PRGROM       (0x8000)
 #define ADDR_SRAM         (0x6000)

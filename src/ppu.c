@@ -1,9 +1,9 @@
 #include <string.h>
 #include <stdbool.h>
+#include "cpu.h"
 #include "ppu.h"
 
 
-int_fast32_t ppuclk;
 static uint_fast8_t openbus;
 static uint_fast8_t ctrl;       // $2000
 static uint_fast8_t mask;       // $2001
@@ -12,6 +12,12 @@ static uint_fast8_t scroll;     // $2005
 static uint_fast8_t spr_addr;   // $2003 
 static uint_fast16_t vram_addr; // $2006
 static bool vram_addr_phase;
+
+static int_fast32_t cpuclk_last;
+static int_fast16_t ppuclk;     // 0 - 340
+static int_fast16_t scanline;   // 0 - 261
+
+
 static uint8_t spr_data[0x100];
 static uint8_t vram[0x4000];
 
@@ -45,19 +51,38 @@ static void write_vram_addr(const uint_fast8_t val)
 
 void resetppu(void)
 {
-	ppuclk = 0;
-	ctrl = 0;
-	mask = 0;
+	ctrl = 0x00;
+	mask = 0x00;
 	status = 0xA0;
-	spr_addr = 0;
+	spr_addr = 0x00;
 	scroll = 0x00;
-	vram_addr = 0x00;
+	openbus = 0x00;
+	vram_addr = 0x0000;
 	vram_addr_phase = false;
+
+	cpuclk_last = 0;
+	ppuclk = 340;
+	scanline = 239;
 }
 
 void stepppu(void)
 {
+	extern const int_fast32_t cpuclk;
+	const int_fast32_t ticks = (cpuclk >= cpuclk_last ? cpuclk - cpuclk_last : cpuclk) * 3;
+	cpuclk_last = cpuclk;
 
+	for (int_fast32_t i = 0; i < ticks; ++i) {
+		++ppuclk;
+		if (ppuclk > 340) {
+			ppuclk = 0;
+			++scanline;
+			if (scanline == 240 && (ctrl&0x80)) {
+				handle_nmi();
+			} else if (scanline == 261) {
+				scanline = 0;
+			}
+		}
+	}
 }
 
 void ppuwrite(uint_fast8_t val, int_fast32_t addr)
