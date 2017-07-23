@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include "mmu.h"
+#include "ppu.h"
 #include "rom.h"
 
 
@@ -42,7 +43,7 @@ bool loadrom(const char* const path)
 	prg_size = ines[4] * PRGROM_BANK_SIZE;
 	chr_size = ines[5] * CHR_BANK_SIZE;
 	cart_ram_size  = (ines[8] != 0) ? ines[8] * CART_RAM_BANK_SIZE : CART_RAM_BANK_SIZE;
-	const uint_fast32_t read_size = ((ines[6]&0x04) ? TRAINER_SIZE : 0) + prg_size + chr_size;
+	const uint_fast32_t read_size = prg_size + chr_size /*((ines[6]&0x04) ? TRAINER_SIZE : 0) + */;
 
 	cartdata = malloc(read_size + cart_ram_size); 
 	if (fread((uint8_t*)cartdata, 1, read_size, file) < read_size) {
@@ -73,8 +74,10 @@ bool loadrom(const char* const path)
 	       (ines[6]&0x08)>>3, (ines[6]&0x08) ? "YES" : "NO",
 	       (ines[6]&0xF0)>>4, ines[7]&0x0F, (ines[7]&0xF0)>>4, romtype);
 
-	ret = true;
 	
+	ppu_load_chr_rom(&cartdata[prg_size]);
+
+	ret = true;
 Lfclose:
 	fclose(file);
 	return ret;
