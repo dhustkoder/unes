@@ -62,7 +62,7 @@ void resetppu(void)
 
 	cpuclk_last = 0;
 	ppuclk = 340;
-	scanline = 239;
+	scanline = 240;
 }
 
 void stepppu(void)
@@ -77,7 +77,7 @@ void stepppu(void)
 			ppuclk = 0;
 			++scanline;
 			if (scanline == 240 && (ctrl&0x80)) {
-				handle_nmi();
+				request_nmi();
 			} else if (scanline == 261) {
 				scanline = 0;
 			}

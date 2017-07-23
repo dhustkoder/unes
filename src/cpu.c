@@ -9,6 +9,16 @@
 #include "cpu.h"
 
 
+#define FLAG_C (0x01)
+#define FLAG_Z (0x02)
+#define FLAG_I (0x04)
+#define FLAG_D (0x08)
+#define FLAG_B (0x10) // does not physicaly exist but is set or clear in some operations
+#define FLAG_R (0x20) // not used but always set
+#define FLAG_V (0x40)
+#define FLAG_N (0x80)
+
+
 int_fast32_t cpuclk;
 
 
@@ -34,26 +44,25 @@ static const uint8_t cpuclk_table[0x100] = {
 
 static int_fast32_t pc;
 static int_fast16_t a, x, y, s;
-
+static uint_fast8_t nmi, irq;
 static struct {
-	uint_fast8_t c, z, i, d, b, v, n;
+	uint_fast8_t c, z, i, d, v, n;
 } flags;
 
 
 static uint_fast8_t getflags(void)
 {
-	return (flags.n<<7)|(flags.v<<6)|0x20|(flags.b<<4)|
-	(flags.d<<3)|(flags.i<<2)|(flags.z<<1)|(flags.c);
+	return (flags.n<<7)|(flags.v<<6)|FLAG_R|(flags.d<<3)|
+	       (flags.i<<2)|(flags.z<<1)|(flags.c);
 }
 
 static void setflags(const uint_fast8_t val)
 {
-	flags.n = (val&0x80)>>7;
-	flags.v = (val&0x40)>>6;
-	flags.b = (val&0x10)>>4;
-	flags.d = (val&0x08)>>3;
-	flags.i = (val&0x04)>>2;
-	flags.z = (val&0x02)>>1;
+	flags.n = (val>>7)&0x01;
+	flags.v = (val>>6)&0x01;
+	flags.d = (val>>3)&0x01;
+	flags.i = (val>>2)&0x01;
+	flags.z = (val>>1)&0x01;
 	flags.c = val&0x01;
 }
 
@@ -214,6 +223,14 @@ static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast1
 	return addr + reg;
 }
 
+static void dointerrupt(const int_fast32_t vector, const bool bflag)
+{
+	spush16(pc);
+	spush(getflags()|(bflag ? FLAG_B : 0x00));
+	pc = mmuread16(vector);
+	flags.i = 1;
+}
+
 
 void resetcpu(void)
 {
@@ -225,27 +242,20 @@ void resetcpu(void)
 	s = 0x01FD;
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
-	flags.b = 1;
+	nmi = 0;
+	irq = 0;
 }
 
-void handle_irq(void)
+void request_irq(void)
 {
-	if (!flags.i) {
-		spush16(pc);
-		spush(getflags());
-		flags.i = 1;
-		pc = mmuread16(ADDR_IRQ_VECTOR);
-	}
+	irq = 1;
+
 }
 
-void handle_nmi(void)
+void request_nmi(void)
 {
-	if (!flags.i) {
-		spush16(pc);
-		spush(getflags());
-		flags.i = 1;
-		pc = mmuread16(ADDR_NMI_VECTOR);
-	}
+	nmi = 1;
+
 }
 
 void stepcpu(void)
@@ -282,9 +292,21 @@ void stepcpu(void)
 	       (flags.z == 0 || flags.z == 1) &&
 	       (flags.i == 0 || flags.i == 1) &&
 	       (flags.d == 0 || flags.d == 1) &&
-	       (flags.b == 0 || flags.b == 1) &&
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
+
+	if (flags.i == 0) {
+		if (nmi) {
+			dointerrupt(ADDR_NMI_VECTOR, false);
+			nmi = 0;
+			cpuclk += 7;
+			return;
+		} else if (irq) {
+			dointerrupt(ADDR_IRQ_VECTOR, false);
+			cpuclk += 7;
+			return;
+		}
+	}
 
 	const uint_fast8_t opcode = fetch8();
 	cpuclk += cpuclk_table[opcode];
@@ -468,7 +490,7 @@ void stepcpu(void)
 	case 0x6C: pc = rindirect(); break;
 
 	// implieds
-	case 0x00: flags.b = !flags.i;                          break; // BRK
+	case 0x00: dointerrupt(ADDR_IRQ_VECTOR, true);          break; // BRK
 	case 0x18: flags.c = 0;                                 break; // CLC
 	case 0x38: flags.c = 1;                                 break; // SEC
 	case 0x58: flags.i = 0;                                 break; // CLI
@@ -480,7 +502,7 @@ void stepcpu(void)
 	case 0x88: dec(&y);                                     break; // DEY
 	case 0xE8: inc(&x);                                     break; // INX
 	case 0xC8: inc(&y);                                     break; // INY
-	case 0x08: spush(getflags());                           break; // PHP
+	case 0x08: spush(getflags()|FLAG_B);                    break; // PHP
 	case 0x28: setflags(spop());                            break; // PLP
 	case 0x48: spush(a);                                    break; // PHA
 	case 0x68: ld(&a, spop());                              break; // PLA

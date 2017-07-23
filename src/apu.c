@@ -44,7 +44,7 @@ static void update_pulse_output(const uint_fast8_t n)
 	    !pulse_duties[pulse[n].duty][pulse[n].waveform_pos])
 		pulse[n].output = 0;
 	else
-		pulse[n].output = 0x0f;//pulse[n].vol;
+		pulse[n].output = pulse[n].vol;
 }
 
 static void steppulse(void)

@@ -1,11 +1,13 @@
 #ifndef UNES_CPU_H_
 #define UNES_CPU_H_
 
-#define CPU_FREQ ((int_fast32_t)1789773)
+
+#define CPU_FREQ (1789773)
+
 
 extern void resetcpu(void);
-extern void handle_irq(void);
-extern void handle_nmi(void);
+extern void request_irq(void);
+extern void request_nmi(void);
 extern void stepcpu(void);
 
 

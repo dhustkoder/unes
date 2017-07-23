@@ -21,10 +21,20 @@ _startup:
 	txs      ; the stack pointer
 	jmp _entry
 
+_nmi:
+	pha
+	lda #$01
+	pla
+	rti
+_irq:
+	pha
+	lda #$02
+	pla
+	rti
+
 
 .segment "VECTORS"
+.word _nmi
 .word _startup
-.word _startup
-.word $0000
-
+.word _irq
 
