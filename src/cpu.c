@@ -19,9 +19,6 @@
 #define FLAG_N (0x80)
 
 
-int_fast32_t cpuclk;
-
-
 static const uint8_t cpuclk_table[0x100] = {
 //	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 /*0*/	7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
@@ -41,6 +38,9 @@ static const uint8_t cpuclk_table[0x100] = {
 /*E*/	2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
 /*F*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
 };
+
+
+int_fast32_t cpuclk;
 
 static int_fast32_t pc;
 static int_fast16_t a, x, y, s;
@@ -69,24 +69,29 @@ static void setflags(const uint_fast8_t val)
 static inline void spush(const int_fast16_t val)
 {
 	mmuwrite(val, s--);
+	if (s < 0x100)
+		s = 0x1FF;
 }
 
 static inline void spush16(const int_fast32_t val)
 {
-	mmuwrite16(val, s - 1);
-	s -= 2;
+	spush((val&0xFF00)>>8);
+	spush(val&0xFF);
 }
 
 static inline int_fast16_t spop(void)
 {
-	return mmuread(++s);
+	++s;
+	if (s > 0x1FF)
+		s = 0x100;
+	return mmuread(s);
 }
 
 static inline int_fast32_t spop16(void)
 {
-	const int_fast32_t dw = mmuread16(s + 1);
-	s += 2;
-	return dw;
+	const int_fast16_t lsb = spop();
+	const int_fast16_t msb = spop();
+	return (msb<<8)|lsb;
 }
 
 static void ld(int_fast16_t* const reg, const int_fast16_t val)
@@ -220,11 +225,25 @@ static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast1
 	// add 1 to cpuclk if it does cross a page
 	if (((addr&0xFF) + reg) > 0xFF)
 		++cpuclk;
-	return addr + reg;
+	return (addr + reg)&0xFFFF;
+}
+
+static inline int_fast32_t windirectx(void)
+{
+	const int_fast32_t base = (mmuread(pc++) + x)&0xFF;
+	return (mmuread((base + 1)&0xFF)<<8)|mmuread(base);
+}
+
+static inline int_fast32_t windirecty(void)
+{
+	const int_fast16_t base = mmuread(pc++);
+	const int_fast32_t addr = (mmuread((base + 1)&0xFF)<<8)|mmuread(base);
+	return chkpagecross(addr, y);
 }
 
 static void dointerrupt(const int_fast32_t vector, const bool bflag)
 {
+	++pc;
 	spush16(pc);
 	spush(getflags()|(bflag ? FLAG_B : 0x00));
 	pc = mmuread16(vector);
@@ -270,9 +289,6 @@ void stepcpu(void)
 	#define wabsolute()  (fetch16())
 	#define wabsolutex() (chkpagecross(fetch16(), x))
 	#define wabsolutey() (chkpagecross(fetch16(), y))
-	#define windirect()  (fetch16())
-	#define windirectx() (mmuread16(((fetch8() + x)&0xFF)))
-	#define windirecty() (chkpagecross(mmuread16(fetch8()), y))
 
 	#define rzeropage()  (mmuread(wzeropage()))
 	#define rzeropagex() (mmuread(wzeropagex()))
@@ -280,7 +296,6 @@ void stepcpu(void)
 	#define rabsolute()  (mmuread(wabsolute()))
 	#define rabsolutex() (mmuread(wabsolutex()))
 	#define rabsolutey() (mmuread(wabsolutey()))
-	#define rindirect()  (mmuread16(windirect()))
 	#define rindirectx() (mmuread(windirectx()))
 	#define rindirecty() (mmuread(windirecty()))
 
@@ -487,7 +502,13 @@ void stepcpu(void)
 
 	// JMP
 	case 0x4C: pc = wabsolute(); break;
-	case 0x6C: pc = rindirect(); break;
+	case 0x6C: {
+		const int_fast32_t base = fetch16();
+		const int_fast16_t lsb = mmuread(base);
+		const int_fast16_t msb = mmuread(((base&0xFF) == 0xFF ? base&0xFF00 : base + 1));
+		pc = (msb<<8)|lsb;
+		break;
+	}
 
 	// implieds
 	case 0x00: dointerrupt(ADDR_IRQ_VECTOR, true);          break; // BRK

@@ -13,7 +13,7 @@ bool initaudio(void)
 	want.freq = 44100;
 	want.format = AUDIO_S16SYS;
 	want.channels = 1;
-	want.samples = 2048;
+	want.samples = 1024;
 
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0)) == 0) {	
 		SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "Failed to open audio: %s", SDL_GetError());
