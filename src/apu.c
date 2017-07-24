@@ -6,8 +6,8 @@
 
 
 #define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
-#define APU_SAMPLE_BUFFER_SIZE (41)
-#define SOUND_BUFFER_SIZE      (1024)
+#define APU_SAMPLE_BUFFER_SIZE (37)
+#define SOUND_BUFFER_SIZE      (2048)
 
 
 static int_fast32_t cpuclk_last;
@@ -112,7 +112,7 @@ static void mixaudio(void)
 			avg += pulse_samples[i];
 		avg /= APU_SAMPLE_BUFFER_SIZE;
 
-		const int_fast16_t sample = INT16_MIN + avg * (INT16_MAX - INT16_MIN);
+		const int_fast16_t sample = -8000 + avg * 16000;
 		sound_buffer[sound_buffer_index++] = sample;
 
 		if (sound_buffer_index >= SOUND_BUFFER_SIZE) {

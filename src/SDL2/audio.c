@@ -11,7 +11,7 @@ bool initaudio(void)
 {
 	SDL_AudioSpec want;
 	SDL_zero(want);
-	want.freq = 44100;
+	want.freq = 48000;
 	want.format = AUDIO_S16SYS;
 	want.channels = 1;
 	want.samples = 2048;

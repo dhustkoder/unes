@@ -18,7 +18,8 @@ static void iowrite(const uint_fast8_t val, const int_fast32_t addr)
 
 static uint_fast8_t ioread(const int_fast32_t addr)
 {
-	if (addr >= 0x4000 && addr != 0x4014 && addr <= 0x4017)
+	// a read from 0x4017 is joypad's 
+	if (addr >= 0x4000 && addr != 0x4014 && addr < 0x4017)
 		return apuread(addr);
 	else if ((addr >= 0x2000 && addr <= 0x2007) || addr == 0x4014)
 		return ppuread(addr);
@@ -36,7 +37,6 @@ uint_fast8_t mmuread(const int_fast32_t addr)
 		return romread(addr);
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-
 	return 0x00;
 }
 
