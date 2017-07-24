@@ -64,14 +64,13 @@ static int16_t sound_buffer[1024];
 static int_fast16_t sound_buffer_index;
 
 
-static void update_pulse_output(const uint_fast8_t n)
+static void update_pulse_output(struct Pulse* const p)
 {
-	struct Pulse* const p = &pulse[n];
 	if (!p->enabled || p->length == 0 || p->period_cnt < 8 ||
 	    !duty_tbl[p->duty][p->duty_pos])
 		p->output = 0;
 	else
-		p->output = pulse[n].vol;
+		p->output = p->vol;
 }
 
 static void steppulse(void)
@@ -80,7 +79,7 @@ static void steppulse(void)
 		if (--pulse[n].period_cnt == 0) {
 			pulse[n].period_cnt = pulse[n].period + 1;
 			pulse[n].duty_pos = (pulse[n].duty_pos + 1) & 0x07;
-			update_pulse_output(n);
+			update_pulse_output(&pulse[n]);
 		}
 	}
 }
@@ -175,26 +174,26 @@ void stepapu(void)
 
 
 
-static void write_pulse_reg0(const uint_fast8_t n, const uint_fast8_t val)
+static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
 {
-	pulse[n].duty = val>>6;
-	pulse[n].vol  = val&0x0F;
-	pulse[n].length_enabled = (val&0x20) == 0;
-	update_pulse_output(n);
+	p->duty = val>>6;
+	p->vol  = val&0x0F;
+	p->length_enabled = (val&0x20) == 0;
+	update_pulse_output(p);
 }
 
-static void write_pulse_reg2(const uint_fast8_t n, uint_fast8_t val)
+static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
 {
-	pulse[n].period = (pulse[n].period&0x0F00)|val;
-	update_pulse_output(n);
+	p->period = (p->period&0x0F00)|val;
+	update_pulse_output(p);
 }
 
-static void write_pulse_reg3(const uint_fast8_t n, uint_fast8_t val)
+static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 {
-	pulse[n].period = (pulse[n].period&0x00FF)|((val&0x07)<<8);
-	pulse[n].length = length_tbl[(val&0xF8)>>3];
-	pulse[n].duty_pos = 0;
-	update_pulse_output(n);
+	p->period = (p->period&0x00FF)|((val&0x07)<<8);
+	p->length = length_tbl[(val&0xF8)>>3];
+	p->duty_pos = 0;
+	update_pulse_output(p);
 }
 
 static void write_dmc_reg0(const uint_fast8_t val)
@@ -207,7 +206,7 @@ static void write_apu_status(const uint_fast8_t val)
 	for (int n = 0; n < 2; ++n) {
 		if (!(pulse[n].enabled = val&(1<<n))) {
 			pulse[n].len_cnt = 0;
-			update_pulse_output(n);
+			update_pulse_output(&pulse[n]);
 		}
 	}
 }
@@ -234,13 +233,13 @@ static uint_fast8_t read_apu_status(void)
 void apuwrite(const uint_fast8_t val, const int_fast32_t addr)
 {
 	switch (addr) {
-	case 0x4000: write_pulse_reg0(0, val); break;
-	case 0x4002: write_pulse_reg2(0, val); break;
-	case 0x4003: write_pulse_reg3(0, val); break;
+	case 0x4000: write_pulse_reg0(val, &pulse[0]); break;
+	case 0x4002: write_pulse_reg2(val, &pulse[0]); break;
+	case 0x4003: write_pulse_reg3(val, &pulse[0]); break;
 	
-	case 0x4004: write_pulse_reg0(1, val); break;
-	case 0x4006: write_pulse_reg2(1, val); break;
-	case 0x4007: write_pulse_reg3(1, val); break;
+	case 0x4004: write_pulse_reg0(val, &pulse[1]); break;
+	case 0x4006: write_pulse_reg2(val, &pulse[1]); break;
+	case 0x4007: write_pulse_reg3(val, &pulse[1]); break;
 	
 	case 0x4010: write_dmc_reg0(val);      break;
 	case 0x4015: write_apu_status(val);    break;
