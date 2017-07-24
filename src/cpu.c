@@ -21,7 +21,7 @@
 
 static const uint8_t cpuclk_table[0x100] = {
 //	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-/*0*/	7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
+/*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
 /*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
 /*2*/	6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
 /*3*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
@@ -41,10 +41,12 @@ static const uint8_t cpuclk_table[0x100] = {
 
 
 int_fast32_t cpuclk;
-
+bool cpu_nmi;
+bool cpu_irq_sources[IRQ_SRC_SIZE];
+static bool irq_pass;
 static int_fast32_t pc;
 static int_fast16_t a, x, y, s;
-static uint_fast8_t nmi, irq;
+
 static struct {
 	uint_fast8_t c, z, i, d, v, n;
 } flags;
@@ -241,15 +243,22 @@ static inline int_fast32_t windirecty(void)
 	return chkpagecross(addr, y);
 }
 
-static void dointerrupt(const int_fast32_t vector, const bool bflag)
+static void dointerrupt(const int_fast32_t vector, const bool brk)
 {
-	++pc;
-	spush16(pc);
-	spush(getflags()|(bflag ? FLAG_B : 0x00));
+	spush16(brk ? pc + 1 : pc);
+	spush(getflags()|(brk ? FLAG_B : 0x00));
 	pc = mmuread16(vector);
 	flags.i = 1;
+	cpuclk += 7;
 }
 
+static inline bool check_irq_sources(void)
+{
+	for (int i = 0; i < IRQ_SRC_SIZE; ++i)
+		if (cpu_irq_sources[i])
+			return true;
+	return false;
+}
 
 void resetcpu(void)
 {
@@ -261,20 +270,11 @@ void resetcpu(void)
 	s = 0x01FD;
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
-	nmi = 0;
-	irq = 0;
-}
+	cpu_nmi = false;
+	irq_pass = flags.i == 0;
 
-void request_irq(void)
-{
-	irq = 1;
-
-}
-
-void request_nmi(void)
-{
-	nmi = 1;
-
+	for (int i = 0; i < IRQ_SRC_SIZE; ++i)
+		cpu_irq_sources[i] = false;
 }
 
 void stepcpu(void)
@@ -310,19 +310,14 @@ void stepcpu(void)
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
 
-	if (flags.i == 0) {
-		if (nmi) {
-			dointerrupt(ADDR_NMI_VECTOR, false);
-			nmi = 0;
-			cpuclk += 7;
-			return;
-		} else if (irq) {
-			dointerrupt(ADDR_IRQ_VECTOR, false);
-			cpuclk += 7;
-			return;
-		}
+	if (cpu_nmi) {
+		dointerrupt(ADDR_NMI_VECTOR, false);
+		cpu_nmi = false;
+	} else if (irq_pass && check_irq_sources()) {
+		dointerrupt(ADDR_IRQ_VECTOR, false);
 	}
 
+	irq_pass = flags.i == 0;
 	const uint_fast8_t opcode = fetch8();
 	cpuclk += cpuclk_table[opcode];
 
@@ -528,7 +523,11 @@ void stepcpu(void)
 	case 0x48: spush(a);                                    break; // PHA
 	case 0x68: ld(&a, spop());                              break; // PLA
 	case 0xEA:                                              break; // NOP
-	case 0x40: setflags(spop()); pc = spop16();             break; // RTI
+	case 0x40: // RTI
+		setflags(spop());
+		pc = spop16();
+		irq_pass = flags.i == 0;
+		break;
 	case 0x60: pc = spop16() + 1;                           break; // RTS
 	case 0xAA: ld(&x, a);                                   break; // TAX
 	case 0x8A: ld(&a, x);                                   break; // TXA

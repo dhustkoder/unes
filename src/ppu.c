@@ -77,7 +77,7 @@ void stepppu(void)
 			ppuclk = 0;
 			++scanline;
 			if (scanline == 240 && (ctrl&0x80)) {
-				request_nmi();
+				trigger_nmi();
 			} else if (scanline == 261) {
 				scanline = 0;
 			}

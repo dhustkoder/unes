@@ -5,10 +5,18 @@
 #include "apu.h"
 
 
+#define FRAME_COUNTER_RATE (CPU_FREQ / 240)
+
+
 static int_fast32_t cpuclk_last;
-static bool apuclk_high;
+static int_fast16_t frame_cntdown;
+static int_fast8_t frame_value;
 static uint_fast8_t status;         // $4015
 static uint_fast8_t frame_counter;  // $4017
+static bool frame_irq;              // $4017
+static bool dmc_irq;                // $4010
+static bool apuclk_high;
+
 
 const uint8_t length_tbl[0x20] = {
 	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -77,6 +85,22 @@ static void steppulse(void)
 	}
 }
 
+
+static void step_frame_counter(void)
+{
+	switch (frame_counter) {
+	case 4:
+		frame_value = (frame_value + 1) % 4;
+		switch (frame_value) {
+		case 3: set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, frame_irq); break;
+		}
+		break;
+	case 5:
+		frame_value = (frame_value + 1) % 5;
+		break;
+	}
+}
+
 static void mixaudio(void)
 {
 	pulse_samples[pulse_samples_index++] = pulse_mix_tbl[pulse[0].output + pulse[1].output];
@@ -100,14 +124,20 @@ static void mixaudio(void)
 	}
 }
 
-
 void resetapu(void)
 {
 	cpuclk_last = 0;
-	status = 0;
 	apuclk_high = false;
 	sound_buffer_index = 0;
 	memset(sound_buffer, 0x00, sizeof(sound_buffer));
+
+
+	status = 0;
+	frame_cntdown = FRAME_COUNTER_RATE;
+	frame_counter = 4;
+	frame_value = 0;
+	frame_irq = false;
+	dmc_irq = false;
 
 	// Pulse
 	pulse_samples_index = 0;
@@ -124,14 +154,22 @@ void stepapu(void)
 	cpuclk_last = cpuclk;
 
 	for (int_fast32_t i = 0; i < ticks; ++i) {
+		if (--frame_cntdown <= 0) {
+			frame_cntdown += FRAME_COUNTER_RATE;
+			step_frame_counter();
+		}
 
-		if (apuclk_high)
+		if (apuclk_high) {
 			steppulse();
+			// stepnoise()
+			// stepdmc()
+		}
+
+		// steptriangle()
 
 		mixaudio();
 
 		apuclk_high = !apuclk_high;
-
 	}
 }
 
@@ -159,6 +197,11 @@ static void write_pulse_reg3(const uint_fast8_t n, uint_fast8_t val)
 	update_pulse_output(n);
 }
 
+static void write_dmc_reg0(const uint_fast8_t val)
+{
+	set_irq_source(IRQ_SRC_APU_DMC_TIMER, (val&0x80) != 0);
+}
+
 static void write_apu_status(const uint_fast8_t val)
 {
 	for (int n = 0; n < 2; ++n) {
@@ -169,10 +212,22 @@ static void write_apu_status(const uint_fast8_t val)
 	}
 }
 
+static void write_frame_counter(const uint_fast8_t val)
+{
+	frame_counter = 4 + ((val>>7)&1);
+	frame_irq = (val&0x40) == 0;
+}
+
 static uint_fast8_t read_apu_status(void)
 {
-	return ((pulse[1].len_cnt > 0)<<1) |
-	       (pulse[0].len_cnt > 0);
+	const uint_fast8_t ret =
+		(dmc_irq == true ? 0x80 : 0x00) |
+		(frame_irq == true ? 0x40 : 0x00) |
+		((pulse[1].len_cnt > 0)<<1) |
+		(pulse[0].len_cnt > 0);
+
+	frame_irq = false;
+	return ret;
 }
 
 
@@ -182,7 +237,9 @@ void apuwrite(const uint_fast8_t val, const int_fast32_t addr)
 	case 0x4000: write_pulse_reg0(0, val); break;
 	case 0x4002: write_pulse_reg2(0, val); break;
 	case 0x4003: write_pulse_reg3(0, val); break;
+	case 0x4010: write_dmc_reg0(val);      break;
 	case 0x4015: write_apu_status(val);    break;
+	case 0x4017: write_frame_counter(val); break;
 	}
 }
 
