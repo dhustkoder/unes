@@ -251,18 +251,18 @@ static inline bool check_irq_sources(void)
 void resetcpu(void)
 {
 	cpuclk = 0;
+	cpu_nmi = false;
+	memset(cpu_irq_sources, 0x00, sizeof(cpu_irq_sources));
+	irq_pass = false;
+
 	pc = mmuread16(ADDR_RESET_VECTOR);
 	a = 0x0000;
 	x = 0x0000;
 	y = 0x0000;
 	s = 0x01FD;
+
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
-	cpu_nmi = false;
-	irq_pass = flags.i == 0;
-
-	for (int i = 0; i < IRQ_SRC_SIZE; ++i)
-		cpu_irq_sources[i] = false;
 }
 
 void stepcpu(void)

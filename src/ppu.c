@@ -14,8 +14,8 @@ static uint_fast16_t vram_addr; // $2006
 static bool vram_addr_phase;
 
 static int_fast32_t cpuclk_last;
-static int_fast16_t ppuclk;     // 0 - 340
-static int_fast16_t scanline;   // 0 - 261
+static int_fast16_t ppuclk;     // 0 - 341
+static int_fast16_t scanline;   // 0 - 262
 static bool nmi_occurred, nmi_output;
 
 static uint8_t spr_data[0x100];
@@ -59,19 +59,20 @@ static void write_vram_addr(const uint_fast8_t val)
 
 void resetppu(void)
 {
+	openbus = 0x00;
 	ctrl = 0x00;
 	mask = 0x00;
 	status = 0xA0;
-	spr_addr = 0x00;
 	scroll = 0x00;
-	openbus = 0x00;
+	spr_addr = 0x00;
 	vram_addr = 0x0000;
 	vram_addr_phase = false;
-	nmi_occurred = false;
-	nmi_output = false;
+
 	cpuclk_last = 0;
 	ppuclk = 340;
 	scanline = 240;
+	nmi_occurred = false;
+	nmi_output = false;
 }
 
 void stepppu(void)
@@ -90,7 +91,7 @@ void stepppu(void)
 			++scanline;
 			if (scanline == 240) {
 				nmi_occurred = true;
-			} else if (scanline > 262) {
+			} else if (scanline > 261) {
 				scanline = 0;
 				nmi_occurred = false;
 			}
