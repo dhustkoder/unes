@@ -230,18 +230,6 @@ static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast1
 	return (addr + reg)&0xFFFF;
 }
 
-static inline int_fast32_t windirectx(void)
-{
-	const int_fast32_t base = (mmuread(pc++) + x)&0xFF;
-	return (mmuread((base + 1)&0xFF)<<8)|mmuread(base);
-}
-
-static inline int_fast32_t windirecty(void)
-{
-	const int_fast16_t base = mmuread(pc++);
-	const int_fast32_t addr = (mmuread((base + 1)&0xFF)<<8)|mmuread(base);
-	return chkpagecross(addr, y);
-}
 
 static void dointerrupt(const int_fast32_t vector, const bool brk)
 {
@@ -289,6 +277,8 @@ void stepcpu(void)
 	#define wabsolute()  (fetch16())
 	#define wabsolutex() (chkpagecross(fetch16(), x))
 	#define wabsolutey() (chkpagecross(fetch16(), y))
+	#define windirectx() (mmuread16msk((fetch8() + x)&0xFF))
+	#define windirecty() (chkpagecross(mmuread16msk(fetch8()), y))
 
 	#define rzeropage()  (mmuread(wzeropage()))
 	#define rzeropagex() (mmuread(wzeropagex()))
@@ -497,13 +487,7 @@ void stepcpu(void)
 
 	// JMP
 	case 0x4C: pc = wabsolute(); break;
-	case 0x6C: {
-		const int_fast32_t base = fetch16();
-		const int_fast16_t lsb = mmuread(base);
-		const int_fast16_t msb = mmuread(((base&0xFF) == 0xFF ? base&0xFF00 : base + 1));
-		pc = (msb<<8)|lsb;
-		break;
-	}
+	case 0x6C: pc = mmuread16msk(fetch16()); break;
 
 	// implieds
 	case 0x00: dointerrupt(ADDR_IRQ_VECTOR, true);          break; // BRK
