@@ -5,7 +5,9 @@
 #include "apu.h"
 
 
-#define FRAME_COUNTER_RATE (CPU_FREQ / 240)
+#define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
+#define APU_SAMPLE_BUFFER_SIZE (41)
+#define SOUND_BUFFER_SIZE      (1024)
 
 
 static int_fast32_t cpuclk_last;
@@ -58,9 +60,9 @@ static const double pulse_mix_tbl[31] = {
 };
 
 
-static double pulse_samples[40];
+static double pulse_samples[APU_SAMPLE_BUFFER_SIZE];
 static int_fast8_t pulse_samples_index;
-static int16_t sound_buffer[1024];
+static int16_t sound_buffer[SOUND_BUFFER_SIZE];
 static int_fast16_t sound_buffer_index;
 
 
@@ -103,18 +105,17 @@ static void step_frame_counter(void)
 static void mixaudio(void)
 {
 	pulse_samples[pulse_samples_index++] = pulse_mix_tbl[pulse[0].output + pulse[1].output];
-	const int numsamples = (int)sizeof(pulse_samples)/sizeof(pulse_samples[0]);
 
-	if (pulse_samples_index >= numsamples) {
+	if (pulse_samples_index >= APU_SAMPLE_BUFFER_SIZE) {
 		double avg = 0;
-		for (int i = 0; i < numsamples; ++i)
+		for (int i = 0; i < APU_SAMPLE_BUFFER_SIZE; ++i)
 			avg += pulse_samples[i];
-		avg /= (double)numsamples;
+		avg /= APU_SAMPLE_BUFFER_SIZE;
 
 		const int_fast16_t sample = INT16_MIN + avg * (INT16_MAX - INT16_MIN);
 		sound_buffer[sound_buffer_index++] = sample;
 
-		if (sound_buffer_index >= (int)(sizeof(sound_buffer)/sizeof(sound_buffer[0]))) {
+		if (sound_buffer_index >= SOUND_BUFFER_SIZE) {
 			playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
 			sound_buffer_index = 0;
 		}
