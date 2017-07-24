@@ -22,7 +22,7 @@ static uint_fast8_t ioread(const int_fast32_t addr)
 		return apuread(addr);
 	else if ((addr >= 0x2000 && addr <= 0x2007) || addr == 0x4014)
 		return ppuread(addr);
-	return 0x00;
+	return 0;
 }
 
 

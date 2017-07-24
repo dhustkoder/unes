@@ -40,12 +40,15 @@ int unes(const int argc, const char* const* argv)
 	resetppu();
 	
 	uint_fast32_t time = gettime();
-
+	int_fast8_t fps = 0;
 	for (;;) {
-		runfor(CPU_FREQ); // run for 1 second
+		runfor(CPU_FREQ / 60); // run for 1 frame
 		//renderppu();
-		delay(1000 - (gettime() - time));
-		time = gettime();
+		if (++fps > 60) {
+			delay(1000 - (gettime() - time));
+			fps = 0;
+			time = gettime();
+		}
 	}
 
 	freerom();

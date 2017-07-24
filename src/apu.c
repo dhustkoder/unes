@@ -237,6 +237,11 @@ void apuwrite(const uint_fast8_t val, const int_fast32_t addr)
 	case 0x4000: write_pulse_reg0(0, val); break;
 	case 0x4002: write_pulse_reg2(0, val); break;
 	case 0x4003: write_pulse_reg3(0, val); break;
+	
+	case 0x4004: write_pulse_reg0(1, val); break;
+	case 0x4006: write_pulse_reg2(1, val); break;
+	case 0x4007: write_pulse_reg3(1, val); break;
+	
 	case 0x4010: write_dmc_reg0(val);      break;
 	case 0x4015: write_apu_status(val);    break;
 	case 0x4017: write_frame_counter(val); break;
