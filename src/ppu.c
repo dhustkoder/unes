@@ -17,6 +17,7 @@ static int_fast32_t cpuclk_last;
 static int_fast16_t ppuclk;     // 0 - 341
 static int_fast16_t scanline;   // 0 - 262
 static bool nmi_occurred, nmi_output;
+static uint_fast8_t frame_toggle;
 
 static uint8_t spr_data[0x100];
 static uint8_t vram[0x4000];
@@ -73,25 +74,24 @@ void resetppu(void)
 	scanline = 240;
 	nmi_occurred = false;
 	nmi_output = false;
+	frame_toggle = 0;
 }
 
 void stepppu(void)
 {
 	extern const int_fast32_t cpuclk;
-	const int_fast32_t ticks = (cpuclk >= cpuclk_last ? cpuclk - cpuclk_last : cpuclk) * 3;
+	const int_fast32_t ticks = (cpuclk > cpuclk_last ? cpuclk - cpuclk_last : cpuclk) * 3;
 	cpuclk_last = cpuclk;
 
 	for (int_fast32_t i = 0; i < ticks; ++i) {
-		if (++ppuclk > 340) {
+		if (++ppuclk == 341) {
 			ppuclk = 0;
-
-			if (nmi_output && nmi_occurred)
-				trigger_nmi();
-
 			++scanline;
-			if (scanline == 240) {
+			if (scanline == 241) {
 				nmi_occurred = true;
-			} else if (scanline > 261) {
+				if (nmi_output)
+					trigger_nmi();
+			} else if (scanline == 261) {
 				scanline = 0;
 				nmi_occurred = false;
 			}
@@ -99,7 +99,7 @@ void stepppu(void)
 	}
 }
 
-void ppuwrite(const uint_fast8_t val, const int_fast32_t addr)
+void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	switch (addr) {
 	case 0x2000: write_ctrl(val); break;
@@ -109,7 +109,7 @@ void ppuwrite(const uint_fast8_t val, const int_fast32_t addr)
 	openbus = val;
 }
 
-uint_fast8_t ppuread(int_fast32_t addr)
+uint_fast8_t ppuread(const uint_fast16_t addr)
 {
 	switch (addr) {	
 	case 0x2002: openbus = read_status();   break;

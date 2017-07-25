@@ -150,7 +150,7 @@ void stepapu(void)
 {
 	extern const int_fast32_t cpuclk;
 
-	const int_fast32_t ticks = cpuclk >= cpuclk_last ? cpuclk - cpuclk_last : cpuclk;
+	const int_fast32_t ticks = cpuclk > cpuclk_last ? cpuclk - cpuclk_last : cpuclk;
 	cpuclk_last = cpuclk;
 
 	for (int_fast32_t i = 0; i < ticks; ++i) {
@@ -231,7 +231,7 @@ static uint_fast8_t read_apu_status(void)
 }
 
 
-void apuwrite(const uint_fast8_t val, const int_fast32_t addr)
+void apuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	switch (addr) {
 	case 0x4000: write_pulse_reg0(val, &pulse[0]); break;
@@ -248,7 +248,7 @@ void apuwrite(const uint_fast8_t val, const int_fast32_t addr)
 	}
 }
 
-uint_fast8_t apuread(const int_fast32_t addr)
+uint_fast8_t apuread(const uint_fast16_t addr)
 {
 	switch (addr) {
 	case 0x4015: return read_apu_status();

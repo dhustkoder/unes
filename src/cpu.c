@@ -45,7 +45,7 @@ bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
 static bool irq_pass;
 static int_fast32_t pc;
-static int_fast16_t a, x, y, s;
+static uint_fast8_t a, x, y, s;
 
 static struct {
 	uint_fast8_t c, z, i, d, v, n;
@@ -70,9 +70,8 @@ static void setflags(const uint_fast8_t val)
 
 static inline void spush(const uint_fast8_t val)
 {
-	mmuwrite(val, s--);
-	if (s < 0x100)
-		s = 0x1FF;
+	mmuwrite(val, 0x100|s--);
+	s &= 0xFF;
 }
 
 static inline void spush16(const uint_fast16_t val)
@@ -84,26 +83,25 @@ static inline void spush16(const uint_fast16_t val)
 static inline uint_fast8_t spop(void)
 {
 	++s;
-	if (s > 0x1FF)
-		s = 0x100;
-	return mmuread(s);
+	s &= 0xFF;
+	return mmuread(0x100|s);
 }
 
 static inline uint_fast16_t spop16(void)
 {
 	const uint_fast8_t lsb = spop();
-	const uint_fast8_t msb = spop();
+	const uint_fast16_t msb = spop();
 	return (msb<<8)|lsb;
 }
 
-static void ld(int_fast16_t* const reg, const int_fast16_t val)
+static void ld(uint_fast8_t* const reg, const uint_fast8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
 	flags.n = (*reg)>>7;
 }
 
-static void inc(int_fast16_t* const val)
+static void inc(uint_fast8_t* const val)
 {
 	++(*val);
 	*val &= 0xFF;
@@ -111,7 +109,7 @@ static void inc(int_fast16_t* const val)
 	flags.n = (*val)>>7;
 }
 
-static void dec(int_fast16_t* const val)
+static void dec(uint_fast8_t* const val)
 {
 	--(*val);
 	*val &= 0xFF;
@@ -119,28 +117,28 @@ static void dec(int_fast16_t* const val)
 	flags.n = (*val)>>7;
 }
 
-static void and(const int_fast16_t val)
+static void and(const uint_fast8_t val)
 {
 	a &= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
 }
 
-static void ora(const int_fast16_t val)
+static void ora(const uint_fast8_t val)
 {
 	a |= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
 }
 
-static void eor(const int_fast16_t val)
+static void eor(const uint_fast8_t val)
 {
 	a ^= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
 }
 
-static void lsr(int_fast16_t* const val)
+static void lsr(uint_fast8_t* const val)
 {
 	flags.c = ((*val)&0x01);
 	*val >>= 1;
@@ -148,36 +146,37 @@ static void lsr(int_fast16_t* const val)
 	flags.n = 0;
 }
 
-static void rol(int_fast16_t* const val)
+static void rol(uint_fast8_t* const val)
 {
-	*val = ((*val)<<1)|flags.c;
-	flags.c = (*val)>>8;
-	*val &= 0xFF;
+	const uint_fast8_t oldc = flags.c;
+	flags.c = (*val)>>7;
+	*val = ((*val)<<1)|oldc;
+	(*val) &= 0xFF;
 	flags.z = *val == 0x00;
 	flags.n = (*val)>>7;
 }
 
-static void ror(int_fast16_t* const val)
+static void ror(uint_fast8_t* const val)
 {
 	const uint_fast8_t oldc = flags.c;
 	flags.c = (*val)&0x01;
 	(*val) = ((*val)>>1)|(oldc<<7);
 	flags.z = *val == 0x00;
-	flags.n = *(val)>>7;
+	flags.n = (*val)>>7;
 }
 
-static void asl(int_fast16_t* const val)
+static void asl(uint_fast8_t* const val)
 {
 	flags.c = (*val)>>7;
 	*val <<= 1;
-	*val &= 0xFF;
+	(*val) &= 0xFF;
 	flags.z = *val == 0x00;
 	flags.n = (*val)>>7;
 }
 
-static inline void opm(void(*const op)(int_fast16_t*), const uint_fast16_t addr)
+static inline void opm(void(*const op)(uint_fast8_t*), const uint_fast16_t addr)
 {
-	int_fast16_t val = mmuread(addr);
+	uint_fast8_t val = mmuread(addr);
 	op(&val);
 	mmuwrite(val, addr);
 }
@@ -189,7 +188,7 @@ static void bit(const uint_fast8_t val)
 	flags.n = val>>7;
 }
 
-static void cmp(const int_fast16_t reg, const uint_fast8_t val)
+static void cmp(const uint_fast8_t reg, const uint_fast8_t val)
 {
 	flags.c = reg >= val;
 	flags.z = reg == val;
@@ -206,7 +205,7 @@ static void branch(const bool cond)
 	}
 }
 
-static void adc(const uint_fast8_t val)
+static void adc(const int_fast16_t val)
 {
 	const int_fast16_t tmp = a + val + flags.c;
 	flags.v = (((~(a ^ val) & (a ^ tmp)))&0x80)>>7;
@@ -222,7 +221,7 @@ static inline void sbc(const uint_fast8_t val)
 }
 
 
-static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast16_t reg)
+static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const uint_fast8_t reg)
 {
 	// check for page cross in adding register to addr
 	// add 1 to cpuclk if it does cross a page
@@ -232,7 +231,7 @@ static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast1
 }
 
 
-static void dointerrupt(const int_fast32_t vector, const bool brk)
+static void dointerrupt(const uint_fast16_t vector, const bool brk)
 {
 	spush16(brk ? pc + 1 : pc);
 	spush(getflags()|(brk ? FLAG_B : 0x00));
@@ -257,10 +256,10 @@ void resetcpu(void)
 	irq_pass = false;
 
 	pc = mmuread16(ADDR_RESET_VECTOR);
-	a = 0x0000;
-	x = 0x0000;
-	y = 0x0000;
-	s = 0x01FD;
+	a = 0x00;
+	x = 0x00;
+	y = 0x00;
+	s = 0xFD;
 
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
@@ -291,8 +290,7 @@ void stepcpu(void)
 	#define rindirecty() (mmuread(windirecty()))
 
 
-	assert(pc <= 0xFFFF && a <= 0xFF && x <= 0xFF && 
-	       y <= 0xFF && s >= 0x100 && s <= 0x1FF);
+	assert(pc <= 0xFFFF);
 
 	assert((flags.c == 0 || flags.c == 1) &&
 	       (flags.z == 0 || flags.z == 1) &&
@@ -518,7 +516,7 @@ void stepcpu(void)
 	case 0x8A: ld(&a, x);                                   break; // TXA
 	case 0xA8: ld(&y, a);                                   break; // TAY
 	case 0xBA: ld(&x, (s&0xFF));                            break; // TSX
-	case 0x9A: s = 0x100 + x;                               break; // TXS
+	case 0x9A: s = x;                                       break; // TXS
 	case 0x98: ld(&a, y);                                   break; // TYA
 	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode); break;
 	}

@@ -5,8 +5,8 @@
 extern void stepapu(void);
 extern void resetapu(void);
 
-extern void apuwrite(uint_fast8_t val, int_fast32_t addr);
-extern uint_fast8_t apuread(int_fast32_t addr);
+extern void apuwrite(uint_fast8_t val, uint_fast16_t addr);
+extern uint_fast8_t apuread(uint_fast16_t addr);
 
 
 #endif
