@@ -175,6 +175,13 @@ static void asl(int_fast16_t* const val)
 	flags.n = (*val)>>7;
 }
 
+static inline void opm(void(*const op)(int_fast16_t*), const int_fast32_t addr)
+{
+	int_fast16_t val = mmuread(addr);
+	op(&val);
+	mmuwrite(val, addr);
+}
+
 static void bit(const int_fast16_t val)
 {
 	flags.z = (a&val) == 0x00;
@@ -189,9 +196,9 @@ static void cmp(const int_fast16_t reg, const int_fast16_t val)
 	flags.n = ((reg - val)&0x80)>>7;
 }
 
-static void branch(const uint_fast8_t flag, const bool eq)
+static void branch(const bool cond)
 {
-	if (flag == eq) {
+	if (cond) {
 		const int_fast8_t val = mmuread(pc++);
 		pc += val;
 	} else {
@@ -214,12 +221,6 @@ static inline void sbc(const int_fast16_t val)
 	adc(val ^ 0xFF);
 }
 
-static inline void opm(void(*const op)(int_fast16_t*), const int_fast32_t addr)
-{
-	int_fast16_t val = mmuread(addr);
-	op(&val);
-	mmuwrite(val, addr);
-}
 
 static inline int_fast32_t chkpagecross(const int_fast32_t addr, const int_fast16_t reg)
 {
@@ -407,14 +408,14 @@ void stepcpu(void)
 	case 0xDE: opm(dec, wabsolutex()); break;
 
 	// branches
-	case 0x90: branch(flags.c, false); break; // BCC
-	case 0xB0: branch(flags.c, true);  break; // BCS
-	case 0xD0: branch(flags.z, false); break; // BNE
-	case 0xF0: branch(flags.z, true);  break; // BEQ
-	case 0x50: branch(flags.v, false); break; // BVC
-	case 0x70: branch(flags.v, true);  break; // BVS
-	case 0x10: branch(flags.n, false); break; // BPL
-	case 0x30: branch(flags.n, true);  break; // BMI
+	case 0x90: branch(flags.c == 0); break; // BCC
+	case 0xB0: branch(flags.c == 1); break; // BCS
+	case 0xD0: branch(flags.z == 0); break; // BNE
+	case 0xF0: branch(flags.z == 1); break; // BEQ
+	case 0x50: branch(flags.v == 0); break; // BVC
+	case 0x70: branch(flags.v == 1); break; // BVS
+	case 0x10: branch(flags.n == 0); break; // BPL
+	case 0x30: branch(flags.n == 1); break; // BMI
 
 	// LDA
 	case 0xA9: ld(&a, immediate());  break;
