@@ -2,7 +2,6 @@
 #define UNES_SDL2_AUDIO_H_
 #include <stdint.h>
 #include <stdbool.h>
-#include <SDL2/SDL_audio.h>
 
 extern bool initaudio(void);
 extern void termaudio(void);

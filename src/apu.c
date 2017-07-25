@@ -6,7 +6,7 @@
 
 
 #define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
-#define APU_SAMPLE_BUFFER_SIZE (37)
+#define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 48000)
 #define SOUND_BUFFER_SIZE      (2048)
 
 
@@ -26,9 +26,9 @@ const uint8_t length_tbl[0x20] = {
 };
 
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
-static int_fast16_t sound_buffer_index;
+static int_fast16_t sound_buffer_idx;
 static double apu_samples[APU_SAMPLE_BUFFER_SIZE];
-static int_fast8_t apu_samples_index;
+static int_fast8_t apu_samples_idx;
 
 // Pulse channels
 static struct Pulse {
@@ -103,23 +103,23 @@ static void step_frame_counter(void)
 static void mixaudio(void)
 {
 	const double pulse_sample = pulse_mix_tbl[pulse[0].out + pulse[1].out];
-	apu_samples[apu_samples_index++] = pulse_sample;
+	apu_samples[apu_samples_idx++] = pulse_sample;
 
-	if (apu_samples_index >= APU_SAMPLE_BUFFER_SIZE) {
+	if (apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
 		double avg = 0;
 		for (int i = 0; i < APU_SAMPLE_BUFFER_SIZE; ++i)
 			avg += apu_samples[i];
 		avg /= APU_SAMPLE_BUFFER_SIZE;
 
 		const int_fast16_t sample = -8000 + avg * 16000;
-		sound_buffer[sound_buffer_index++] = sample;
+		sound_buffer[sound_buffer_idx++] = sample;
 
-		if (sound_buffer_index >= SOUND_BUFFER_SIZE) {
+		if (sound_buffer_idx >= SOUND_BUFFER_SIZE) {
 			playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
-			sound_buffer_index = 0;
+			sound_buffer_idx = 0;
 		}
 
-		apu_samples_index = 0;
+		apu_samples_idx = 0;
 	}
 }
 
@@ -135,12 +135,12 @@ void resetapu(void)
 	apuclk_high = false;
 
 	// sound buffer, apu sample buffer
-	sound_buffer_index = 0;
+	sound_buffer_idx = 0;
+	apu_samples_idx = 0;
 	memset(sound_buffer, 0x00, sizeof(sound_buffer));
 	memset(apu_samples, 0x00, sizeof(apu_samples));
 
 	// Pulse
-	apu_samples_index = 0;
 	memset(pulse, 0x00, sizeof(pulse));
 	for (int n = 0; n < 2; ++n)
 		pulse[n].period_cnt = 1;
