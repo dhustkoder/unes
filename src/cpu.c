@@ -20,7 +20,7 @@
 
 
 static const uint8_t cpuclk_table[0x100] = {
-//	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+      /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
 /*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
 /*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
 /*2*/	6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
@@ -195,16 +195,6 @@ static void cmp(const uint_fast8_t reg, const uint_fast8_t val)
 	flags.n = ((reg - val)&0x80)>>7;
 }
 
-static void branch(const bool cond)
-{
-	if (cond) {
-		const int_fast8_t val = mmuread(pc++);
-		pc += val;
-	} else {
-		++pc;
-	}
-}
-
 static void adc(const int_fast16_t val)
 {
 	const int_fast16_t tmp = a + val + flags.c;
@@ -220,16 +210,25 @@ static inline void sbc(const uint_fast8_t val)
 	adc(val ^ 0xFF);
 }
 
-
-static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const uint_fast8_t reg)
+static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t val)
 {
-	// check for page cross in adding register to addr
+	// check for page cross in adding value to addr
 	// add 1 to cpuclk if it does cross a page
-	if (((addr&0xFF) + reg) > 0xFF)
+	if ((addr&0xFF00) != ((addr + val)&0xFF00))
 		++cpuclk;
-	return (addr + reg)&0xFFFF;
+	return (addr + val)&0xFFFF;
 }
 
+static void branch(const bool cond)
+{
+	if (cond) {
+		const int_fast8_t val = mmuread(pc++);
+		++cpuclk;
+		pc = chkpagecross(pc, val);
+	} else {
+		++pc;
+	}
+}
 
 static void dointerrupt(const uint_fast16_t vector, const bool brk)
 {

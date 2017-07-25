@@ -1,11 +1,10 @@
 #include <string.h>
 #include <stdbool.h>
-#include <signal.h>
 #include "cpu.h"
 #include "ppu.h"
 
 
-#define PPU_TICKS_PER_SCANLINE (341)
+#define PPU_TICKS_PER_SCANLINE (340)
 
 
 static uint_fast8_t openbus;
@@ -18,9 +17,9 @@ static uint_fast16_t vram_addr; // $2006
 static bool vram_addr_phase;
 
 static int_fast32_t cpuclk_last;
-static int_fast32_t frame_cntdown;
+static int_fast32_t ticks_cntdown;
 static int_fast16_t scanline;      // 0 - 262
-static bool nmi_occurred, nmi_output;
+static bool nmi_occurred, nmi_output, odd_frame;
 
 static uint8_t spr_data[0x100];
 static uint8_t vram[0x4000];
@@ -49,6 +48,11 @@ static void write_ctrl(const uint_fast8_t val)
 	nmi_output = (val&0x80) == 0x80;
 }
 
+static void write_mask(const uint_fast8_t val)
+{
+	mask = val;
+}
+
 static void write_vram_addr(const uint_fast8_t val)
 {
 	if (vram_addr_phase)
@@ -73,10 +77,11 @@ void resetppu(void)
 	vram_addr_phase = false;
 
 	cpuclk_last = 0;
-	frame_cntdown = PPU_TICKS_PER_SCANLINE;
-	scanline = 0;
+	ticks_cntdown = PPU_TICKS_PER_SCANLINE;
+	scanline = -1;
 	nmi_occurred = false;
 	nmi_output = false;
+	odd_frame = false;
 }
 
 void stepppu(void)
@@ -84,17 +89,23 @@ void stepppu(void)
 	extern const int_fast32_t cpuclk;
 	const int_fast32_t ticks = (cpuclk > cpuclk_last ? cpuclk - cpuclk_last : cpuclk) * 3;
 	cpuclk_last = cpuclk;
-	frame_cntdown -= ticks;
-	if (frame_cntdown <= 0) {
-		frame_cntdown += PPU_TICKS_PER_SCANLINE;
-		++scanline;
-		if (scanline == 242) {
+	ticks_cntdown -= ticks;
+
+	if (ticks_cntdown < 0) {
+		ticks_cntdown += PPU_TICKS_PER_SCANLINE;
+		switch (scanline++) {
+		case 241:
 			nmi_occurred = true;
 			if (nmi_output)
 				trigger_nmi();
-		} else if (scanline == 261) { 
+			break;
+		case 262:
 			scanline = 0;
 			nmi_occurred = false;
+			if (odd_frame && (mask&0x18))
+				--ticks_cntdown;
+			odd_frame = !odd_frame;
+			break;
 		}
 	}
 }
@@ -103,6 +114,7 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	switch (addr) {
 	case 0x2000: write_ctrl(val); break;
+	case 0x2001: write_mask(val); break;
 	case 0x2003: spr_addr = val; break;
 	case 0x2006: write_vram_addr(val); break;
 	}
