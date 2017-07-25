@@ -63,8 +63,6 @@ static void write_vram_addr(const uint_fast8_t val)
 	vram_addr_phase = !vram_addr_phase;
 }
 
-
-
 void resetppu(void)
 {
 	openbus = 0x00;
@@ -102,7 +100,7 @@ void stepppu(void)
 		case 262:
 			scanline = 0;
 			nmi_occurred = false;
-			if (odd_frame && (mask&0x18))
+			if ((mask&0x18) == 0 && odd_frame)
 				--ticks_cntdown;
 			odd_frame = !odd_frame;
 			break;

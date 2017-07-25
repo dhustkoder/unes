@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <assert.h>
 #include "rom.h"
 #include "mmu.h"
@@ -10,19 +11,33 @@ static uint8_t ram[0x800] = { 0 };   // zeropage,stack,ram
 
 static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
-	if (addr >= 0x4000 && addr != 0x4014 && addr <= 0x4017)
-		apuwrite(val, addr);
-	else if ((addr >= 0x2000 && addr <= 0x2007) || addr == 0x4014)
-		ppuwrite(val, addr);
+	if (addr >= 0x4000 && addr <= 0x4017) {
+		if (addr != 0x4014)
+			apuwrite(val, addr);
+		else
+			ppuwrite(val, addr);
+	} else if (addr >= 0x2000 && addr < 0x4000) {
+		ppuwrite(val, 0x2000|(addr&0x07));
+	} else {
+		assert(printf("$%.4lX\n", addr) && false && "UNKNOWN ADDRESS");
+	}
 }
 
 static uint_fast8_t ioread(const uint_fast16_t addr)
 {
-	// a read from 0x4017 is joypad's 
-	if (addr >= 0x4000 && addr != 0x4014 && addr < 0x4017)
-		return apuread(addr);
-	else if ((addr >= 0x2000 && addr <= 0x2007) || addr == 0x4014)
-		return ppuread(addr);
+	if (addr >= 0x4000 && addr <= 0x4017) {
+		if (addr < 0x4016) {
+			if (addr != 0x4014)
+				return apuread(addr);
+			else
+				return ppuread(addr);
+		}
+		// $4016 - $4017 is joypad's
+	} else if (addr >= 0x2000 && addr <= 0x4000) {
+		return ppuread(0x2000|(addr&0x07));
+	} else {
+		assert(printf("$%.4lX\n", addr) && false && "UNKNOWN ADDRESS");
+	}
 	return 0x00;
 }
 
