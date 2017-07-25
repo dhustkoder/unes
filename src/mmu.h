@@ -20,22 +20,22 @@
 #define ADDR_ZEROPAGE     (0x0000)
 
 
-extern uint_fast8_t mmuread(int_fast32_t addr);
-extern void mmuwrite(uint_fast8_t value, int_fast32_t addr);
+extern uint_fast8_t mmuread(uint_fast16_t addr);
+extern void mmuwrite(uint_fast8_t value, uint_fast16_t addr);
 
 static inline uint_fast16_t mmuread16(const int_fast32_t addr)
 {
 	return (mmuread(addr + 1)<<8)|mmuread(addr);
 }
 
-static inline uint_fast16_t mmuread16msk(const int_fast32_t addr)
+static inline uint_fast16_t mmuread16msk(const uint_fast16_t addr)
 {
 	if ((addr&0x00FF) == 0xFF)
 		return (mmuread(addr&0xFF00)<<8)|mmuread(addr);
 	return mmuread16(addr);
 }
 
-static inline void mmuwrite16(const uint_fast16_t value, const int_fast32_t addr)
+static inline void mmuwrite16(const uint_fast16_t value, const uint_fast16_t addr)
 {
 	mmuwrite(value&0xFF, addr);
 	mmuwrite((value&0xFF00)>>8, addr + 1);

@@ -68,20 +68,20 @@ static void setflags(const uint_fast8_t val)
 	flags.c = val&0x01;
 }
 
-static inline void spush(const int_fast16_t val)
+static inline void spush(const uint_fast8_t val)
 {
 	mmuwrite(val, s--);
 	if (s < 0x100)
 		s = 0x1FF;
 }
 
-static inline void spush16(const int_fast32_t val)
+static inline void spush16(const uint_fast16_t val)
 {
 	spush((val&0xFF00)>>8);
 	spush(val&0xFF);
 }
 
-static inline int_fast16_t spop(void)
+static inline uint_fast8_t spop(void)
 {
 	++s;
 	if (s > 0x1FF)
@@ -89,10 +89,10 @@ static inline int_fast16_t spop(void)
 	return mmuread(s);
 }
 
-static inline int_fast32_t spop16(void)
+static inline uint_fast16_t spop16(void)
 {
-	const int_fast16_t lsb = spop();
-	const int_fast16_t msb = spop();
+	const uint_fast8_t lsb = spop();
+	const uint_fast8_t msb = spop();
 	return (msb<<8)|lsb;
 }
 
@@ -175,21 +175,21 @@ static void asl(int_fast16_t* const val)
 	flags.n = (*val)>>7;
 }
 
-static inline void opm(void(*const op)(int_fast16_t*), const int_fast32_t addr)
+static inline void opm(void(*const op)(int_fast16_t*), const uint_fast16_t addr)
 {
 	int_fast16_t val = mmuread(addr);
 	op(&val);
 	mmuwrite(val, addr);
 }
 
-static void bit(const int_fast16_t val)
+static void bit(const uint_fast8_t val)
 {
 	flags.z = (a&val) == 0x00;
 	flags.v = (val&0x40)>>6;
 	flags.n = val>>7;
 }
 
-static void cmp(const int_fast16_t reg, const int_fast16_t val)
+static void cmp(const int_fast16_t reg, const uint_fast8_t val)
 {
 	flags.c = reg >= val;
 	flags.z = reg == val;
@@ -206,7 +206,7 @@ static void branch(const bool cond)
 	}
 }
 
-static void adc(const int_fast16_t val)
+static void adc(const uint_fast8_t val)
 {
 	const int_fast16_t tmp = a + val + flags.c;
 	flags.v = (((~(a ^ val) & (a ^ tmp)))&0x80)>>7;
@@ -216,7 +216,7 @@ static void adc(const int_fast16_t val)
 	flags.n = a>>7;
 }
 
-static inline void sbc(const int_fast16_t val)
+static inline void sbc(const uint_fast8_t val)
 {
 	adc(val ^ 0xFF);
 }

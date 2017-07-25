@@ -2,12 +2,22 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <signal.h>
 #include "platform.h"
 #include "mmu.h"
 #include "rom.h"
 #include "cpu.h"
 #include "apu.h"
 #include "ppu.h"
+
+
+static bool signal_term = false;
+
+static void sighandler(const int signum)
+{
+	signal_term = true;
+	printf("\nsignal %d received.\n", signum);
+}
 
 
 static void runfor(const int_fast32_t cpu_clk_cycles)
@@ -34,6 +44,9 @@ int unes(const int argc, const char* const* argv)
 	if (!loadrom(argv[1]))
 		return EXIT_FAILURE;
 
+	signal(SIGINT, &sighandler);
+	signal(SIGKILL, &sighandler);
+	signal(SIGTERM, &sighandler);
 
 	resetcpu();
 	resetapu();
@@ -41,7 +54,7 @@ int unes(const int argc, const char* const* argv)
 	
 	uint_fast32_t time = gettime();
 	int_fast8_t fps = 0;
-	for (;;) {
+	while (!signal_term) {
 		runfor(CPU_FREQ / 60); // run for 1 frame
 		//renderppu();
 		if (++fps > 60) {
