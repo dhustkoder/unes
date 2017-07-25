@@ -75,8 +75,8 @@ void resetppu(void)
 	vram_addr_phase = false;
 
 	cpuclk_last = 0;
-	ticks_cntdown = PPU_TICKS_PER_SCANLINE;
-	scanline = -1;
+	ticks_cntdown = 0;
+	scanline = 240;
 	nmi_occurred = false;
 	nmi_output = false;
 	odd_frame = false;
@@ -97,10 +97,12 @@ void stepppu(void)
 			if (nmi_output)
 				trigger_nmi();
 			break;
+		case 261:
+			nmi_occurred = false;
+			break;
 		case 262:
 			scanline = 0;
-			nmi_occurred = false;
-			if ((mask&0x18) == 0 && odd_frame)
+			if ((mask&0x18) && odd_frame)
 				--ticks_cntdown;
 			odd_frame = !odd_frame;
 			break;
