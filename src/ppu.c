@@ -1,7 +1,11 @@
 #include <string.h>
 #include <stdbool.h>
+#include <signal.h>
 #include "cpu.h"
 #include "ppu.h"
+
+
+#define PPU_TICKS_PER_SCANLINE (341)
 
 
 static uint_fast8_t openbus;
@@ -14,10 +18,9 @@ static uint_fast16_t vram_addr; // $2006
 static bool vram_addr_phase;
 
 static int_fast32_t cpuclk_last;
-static int_fast16_t ppuclk;     // 0 - 341
-static int_fast16_t scanline;   // 0 - 262
+static int_fast32_t frame_cntdown;
+static int_fast16_t scanline;      // 0 - 262
 static bool nmi_occurred, nmi_output;
-static uint_fast8_t frame_toggle;
 
 static uint8_t spr_data[0x100];
 static uint8_t vram[0x4000];
@@ -27,7 +30,7 @@ static uint_fast8_t read_status(void)
 {
 	const uint_fast8_t b7 = nmi_occurred ? 1 : 0;
 	nmi_occurred = false;
-	return (b7<<7);
+	return (b7<<7)|(openbus&0x1F);
 }
 
 static uint_fast8_t read_spr_data(void)
@@ -70,11 +73,10 @@ void resetppu(void)
 	vram_addr_phase = false;
 
 	cpuclk_last = 0;
-	ppuclk = 340;
-	scanline = 240;
+	frame_cntdown = PPU_TICKS_PER_SCANLINE;
+	scanline = 0;
 	nmi_occurred = false;
 	nmi_output = false;
-	frame_toggle = 0;
 }
 
 void stepppu(void)
@@ -82,19 +84,17 @@ void stepppu(void)
 	extern const int_fast32_t cpuclk;
 	const int_fast32_t ticks = (cpuclk > cpuclk_last ? cpuclk - cpuclk_last : cpuclk) * 3;
 	cpuclk_last = cpuclk;
-
-	for (int_fast32_t i = 0; i < ticks; ++i) {
-		if (++ppuclk == 341) {
-			ppuclk = 0;
-			++scanline;
-			if (scanline == 241) {
-				nmi_occurred = true;
-				if (nmi_output)
-					trigger_nmi();
-			} else if (scanline == 261) {
-				scanline = 0;
-				nmi_occurred = false;
-			}
+	frame_cntdown -= ticks;
+	if (frame_cntdown <= 0) {
+		frame_cntdown += PPU_TICKS_PER_SCANLINE;
+		++scanline;
+		if (scanline == 242) {
+			nmi_occurred = true;
+			if (nmi_output)
+				trigger_nmi();
+		} else if (scanline == 261) { 
+			scanline = 0;
+			nmi_occurred = false;
 		}
 	}
 }
@@ -112,11 +112,10 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 uint_fast8_t ppuread(const uint_fast16_t addr)
 {
 	switch (addr) {	
-	case 0x2002: openbus = read_status();   break;
-	case 0x2004: openbus = read_spr_data(); break;
-	case 0x2007: openbus = read_vram_data(); break;
+	case 0x2002: return read_status();   break;
+	case 0x2004: return read_spr_data(); break;
+	case 0x2007: return read_vram_data(); break;
 	}
-
 	return openbus;
 }
 
