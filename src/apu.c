@@ -111,8 +111,8 @@ static void mixaudio(void)
 			avg += apu_samples[i];
 		avg /= APU_SAMPLE_BUFFER_SIZE;
 
-		const int_fast16_t sample = INT16_MIN + avg * (INT16_MAX - INT16_MIN);
-		sound_buffer[sound_buffer_idx++] = sample * 0.26;
+		const int_fast16_t sample = avg * (INT16_MAX -INT16_MIN);
+		sound_buffer[sound_buffer_idx++] = sample;
 
 		if (sound_buffer_idx >= SOUND_BUFFER_SIZE) {
 			playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
