@@ -113,10 +113,10 @@ void stepppu(void)
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	switch (addr) {
-	case 0x2000: write_ctrl(val); break;
-	case 0x2001: write_mask(val); break;
-	case 0x2003: spr_addr = val; break;
-	case 0x2006: write_vram_addr(val); break;
+	case 0: write_ctrl(val); break;
+	case 1: write_mask(val); break;
+	case 3: spr_addr = val; break;
+	case 6: write_vram_addr(val); break;
 	}
 	openbus = val;
 }
@@ -124,9 +124,9 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 uint_fast8_t ppuread(const uint_fast16_t addr)
 {
 	switch (addr) {	
-	case 0x2002: return read_status();   break;
-	case 0x2004: return read_spr_data(); break;
-	case 0x2007: return read_vram_data(); break;
+	case 2: return read_status();   break;
+	case 4: return read_spr_data(); break;
+	case 7: return read_vram_data(); break;
 	}
 	return openbus;
 }

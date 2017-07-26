@@ -17,7 +17,7 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 		else
 			ppuwrite(val, addr);
 	} else if (addr >= 0x2000 && addr < 0x4000) {
-		ppuwrite(val, 0x2000|(addr&0x07));
+		ppuwrite(val, addr&0x07);
 	} else {
 		assert(printf("$%.4lX\n", addr) && false && "UNKNOWN ADDRESS");
 	}
@@ -34,7 +34,7 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 		}
 		// $4016 - $4017 is joypad's
 	} else if (addr >= 0x2000 && addr <= 0x4000) {
-		return ppuread(0x2000|(addr&0x07));
+		return ppuread(addr&0x07);
 	} else {
 		assert(printf("$%.4lX\n", addr) && false && "UNKNOWN ADDRESS");
 	}
