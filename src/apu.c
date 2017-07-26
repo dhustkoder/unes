@@ -117,11 +117,14 @@ static void step_lengths(void)
 static void step_frame_counter(void)
 {
 	// thanks to nesalizer
-	#define T1 (2*3728)
-	#define T2 (2*7456)
-	#define T3 (2*11185)
-	#define T4 (2*14914)
-	#define T5 (2*18640)
+	#define T1 (3728)
+	#define T2 (7456)
+	#define T3 (11185)
+	#define T4 (14914)
+	#define T5 (18640)
+
+	if (!apuclk_odd)
+		return;
 
 	switch (frame_counter) {
 	case 0:
