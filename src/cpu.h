@@ -24,6 +24,12 @@ static inline void set_irq_source(const enum IrqSource src, const bool value)
 	cpu_irq_sources[src] = value;
 }
 
+static inline bool get_irq_source(const enum IrqSource src)
+{
+	extern bool cpu_irq_sources[IRQ_SRC_SIZE];
+	return cpu_irq_sources[src];
+}
+
 static inline void trigger_nmi(void)
 {
 	extern bool cpu_nmi;
