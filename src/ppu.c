@@ -6,6 +6,7 @@
 
 #define PPU_TICKS_PER_SCANLINE (341)
 
+
 static uint_fast8_t openbus;
 static uint_fast8_t ctrl;       // $2000
 static uint_fast8_t mask;       // $2001
