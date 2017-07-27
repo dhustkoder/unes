@@ -9,13 +9,12 @@
 #define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 48000)
 #define SOUND_BUFFER_SIZE      (2048)
 
-
 static int_fast32_t frame_counter_clock;
 static int_fast8_t delayed_frame_timer_reset;
-static uint_fast8_t status;         // $4015
-static uint_fast8_t frame_counter;  // $4017
-static bool irq_inhibit;            // $4017
-static bool dmc_irq;                // $4010
+static uint_fast8_t status;              // $4015
+static uint_fast8_t frame_counter_mode;  // $4017
+static bool irq_inhibit;                 // $4017
+static bool dmc_irq;                     // $4010
 static bool oddtick;
 
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
@@ -25,8 +24,6 @@ static int_fast8_t apu_samples_idx;
 
 // Pulse channels
 static struct Pulse {
-	int_fast32_t sweep_target_period;
-	int_fast32_t sweep_period_cnt;
 	int_fast32_t period_cnt;
 	int_fast32_t len_cnt;
 	int_fast16_t env_cnt;
@@ -36,93 +33,12 @@ static struct Pulse {
 	uint_fast8_t duty_mode;
 	uint_fast8_t vol;
 	uint_fast8_t out;
-	uint_fast8_t sweep_period;
-	uint_fast8_t sweep_shift;
 	bool enabled;
 	bool const_vol;
 	bool len_enabled;
 	bool env_start;
-	bool sweep_enabled;
-	bool sweep_negate;
-	bool sweep_reload;
 } pulse[2];
 
-
-static void update_pulse_out(struct Pulse* const p)
-{
-	static const uint8_t duty_tbl[4][8] = {
-		{ 0, 1, 0, 0, 0, 0, 0, 0 },
-		{ 0, 1, 1, 0, 0, 0, 0, 0 },
-		{ 0, 1, 1, 1, 1, 0, 0, 0 },
-		{ 1, 0, 0, 1, 1, 1, 1, 1 }
-	};
-
-	if (!p->enabled || p->len_cnt == 0 ||
-	    p->period < 8 || p->sweep_target_period > 0x7FF || 
-	    !duty_tbl[p->duty_mode][p->duty_pos])
-		p->out = 0;
-	else
-		p->out = p->const_vol ? p->vol : p->env_vol;
-}
-
-static void step_pulse_timer(struct Pulse* const p)
-{
-	if (--p->period_cnt == 0) {
-		p->period_cnt = p->period + 1;
-		p->duty_pos = (p->duty_pos + 1)&0x07;
-	}
-}
-
-static void step_pulse_envelope(struct Pulse* const p)
-{
-	if (p->env_start) {
-		p->env_start = false;
-		p->env_vol = 0x0F;
-		p->env_cnt = p->vol;
-	} else if (p->env_cnt-- == 0) {
-		p->env_cnt = p->vol;
-		if (p->env_vol > 0)
-			--p->env_vol;
-		else if (!p->len_enabled)
-			p->env_vol = 0x0F;
-	}
-}
-
-static void step_pulse_length(struct Pulse* const p)
-{
-	if (p->len_enabled && p->len_cnt > 0)
-		--p->len_cnt;
-}
-
-static void update_pulse_sweep_target_period(struct Pulse* const p)
-{
-	int_fast32_t add = p->period >> p->sweep_shift;
-	if (p->sweep_negate)
-		add = (p == &pulse[0]) ? ~add : -add;
-	p->sweep_target_period = ((int)p->period) + add;
-}
-
-static void step_pulse_sweep(struct Pulse* const p)
-{
-	if (p->sweep_period_cnt == 0) {
-		if (p->sweep_enabled &&
-		    p->period >= 8   &&
-		    p->sweep_shift != 0 &&
-		    p->sweep_target_period >= 0 &&
-		    p->sweep_target_period <= 0x7ff) {
-			p->period = p->sweep_target_period;
-			update_pulse_sweep_target_period(p);
-			update_pulse_out(p);
-		}
-	}
-
-	if (p->sweep_reload || p->sweep_period_cnt <= 0) {
-		p->sweep_reload = false;
-		p->sweep_period_cnt = p->sweep_period;
-	} else {
-		--p->sweep_period_cnt;
-	}
-}
 
 static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
 {
@@ -135,11 +51,15 @@ static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
 
 static void write_pulse_reg1(const uint_fast8_t val, struct Pulse* const p)
 {
+	((void)val);
+	((void)p);
+	/*
 	p->sweep_enabled = (val&0x80) != 0;
 	p->sweep_period = (val>>4)&0x07;
 	p->sweep_negate = (val&0x08) != 0;
 	p->sweep_shift = val&0x07;
 	p->sweep_reload = true;
+	*/
 }
 
 static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
@@ -164,44 +84,64 @@ static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 }
 
 
+static void write_dmc_reg0(const uint_fast8_t val)
+{
+	set_irq_source(IRQ_SRC_APU_DMC_TIMER, (val&0x80) != 0);
+}
 
-static void step_timers(void)
+
+static void tick_timers(void)
 {
 	if (!oddtick) {
-		step_pulse_timer(&pulse[0]);
-		step_pulse_timer(&pulse[1]);
+		for (int i = 0; i < 2; ++i) {
+			struct Pulse* const p = &pulse[i];
+			if (--p->period_cnt < 0) {
+				p->period_cnt = p->period;
+				p->duty_pos = (p->duty_pos + 1)&0x07;
+			}
+		}
 	}
 }
 
-static void step_envelopes(void)
+static void tick_envelopes(void)
 {
-	step_pulse_envelope(&pulse[0]);
-	step_pulse_envelope(&pulse[1]);
+	for (int i = 0; i < 2; ++i) {
+		struct Pulse* const p = &pulse[i];
+		if (p->env_start) {
+			p->env_start = false;
+			p->env_vol = 0x0F;
+			p->env_cnt = p->vol;
+		} else if (p->env_cnt-- == 0) {
+			p->env_cnt = p->vol;
+			if (p->env_vol > 0)
+				--p->env_vol;
+			else if (!p->len_enabled)
+				p->env_vol = 0x0F;
+		}
+	}
 }
 
-static void step_lengths(void)
+static void tick_lengths(void)
 {
-	step_pulse_length(&pulse[0]);
-	step_pulse_length(&pulse[1]);
+	for (int i = 0; i < 2; ++i) {
+		struct Pulse* const p = &pulse[i];
+		if (p->len_enabled && p->len_cnt > 0)
+			--p->len_cnt;
+	}
 }
 
-static void step_sweeps(void)
-{
-	step_pulse_sweep(&pulse[0]);
-	step_pulse_sweep(&pulse[1]);
-}
 
-static void step_frame_counter(void)
+static void tick_frame_counter(void)
 {
 	// thanks to nesalizer
-	#define T1 (3728*2)
-	#define T2 (7456*2)
-	#define T3 (11185*2)
-	#define T4 (14914*2)
-	#define T5 (18640*2)
+	#define T1 (3728 * 2)
+	#define T2 (7456 * 2)
+	#define T3 (11185 * 2)
+	#define T4 (14914 * 2)
+	#define T5 (18640 * 2)
 
 
-	switch (frame_counter) {
+	switch (frame_counter_mode) {
 	case 0:
 		if (delayed_frame_timer_reset > 0 && --delayed_frame_timer_reset == 0) {
 			frame_counter_clock = 0;
@@ -212,13 +152,12 @@ static void step_frame_counter(void)
 
 		switch (frame_counter_clock) {
 		case T1 + 1: case T3 + 1:
-			step_envelopes();
+			tick_envelopes();
 			break;
 
 		case T2 + 1:
-			step_lengths();
-			step_sweeps();
-			step_envelopes();
+			tick_lengths();
+			tick_envelopes();
 			break;
 
 		case T4:
@@ -227,9 +166,8 @@ static void step_frame_counter(void)
 
 		case T4 + 1:
 			set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, !irq_inhibit);
-			step_lengths();
-			step_sweeps();
-			step_envelopes();
+			tick_lengths();
+			tick_envelopes();
 			break;
 		}
 		break;
@@ -243,13 +181,12 @@ static void step_frame_counter(void)
 
 		switch (frame_counter_clock) {
 		case T2 + 1: case T5 + 1:
-			step_lengths();
-			step_sweeps();
-			step_envelopes();
+			tick_lengths();
+			tick_envelopes();
 			break;
 
 		case T1 + 1: case T3 + 1:
-			step_envelopes();
+			tick_envelopes();
 			break;
 		}
 		break;
@@ -258,27 +195,38 @@ static void step_frame_counter(void)
 
 static void write_frame_counter(const uint_fast8_t val)
 {
-	frame_counter = val>>7;
+	frame_counter_mode = val>>7;
 	irq_inhibit = (val&0x40) != 0;
 	
 	if (irq_inhibit)	
 		set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
 
+	// side effects
 	delayed_frame_timer_reset = oddtick ? 4 : 3;
 
-	if (frame_counter == 1) {
-		step_lengths();
-		step_sweeps();
-		step_envelopes();
+	if (frame_counter_mode == 1) {
+		tick_lengths();
+		tick_envelopes();
 	}
 }
 
-
-
-static void update_outputs(void)
+static void update_channels_outputs(void)
 {
-	update_pulse_out(&pulse[0]);
-	update_pulse_out(&pulse[1]);
+	static const uint8_t duty_tbl[4][8] = {
+		{ 0, 1, 0, 0, 0, 0, 0, 0 },
+		{ 0, 1, 1, 0, 0, 0, 0, 0 },
+		{ 0, 1, 1, 1, 1, 0, 0, 0 },
+		{ 1, 0, 0, 1, 1, 1, 1, 1 }
+	};
+
+	for (int i = 0; i < 2; ++i) {
+		struct Pulse* const p = &pulse[i];
+		if (!p->enabled || p->len_cnt == 0 || p->period < 8 || 
+				!duty_tbl[p->duty_mode][p->duty_pos])
+			p->out = 0;
+		else
+			p->out = p->const_vol ? p->vol : p->env_vol;
+	}
 }
 
 static void mixaudio(void)
@@ -296,7 +244,7 @@ static void mixaudio(void)
 		0.24474377745241579, 0.2511860718171926,  0.25751258087706685
 	};
 
-	update_outputs();
+	update_channels_outputs();
 	const double pulse_sample = pulse_mix_tbl[pulse[0].out + pulse[1].out];
 	apu_samples[apu_samples_idx++] = pulse_sample;
 
@@ -320,10 +268,10 @@ static void mixaudio(void)
 
 void resetapu(void)
 {
-	status = 0;
-	delayed_frame_timer_reset = 0;
 	frame_counter_clock = 0;
-	frame_counter = 4;
+	delayed_frame_timer_reset = 0;
+	frame_counter_mode = 0;
+	status = 0;
 	irq_inhibit = false;
 	dmc_irq = false;
 	oddtick = false;
@@ -336,23 +284,16 @@ void resetapu(void)
 
 	// Pulse
 	memset(pulse, 0x00, sizeof(pulse));
-	for (int n = 0; n < 2; ++n)
-		pulse[n].period_cnt = 1;
 }
 
 void stepapu(const int_fast32_t aputicks)
 {
 	for (int_fast32_t i = 0; i < aputicks; ++i) {
-		step_frame_counter();
-		step_timers();
+		tick_frame_counter();
+		tick_timers();
 		mixaudio();
 		oddtick = !oddtick;
 	}
-}
-
-static void write_dmc_reg0(const uint_fast8_t val)
-{
-	set_irq_source(IRQ_SRC_APU_DMC_TIMER, (val&0x80) != 0);
 }
 
 static void write_apu_status(const uint_fast8_t val)
