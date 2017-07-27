@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 #include "audio.h"
 #include "cpu.h"
 #include "apu.h"
@@ -13,12 +12,11 @@
 
 static int_fast32_t frame_counter_clock;
 static int_fast8_t delayed_frame_timer_reset;
-static int_fast32_t cpuclk_last;
 static uint_fast8_t status;         // $4015
 static uint_fast8_t frame_counter;  // $4017
 static bool irq_inhibit;            // $4017
 static bool dmc_irq;                // $4010
-static bool apuclk_odd;
+static bool oddtick;
 
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
 static int_fast16_t sound_buffer_idx;
@@ -96,7 +94,7 @@ static void step_pulse_length(struct Pulse* const p)
 
 static void step_timers(void)
 {
-	if (!apuclk_odd) {
+	if (!oddtick) {
 		step_pulse_timer(&pulse[0]);
 		step_pulse_timer(&pulse[1]);
 	}
@@ -123,7 +121,7 @@ static void step_frame_counter(void)
 	#define T4 (14914)
 	#define T5 (18640)
 
-	if (!apuclk_odd)
+	if (!oddtick)
 		return;
 
 	switch (frame_counter) {
@@ -211,7 +209,6 @@ static void mixaudio(void)
 
 		const int_fast16_t sample = avg * INT16_MAX;
 		sound_buffer[sound_buffer_idx++] = sample;
-		printf("AVG: %lf, SAMPLE: %ld\n", avg, sample);
 
 		if (sound_buffer_idx >= SOUND_BUFFER_SIZE) {
 			playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
@@ -224,14 +221,13 @@ static void mixaudio(void)
 
 void resetapu(void)
 {
-	cpuclk_last = 0;
 	status = 0;
 	delayed_frame_timer_reset = 0;
 	frame_counter_clock = 0;
 	frame_counter = 4;
 	irq_inhibit = false;
 	dmc_irq = false;
-	apuclk_odd = false;
+	oddtick = false;
 
 	// sound buffer, apu sample buffer
 	sound_buffer_idx = 0;
@@ -245,20 +241,14 @@ void resetapu(void)
 		pulse[n].period_cnt = 1;
 }
 
-void stepapu(void)
+void stepapu(const int_fast32_t aputicks)
 {
-	extern const int_fast32_t cpuclk;
-
-	const int_fast32_t ticks = cpuclk > cpuclk_last ? cpuclk - cpuclk_last : cpuclk;
-
-	for (int_fast32_t i = 0; i < ticks; ++i) {
+	for (int_fast32_t i = 0; i < aputicks; ++i) {
 		step_frame_counter();
 		step_timers();
 		mixaudio();
-		apuclk_odd = !apuclk_odd;
+		oddtick = !oddtick;
 	}
-
-	cpuclk_last = cpuclk;
 }
 
 
@@ -322,10 +312,10 @@ static void write_frame_counter(const uint_fast8_t val)
 	frame_counter = val>>7;
 	irq_inhibit = (val&0x40) != 0;
 	
-	if (irq_inhibit)
+	if (irq_inhibit)	
 		set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
 
-	delayed_frame_timer_reset = apuclk_odd ? 4 : 3;
+	delayed_frame_timer_reset = 2;
 
 	if (frame_counter == 1) {
 		step_envelopes();

@@ -22,15 +22,13 @@ static void sighandler(const int signum)
 
 static void runfor(const int_fast32_t cpu_clk_cycles)
 {
-	extern int_fast32_t cpuclk;
-
+	int_fast32_t clk = 0;
 	do {
-		stepcpu();
-		stepapu();
-		stepppu();
-	} while (cpuclk < cpu_clk_cycles);
-
-	cpuclk -= cpu_clk_cycles;
+		const int_fast8_t ticks = stepcpu();
+		stepppu(ticks * 3);
+		stepapu(ticks);
+		clk += ticks;
+	} while (clk < cpu_clk_cycles);
 }
 
 
@@ -63,6 +61,9 @@ int unes(const int argc, const char* const* argv)
 			time = gettime();
 		}
 	}
+
+	extern const uint8_t mmu_test_text[0x2000];
+	printf("TEST REPORT: %s\n", &mmu_test_text[4]);
 
 	freerom();
 	return EXIT_SUCCESS;

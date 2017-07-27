@@ -4,8 +4,7 @@
 #include "ppu.h"
 
 
-#define PPU_TICKS_PER_SCANLINE (340)
-
+#define PPU_TICKS_PER_SCANLINE (341)
 
 static uint_fast8_t openbus;
 static uint_fast8_t ctrl;       // $2000
@@ -16,10 +15,9 @@ static uint_fast8_t spr_addr;   // $2003
 static uint_fast16_t vram_addr; // $2006
 static bool vram_addr_phase;
 
-static int_fast32_t cpuclk_last;
-static int_fast32_t ticks_cntdown;
+static int_fast16_t ppuclk;        // 0 - 341
 static int_fast16_t scanline;      // 0 - 262
-static bool nmi_occurred, nmi_output, odd_frame;
+static bool nmi_occurred, nmi_output, odd_frame, nmi_for_frame;
 
 static uint8_t spr_data[0x100];
 static uint8_t vram[0x4000];
@@ -74,38 +72,43 @@ void resetppu(void)
 	vram_addr = 0x0000;
 	vram_addr_phase = false;
 
-	cpuclk_last = 0;
-	ticks_cntdown = 0;
+	ppuclk = 0;
 	scanline = 240;
 	nmi_occurred = false;
 	nmi_output = false;
+	nmi_for_frame = false;
+
 	odd_frame = false;
 }
 
-void stepppu(void)
+void stepppu(const int_fast32_t pputicks)
 {
-	extern const int_fast32_t cpuclk;
-	const int_fast32_t ticks = (cpuclk > cpuclk_last ? cpuclk - cpuclk_last : cpuclk) * 3;
-	cpuclk_last = cpuclk;
-	ticks_cntdown -= ticks;
+	for (int_fast32_t i = 0; i < pputicks; ++i) {
+		if (++ppuclk == PPU_TICKS_PER_SCANLINE) {
+			ppuclk = 0;
+			++scanline;
+			if (scanline == 262) {
+				scanline = 0;
+				if ((mask&0x18) && !odd_frame)
+					++ppuclk;
+				odd_frame = !odd_frame;
+				break;
+			}
+		}
 
-	if (ticks_cntdown < 0) {
-		ticks_cntdown += PPU_TICKS_PER_SCANLINE;
-		switch (scanline++) {
-		case 241:
-			nmi_occurred = true;
-			if (nmi_output)
-				trigger_nmi();
-			break;
-		case 261:
-			nmi_occurred = false;
-			break;
-		case 262:
-			scanline = 0;
-			if ((mask&0x18) && odd_frame)
-				--ticks_cntdown;
-			odd_frame = !odd_frame;
-			break;
+		if (!nmi_for_frame && nmi_occurred && nmi_output) {
+			trigger_nmi();
+			nmi_for_frame = true;
+		}
+
+		if (scanline == 241) {
+			if (ppuclk == 1) {
+				nmi_occurred = true;
+				nmi_for_frame = false;
+			}
+		} else if (scanline == 262) {
+			if (ppuclk == 2)
+				nmi_occurred = false;
 		}
 	}
 }

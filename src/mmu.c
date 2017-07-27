@@ -6,8 +6,9 @@
 #include "ppu.h"
 
 
+uint8_t mmu_test_text[0x2000] = { 0 }; // used for test roms text
+
 static uint8_t ram[0x800]; // zeropage,stack,ram
-static uint8_t gdb[0x2000] = { 0 }; // used for test roms text
 
 
 static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
@@ -62,6 +63,6 @@ void mmuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 	else if (addr < ADDR_EXPROM)
 		iowrite(val, addr);
 	else if (addr < ADDR_PRGROM)
-		gdb[addr - ADDR_SRAM] = val;
+		mmu_test_text[addr - ADDR_SRAM] = val;
 }
 

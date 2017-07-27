@@ -19,7 +19,7 @@
 #define FLAG_N (0x80)
 
 
-static const uint8_t cpuclk_table[0x100] = {
+static const int8_t clock_table[0x100] = {
       /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
 /*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
 /*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
@@ -40,10 +40,11 @@ static const uint8_t cpuclk_table[0x100] = {
 };
 
 
-int_fast32_t cpuclk;
+
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
 static bool irq_pass;
+static int_fast32_t step_cycles;
 static int_fast32_t pc;
 static uint_fast8_t a, x, y, s;
 
@@ -213,9 +214,9 @@ static inline void sbc(const uint_fast8_t val)
 static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t val)
 {
 	// check for page cross in adding value to addr
-	// add 1 to cpuclk if it does cross a page
+	// add 1 to step_cycles if it does cross a page
 	if ((addr&0xFF00) != ((addr + val)&0xFF00))
-		++cpuclk;
+		++step_cycles;
 	return (addr + val)&0xFFFF;
 }
 
@@ -223,7 +224,7 @@ static void branch(const bool cond)
 {
 	if (cond) {
 		const int_fast8_t val = mmuread(pc++);
-		++cpuclk;
+		++step_cycles;
 		pc = chkpagecross(pc, val);
 	} else {
 		++pc;
@@ -236,7 +237,7 @@ static void dointerrupt(const uint_fast16_t vector, const bool brk)
 	spush(getflags()|(brk ? FLAG_B : 0x00));
 	pc = mmuread16(vector);
 	flags.i = 1;
-	cpuclk += 7;
+	step_cycles += 7;
 }
 
 static inline bool check_irq_sources(void)
@@ -249,7 +250,6 @@ static inline bool check_irq_sources(void)
 
 void resetcpu(void)
 {
-	cpuclk = 0;
 	cpu_nmi = false;
 	memset(cpu_irq_sources, 0x00, sizeof(cpu_irq_sources));
 	irq_pass = false;
@@ -264,7 +264,7 @@ void resetcpu(void)
 	flags.i = 1;
 }
 
-void stepcpu(void)
+int_fast8_t stepcpu(void)
 {
 	#define fetch8()     (mmuread(pc++))
 	#define fetch16()    (pc += 2, mmuread16(pc - 2))
@@ -298,6 +298,8 @@ void stepcpu(void)
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
 
+	step_cycles = 0;
+
 	if (cpu_nmi) {
 		dointerrupt(ADDR_NMI_VECTOR, false);
 		cpu_nmi = false;
@@ -307,7 +309,7 @@ void stepcpu(void)
 
 	irq_pass = flags.i == 0;
 	const uint_fast8_t opcode = fetch8();
-	cpuclk += cpuclk_table[opcode];
+	step_cycles += clock_table[opcode];
 
 	switch (opcode) {
 	// ADC
@@ -519,5 +521,7 @@ void stepcpu(void)
 	case 0x98: ld(&a, y);                                   break; // TYA
 	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode); break;
 	}
+
+	return step_cycles;
 }
 

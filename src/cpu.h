@@ -1,5 +1,6 @@
 #ifndef UNES_CPU_H_
 #define UNES_CPU_H_
+#include <stdint.h>
 
 
 #define CPU_FREQ (1789773)
@@ -15,7 +16,7 @@ enum IrqSource {
 
 extern void resetcpu(void);
 extern void request_nmi(void);
-extern void stepcpu(void);
+extern int_fast8_t stepcpu(void);
 
 
 static inline void set_irq_source(const enum IrqSource src, const bool value)
