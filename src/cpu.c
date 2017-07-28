@@ -231,6 +231,15 @@ static void branch(const bool cond)
 	}
 }
 
+static inline bool check_irq_sources(void)
+{
+	for (int i = 0; i < IRQ_SRC_SIZE; ++i) {
+		if (cpu_irq_sources[i])
+			return true;
+	}
+	return false;
+}
+
 static void dointerrupt(const uint_fast16_t vector, const bool brk)
 {
 	spush16(brk ? pc + 1 : pc);
@@ -238,14 +247,6 @@ static void dointerrupt(const uint_fast16_t vector, const bool brk)
 	pc = mmuread16(vector);
 	flags.i = 1;
 	step_cycles += 7;
-}
-
-static inline bool check_irq_sources(void)
-{
-	for (int i = 0; i < IRQ_SRC_SIZE; ++i)
-		if (cpu_irq_sources[i])
-			return true;
-	return false;
 }
 
 void resetcpu(void)

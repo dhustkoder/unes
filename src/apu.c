@@ -6,8 +6,8 @@
 
 
 #define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
-#define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 48000)
-#define SOUND_BUFFER_SIZE      (2048)
+#define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 44100)
+#define SOUND_BUFFER_SIZE      (1024)
 
 
 static int_fast32_t frame_counter_clock;
@@ -15,7 +15,6 @@ static int_fast8_t delayed_frame_timer_reset;
 static uint_fast8_t status;              // $4015
 static uint_fast8_t frame_counter_mode;  // $4017
 static bool irq_inhibit;                 // $4017
-static bool dmc_irq;                     // $4010
 static bool oddtick;
 
 
@@ -28,14 +27,14 @@ static int_fast8_t apu_samples_idx;
 // Pulse channels
 static struct Pulse {
 	int16_t len_cnt;    // 0  - 254
-	int16_t timer_cnt;  // -1 - 2047 11 bits, should count down until < 0, then reload period
+	int16_t timer_cnt;  // 0  - 2048 11 bits, should count down to 0, then reload timer + 1
 	int16_t timer;      // 0  - 2047 11 bits, should never be negative
 	int8_t duty_mode;   // 0  - 3
 	int8_t duty_pos;    // 0  - 7
 	int8_t vol;         // 0  - 15
 	int8_t out;         // 0  - 15
 	int8_t env_vol;     // 0  - 15
-	int8_t env_cnt;     // -1 - 15
+	int8_t env_cnt;     // 0  - 16
 	bool enabled;
 	bool const_vol;
 	bool len_enabled;
@@ -96,10 +95,9 @@ static void tick_timers(void)
 {
 	if (!oddtick) {
 		for (int i = 0; i < 2; ++i) {
-			struct Pulse* const p = &pulse[i];
-			if (--p->timer_cnt < 0) {
-				p->timer_cnt = p->timer;
-				p->duty_pos = (p->duty_pos + 1)&0x07;
+			if (--pulse[i].timer_cnt <= 0) {
+				pulse[i].timer_cnt = pulse[i].timer + 1;
+				pulse[i].duty_pos = (pulse[i].duty_pos + 1)&0x07;
 			}
 		}
 	}
@@ -108,17 +106,16 @@ static void tick_timers(void)
 static void tick_envelopes(void)
 {
 	for (int i = 0; i < 2; ++i) {
-		struct Pulse* const p = &pulse[i];
-		if (p->env_start) {
-			p->env_start = false;
-			p->env_vol = 15;
-			p->env_cnt = p->vol;
-		} else if (--p->env_cnt < 0) {
-			p->env_cnt = p->vol;
-			if (p->env_vol > 0)
-				--p->env_vol;
-			else if (!p->len_enabled)
-				p->env_vol = 15;
+		if (pulse[i].env_start) {
+			pulse[i].env_start = false;
+			pulse[i].env_vol = 15;
+			pulse[i].env_cnt = pulse[i].vol;
+		} else if (--pulse[i].env_cnt <= 0) {
+			pulse[i].env_cnt = pulse[i].vol + 1;
+			if (pulse[i].env_vol > 0)
+				--pulse[i].env_vol;
+			else if (!pulse[i].len_enabled)
+				pulse[i].env_vol = 15;
 		}
 	}
 }
@@ -126,9 +123,8 @@ static void tick_envelopes(void)
 static void tick_lengths(void)
 {
 	for (int i = 0; i < 2; ++i) {
-		struct Pulse* const p = &pulse[i];
-		if (p->len_enabled && p->len_cnt > 0)
-			--p->len_cnt;
+		if (pulse[i].len_enabled && pulse[i].len_cnt > 0)
+			--pulse[i].len_cnt;
 	}
 }
 
@@ -200,7 +196,7 @@ static void write_frame_counter(const uint_fast8_t val)
 	frame_counter_mode = val>>7;
 	irq_inhibit = (val&0x40) != 0;
 	
-	if (irq_inhibit)	
+	if (irq_inhibit)
 		set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
 
 	// side effects
@@ -275,7 +271,6 @@ void resetapu(void)
 	frame_counter_mode = 0;
 	status = 0;
 	irq_inhibit = false;
-	dmc_irq = false;
 	oddtick = false;
 
 	// sound buffer, apu sample buffer
@@ -301,18 +296,18 @@ void stepapu(const int_fast32_t aputicks)
 static void write_apu_status(const uint_fast8_t val)
 {
 	for (int i = 0; i < 2; ++i) {
-		struct Pulse* const p = &pulse[i];
-		p->enabled = (val&(1<<i)) != 0;
-		if (!p->enabled)
-			p->len_cnt = 0;
+		pulse[i].enabled = (val&(1<<i)) != 0;
+		if (!pulse[i].enabled)
+			pulse[i].len_cnt = 0;
 	}
-	dmc_irq = false;
+	set_irq_source(IRQ_SRC_APU_DMC_TIMER, false);
 }
 
 
 static uint_fast8_t read_apu_status(void)
 {
 	const bool frame_irq = get_irq_source(IRQ_SRC_APU_FRAME_COUNTER);
+	const bool dmc_irq = get_irq_source(IRQ_SRC_APU_DMC_TIMER);
 
 	const uint_fast8_t ret =
 		(dmc_irq<<7)                |
