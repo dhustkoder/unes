@@ -18,7 +18,10 @@ static bool vram_addr_phase;
 
 static int_fast16_t ppuclk;        // 0 - 341
 static int_fast16_t scanline;      // 0 - 262
-static bool nmi_occurred, nmi_output, odd_frame, nmi_for_frame;
+static bool nmi_occurred;
+static bool nmi_output;
+static bool odd_frame;
+static bool nmi_for_frame;
 
 static uint8_t spr_data[0x100];
 static uint8_t vram[0x4000];

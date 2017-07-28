@@ -9,6 +9,7 @@
 #define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 48000)
 #define SOUND_BUFFER_SIZE      (2048)
 
+
 static int_fast32_t frame_counter_clock;
 static int_fast8_t delayed_frame_timer_reset;
 static uint_fast8_t status;              // $4015
@@ -17,22 +18,24 @@ static bool irq_inhibit;                 // $4017
 static bool dmc_irq;                     // $4010
 static bool oddtick;
 
+
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
 static int_fast16_t sound_buffer_idx;
 static double apu_samples[APU_SAMPLE_BUFFER_SIZE];
 static int_fast8_t apu_samples_idx;
 
+
 // Pulse channels
 static struct Pulse {
-	int_fast32_t period_cnt;
-	int_fast32_t len_cnt;
-	int_fast16_t env_cnt;
-	int_fast16_t env_vol;
-	uint_fast16_t period;
-	int_fast8_t duty_pos;
-	uint_fast8_t duty_mode;
-	uint_fast8_t vol;
-	uint_fast8_t out;
+	int16_t len_cnt;    // 0 - 254
+	int16_t period_cnt; // 11 bits, should count down until < 0, then reload period
+	int16_t period;     // 11 bits, should never be negative
+	int8_t duty_mode;   // 0 - 3
+	int8_t duty_pos;    // 0 - 7
+	int8_t vol;         // 0 - 15
+	int8_t out;         // 0 - 15
+	int8_t env_vol;     // 0 - 15
+	int8_t env_cnt;     // 0 - 15
 	bool enabled;
 	bool const_vol;
 	bool len_enabled;
@@ -64,7 +67,7 @@ static void write_pulse_reg1(const uint_fast8_t val, struct Pulse* const p)
 
 static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
 {
-	p->period = (p->period&0xFF00)|val;
+	p->period = (p->period&0x0700)|val;
 }
 
 static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
@@ -111,7 +114,7 @@ static void tick_envelopes(void)
 			p->env_start = false;
 			p->env_vol = 0x0F;
 			p->env_cnt = p->vol;
-		} else if (p->env_cnt-- == 0) {
+		} else if (p->env_cnt > 0 && p->env_cnt-- == 0) {
 			p->env_cnt = p->vol;
 			if (p->env_vol > 0)
 				--p->env_vol;
@@ -221,8 +224,8 @@ static void update_channels_outputs(void)
 
 	for (int i = 0; i < 2; ++i) {
 		struct Pulse* const p = &pulse[i];
-		if (!p->enabled || p->len_cnt == 0 || p->period < 8 || 
-				!duty_tbl[p->duty_mode][p->duty_pos])
+		if (!p->enabled || p->len_cnt <= 0 || 
+		    p->period < 8 || !duty_tbl[p->duty_mode][p->duty_pos])
 			p->out = 0;
 		else
 			p->out = p->const_vol ? p->vol : p->env_vol;
