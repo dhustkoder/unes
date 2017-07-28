@@ -22,13 +22,16 @@ static void sighandler(const int signum)
 
 static void runfor(const int_fast32_t cpu_clk_cycles)
 {
-	int_fast32_t clk = 0;
+	static int_fast32_t clk = 0;
+
 	do {
 		const int_fast8_t ticks = stepcpu();
 		stepppu(ticks * 3);
 		stepapu(ticks);
 		clk += ticks;
 	} while (clk < cpu_clk_cycles);
+
+	clk -= cpu_clk_cycles;
 }
 
 

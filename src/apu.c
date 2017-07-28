@@ -26,15 +26,15 @@ static int_fast8_t apu_samples_idx;
 
 // Pulse channels
 static struct Pulse {
-	int16_t len_cnt;    // 0  - 254
-	int16_t timer_cnt;  // 0  - 2048 11 bits, should count down to 0, then reload timer + 1
-	int16_t timer;      // 0  - 2047 11 bits, should never be negative
-	int8_t duty_mode;   // 0  - 3
-	int8_t duty_pos;    // 0  - 7
-	int8_t vol;         // 0  - 15
-	int8_t out;         // 0  - 15
-	int8_t env_vol;     // 0  - 15
-	int8_t env_cnt;     // 0  - 16
+	int16_t len_cnt;    // -1 - 254
+	int16_t timer;      //  0 - 2047  11 bits, should never be negative
+	int16_t timer_cnt;  // -1 - 2047  11 bits, should count down to -1, then reload timer
+	int8_t duty_mode;   //  0 - 3
+	int8_t duty_pos;    //  0 - 7
+	int8_t vol;         //  0 - 15
+	int8_t out;         //  0 - 15
+	int8_t env_vol;     //  0 - 15
+	int8_t env_cnt;     // -1 - 15
 	bool enabled;
 	bool const_vol;
 	bool len_enabled;
@@ -82,6 +82,7 @@ static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 	if (p->enabled)
 		p->len_cnt = length_tbl[val>>3];
 	p->duty_pos = 0;
+	p->env_start = true;
 }
 
 
@@ -95,8 +96,8 @@ static void tick_timers(void)
 {
 	if (!oddtick) {
 		for (int i = 0; i < 2; ++i) {
-			if (--pulse[i].timer_cnt <= 0) {
-				pulse[i].timer_cnt = pulse[i].timer + 1;
+			if (--pulse[i].timer_cnt < 0) {
+				pulse[i].timer_cnt = pulse[i].timer;
 				pulse[i].duty_pos = (pulse[i].duty_pos + 1)&0x07;
 			}
 		}
@@ -110,8 +111,8 @@ static void tick_envelopes(void)
 			pulse[i].env_start = false;
 			pulse[i].env_vol = 15;
 			pulse[i].env_cnt = pulse[i].vol;
-		} else if (--pulse[i].env_cnt <= 0) {
-			pulse[i].env_cnt = pulse[i].vol + 1;
+		} else if (--pulse[i].env_cnt < 0) {
+			pulse[i].env_cnt = pulse[i].vol;
 			if (pulse[i].env_vol > 0)
 				--pulse[i].env_vol;
 			else if (!pulse[i].len_enabled)
@@ -208,7 +209,7 @@ static void write_frame_counter(const uint_fast8_t val)
 	}
 }
 
-static void update_channels_outputs(void)
+static void update_channels_output(void)
 {
 	static const uint8_t duty_tbl[4][8] = {
 		{ 0, 1, 0, 0, 0, 0, 0, 0 },
@@ -242,7 +243,7 @@ static void mixaudio(void)
 		0.24474377745241579, 0.2511860718171926,  0.25751258087706685
 	};
 
-	update_channels_outputs();
+	update_channels_output();
 	const double pulse_sample = pulse_mix_tbl[pulse[0].out + pulse[1].out];
 	apu_samples[apu_samples_idx++] = pulse_sample;
 
@@ -272,6 +273,8 @@ void resetapu(void)
 	status = 0;
 	irq_inhibit = false;
 	oddtick = false;
+	set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
+	set_irq_source(IRQ_SRC_APU_DMC_TIMER, false);
 
 	// sound buffer, apu sample buffer
 	sound_buffer_idx = 0;

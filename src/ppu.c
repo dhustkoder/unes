@@ -3,21 +3,17 @@
 #include "cpu.h"
 #include "ppu.h"
 
-
-#define PPU_TICKS_PER_SCANLINE (341)
-
-
 static uint_fast8_t openbus;
-static uint_fast8_t ctrl;       // $2000
-static uint_fast8_t mask;       // $2001
-static uint_fast8_t status;     // $2002
-static uint_fast8_t scroll;     // $2005
-static uint_fast8_t spr_addr;   // $2003 
-static uint_fast16_t vram_addr; // $2006
+static uint_fast8_t ctrl;           // $2000
+static uint_fast8_t mask;           // $2001
+static uint_fast8_t status;         // $2002
+static uint_fast8_t scroll;         // $2005
+static uint_fast8_t spr_addr;       // $2003 
+static uint_fast16_t vram_addr;     // $2006
 static bool vram_addr_phase;
 
-static int_fast16_t ppuclk;        // 0 - 341
-static int_fast16_t scanline;      // 0 - 262
+static int_fast16_t ppuclk;         // 0 - 341
+static int_fast16_t scanline;       // 0 - 262
 static bool nmi_occurred;
 static bool nmi_output;
 static bool odd_frame;
@@ -81,22 +77,19 @@ void resetppu(void)
 	nmi_occurred = false;
 	nmi_output = false;
 	nmi_for_frame = false;
-
 	odd_frame = false;
 }
 
 void stepppu(const int_fast32_t pputicks)
 {
 	for (int_fast32_t i = 0; i < pputicks; ++i) {
-		if (++ppuclk == PPU_TICKS_PER_SCANLINE) {
+		if (++ppuclk == 341) {
 			ppuclk = 0;
-			++scanline;
-			if (scanline == 262) {
+			if (++scanline == 262) {
 				scanline = 0;
-				if ((mask&0x18) && !odd_frame)
+				if ((mask&0x18) == 0 && odd_frame)
 					++ppuclk;
 				odd_frame = !odd_frame;
-				break;
 			}
 		}
 
@@ -110,7 +103,7 @@ void stepppu(const int_fast32_t pputicks)
 				nmi_occurred = true;
 				nmi_for_frame = false;
 			}
-		} else if (scanline == 262) {
+		} else if (scanline == 261) {
 			if (ppuclk == 2)
 				nmi_occurred = false;
 		}
