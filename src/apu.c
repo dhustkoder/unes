@@ -28,8 +28,8 @@ static int_fast8_t apu_samples_idx;
 // Pulse channels
 static struct Pulse {
 	int16_t len_cnt;    // 0 - 254
-	int16_t period_cnt; // 11 bits, should count down until < 0, then reload period
-	int16_t period;     // 11 bits, should never be negative
+	int16_t timer_cnt;  // 11 bits, should count down until < 0, then reload period
+	int16_t timer;      // 11 bits, should never be negative
 	int8_t duty_mode;   // 0 - 3
 	int8_t duty_pos;    // 0 - 7
 	int8_t vol;         // 0 - 15
@@ -67,7 +67,7 @@ static void write_pulse_reg1(const uint_fast8_t val, struct Pulse* const p)
 
 static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
 {
-	p->period = (p->period&0x0700)|val;
+	p->timer = (p->timer&0x0700)|val;
 }
 
 static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
@@ -79,7 +79,7 @@ static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 		192, 24, 72, 26, 16, 28, 32, 30,
 	};
 
-	p->period = (p->period&0x00FF)|((val&0x07)<<8);
+	p->timer = (p->timer&0x00FF)|((val&0x07)<<8);
 	if (p->enabled)
 		p->len_cnt = length_tbl[val>>3];
 	p->duty_pos = 0;
@@ -98,8 +98,8 @@ static void tick_timers(void)
 	if (!oddtick) {
 		for (int i = 0; i < 2; ++i) {
 			struct Pulse* const p = &pulse[i];
-			if (--p->period_cnt < 0) {
-				p->period_cnt = p->period;
+			if (p->timer_cnt-- < 0) {
+				p->timer_cnt = p->timer;
 				p->duty_pos = (p->duty_pos + 1)&0x07;
 			}
 		}
@@ -114,7 +114,7 @@ static void tick_envelopes(void)
 			p->env_start = false;
 			p->env_vol = 0x0F;
 			p->env_cnt = p->vol;
-		} else if (p->env_cnt > 0 && p->env_cnt-- == 0) {
+		} else if (p->env_cnt-- < 0) {
 			p->env_cnt = p->vol;
 			if (p->env_vol > 0)
 				--p->env_vol;
@@ -225,7 +225,7 @@ static void update_channels_outputs(void)
 	for (int i = 0; i < 2; ++i) {
 		struct Pulse* const p = &pulse[i];
 		if (!p->enabled || p->len_cnt <= 0 || 
-		    p->period < 8 || !duty_tbl[p->duty_mode][p->duty_pos])
+		    p->timer < 8 || !duty_tbl[p->duty_mode][p->duty_pos])
 			p->out = 0;
 		else
 			p->out = p->const_vol ? p->vol : p->env_vol;
@@ -248,7 +248,7 @@ static void mixaudio(void)
 	};
 
 	update_channels_outputs();
-	const double pulse_sample = pulse_mix_tbl[pulse[0].out + pulse[1].out];
+	const double pulse_sample = pulse_mix_tbl[/*pulse[0].out +*/ pulse[1].out];
 	apu_samples[apu_samples_idx++] = pulse_sample;
 
 	if (apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
