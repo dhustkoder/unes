@@ -53,16 +53,13 @@ int unes(const int argc, const char* const* argv)
 	resetapu();
 	resetppu();
 	
-	uint_fast32_t time = gettime();
-	int_fast8_t fps = 0;
 	while (!signal_term) {
-		runfor(CPU_FREQ / 60); // run for 1 frame
+		const int_fast32_t time = gettime();
+		runfor(CPU_FREQ / 60);
 		//renderppu();
-		if (++fps > 60) {
-			delay(1000 - (gettime() - time));
-			fps = 0;
-			time = gettime();
-		}
+		const int_fast32_t frametime = (gettime() - time);
+		if (frametime < (1000 / 60))
+			delay((1000 / 60) - frametime);
 	}
 
 	extern const uint8_t mmu_test_text[0x2000];

@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_audio.h>
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_audio.h"
 #include "audio.h"
 
 
@@ -32,6 +32,9 @@ void termaudio(void)
 
 void playbuffer(const uint8_t* const buffer, const uint_fast32_t len)
 {
+	while (SDL_GetQueuedAudioSize(audio_device) > len)
+		SDL_Delay(1);
+
 	if (SDL_QueueAudio(audio_device, buffer, len) != 0)
 		fprintf(stderr, "Failed to Queue audio: %s", SDL_GetError());
 }
