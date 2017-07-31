@@ -27,21 +27,42 @@ static int_fast8_t apu_samples_idx;
 
 // Pulse channels
 static struct Pulse {
-	int16_t len_cnt;    // -1 - 254
-	int16_t timer;      //  0 - 2047  11 bits, should never be negative
-	int16_t timer_cnt;  // -1 - 2047  11 bits, should count down to -1, then reload timer
-	int8_t duty_mode;   //  0 - 3
-	int8_t duty_pos;    //  0 - 7
-	int8_t vol;         //  0 - 15
-	int8_t out;         //  0 - 15
-	int8_t env_vol;     //  0 - 15
-	int8_t env_cnt;     // -1 - 15
+	int16_t len_cnt;             // -1 - 254
+	int16_t timer;               //  0 - 2047  11 bits, should never be negative
+	int16_t timer_cnt;           // -1 - 2047  11 bits, should count down to -1, then reload timer
+	int16_t sweep_target;       
+	int8_t duty_mode;            //  0 - 3
+	int8_t duty_pos;             //  0 - 7
+	int8_t vol;                  //  0 - 15
+	int8_t out;                  //  0 - 15
+	int8_t env_vol;              //  0 - 15
+	int8_t env_cnt;              // -1 - 15
+	int8_t sweep_period;         //  0 - 7
+	int8_t sweep_period_cnt;     // -1 - 7
+	uint8_t sweep_shift;         //  0 - 7
+	bool sweep_negate;
+	bool sweep_enabled;
+	bool sweep_reload;
 	bool enabled;
 	bool const_vol;
 	bool len_enabled;
 	bool env_start;
 } pulse[2];
 
+
+static void eval_sweep_target(struct Pulse* const p)
+{
+	const int16_t offset = p->timer >> p->sweep_shift;
+	if (p->sweep_negate) {
+		if (p == &pulse[0])
+			p->sweep_target = p->timer - (offset + 1);
+		else
+			p->sweep_target = p->timer - offset;
+		p->sweep_target &= 0x7FF;
+	} else {
+		p->sweep_target = p->timer + offset;
+	}
+}
 
 static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
 {
@@ -54,20 +75,17 @@ static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
 
 static void write_pulse_reg1(const uint_fast8_t val, struct Pulse* const p)
 {
-	((void)val);
-	((void)p);
-	/*
-	p->sweep_enabled = (val&0x80) != 0;
 	p->sweep_period = (val>>4)&0x07;
 	p->sweep_negate = (val&0x08) != 0;
 	p->sweep_shift = val&0x07;
+	p->sweep_enabled = (val&0x80) != 0 && p->sweep_shift > 0;
 	p->sweep_reload = true;
-	*/
 }
 
 static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
 {
 	p->timer = (p->timer&0x0700)|val;
+	eval_sweep_target(p);
 }
 
 static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
@@ -84,6 +102,7 @@ static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 		p->len_cnt = length_tbl[val>>3];
 	p->duty_pos = 0;
 	p->env_start = true;
+	eval_sweep_target(p);
 }
 
 
@@ -92,10 +111,9 @@ static void write_dmc_reg0(const uint_fast8_t val)
 	set_irq_source(IRQ_SRC_APU_DMC_TIMER, (val&0x80) != 0);
 }
 
-
-static void tick_timers(void)
+static void tick_timer(void)
 {
-	if (!oddtick) {
+	if (oddtick) {
 		for (int i = 0; i < 2; ++i) {
 			if (--pulse[i].timer_cnt < 0) {
 				pulse[i].timer_cnt = pulse[i].timer;
@@ -105,7 +123,7 @@ static void tick_timers(void)
 	}
 }
 
-static void tick_envelopes(void)
+static void tick_envelope(void)
 {
 	for (int i = 0; i < 2; ++i) {
 		if (pulse[i].env_start) {
@@ -122,11 +140,30 @@ static void tick_envelopes(void)
 	}
 }
 
-static void tick_lengths(void)
+static void tick_length(void)
 {
 	for (int i = 0; i < 2; ++i) {
 		if (pulse[i].len_enabled && pulse[i].len_cnt > 0)
 			--pulse[i].len_cnt;
+	}
+}
+
+static void tick_sweep(void)
+{
+	for (int i = 0; i < 2; ++i) {
+		if (--pulse[i].sweep_period_cnt <= 0) {
+			pulse[i].sweep_period_cnt = pulse[i].sweep_period;
+			if (pulse[i].sweep_enabled && pulse[i].timer >= 8) {
+				eval_sweep_target(&pulse[i]);
+				if (pulse[i].sweep_negate || (pulse[i].sweep_target&0xF800) == 0)
+					pulse[i].timer = pulse[i].sweep_target;
+			}
+		}
+
+		if (pulse[i].sweep_reload) {
+			pulse[i].sweep_reload = false;
+			pulse[i].sweep_period_cnt = pulse[i].sweep_period;
+		}
 	}
 }
 
@@ -152,12 +189,13 @@ static void tick_frame_counter(void)
 
 		switch (frame_counter_clock) {
 		case T1 + 1: case T3 + 1:
-			tick_envelopes();
+			tick_envelope();
 			break;
 
 		case T2 + 1:
-			tick_lengths();
-			tick_envelopes();
+			tick_length();
+			tick_sweep();
+			tick_envelope();
 			break;
 
 		case T4:
@@ -166,8 +204,9 @@ static void tick_frame_counter(void)
 
 		case T4 + 1:
 			set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, !irq_inhibit);
-			tick_lengths();
-			tick_envelopes();
+			tick_length();
+			tick_sweep();
+			tick_envelope();
 			break;
 		}
 		break;
@@ -181,12 +220,13 @@ static void tick_frame_counter(void)
 
 		switch (frame_counter_clock) {
 		case T2 + 1: case T5 + 1:
-			tick_lengths();
-			tick_envelopes();
+			tick_length();
+			tick_sweep();
+			tick_envelope();
 			break;
 
 		case T1 + 1: case T3 + 1:
-			tick_envelopes();
+			tick_envelope();
 			break;
 		}
 		break;
@@ -205,8 +245,9 @@ static void write_frame_counter(const uint_fast8_t val)
 	delayed_frame_timer_reset = oddtick ? 4 : 3;
 
 	if (frame_counter_mode == 1) {
-		tick_lengths();
-		tick_envelopes();
+		tick_length();
+		tick_sweep();
+		tick_envelope();
 	}
 }
 
@@ -219,9 +260,11 @@ static void update_channels_output(void)
 		{ 1, 0, 0, 1, 1, 1, 1, 1 }
 	};
 
+
 	for (int i = 0; i < 2; ++i) {
 		struct Pulse* const p = &pulse[i];
 		if (!p->enabled || p->len_cnt == 0 || p->timer < 8 ||
+		    (!p->sweep_negate && (p->sweep_target&0xF800) != 0) ||
 		    duty_tbl[p->duty_mode][p->duty_pos] == 0)
 			p->out = 0;
 		else
@@ -232,7 +275,6 @@ static void update_channels_output(void)
 static void mixaudio(void)
 {
 	update_channels_output();
-
 	apu_samples[apu_samples_idx] = 0;
 	mixsample(&apu_samples[apu_samples_idx], pulse[0].out * 2, AUDIO_MAX_VOLUME);
 	mixsample(&apu_samples[apu_samples_idx], pulse[1].out * 2, AUDIO_MAX_VOLUME);
@@ -275,7 +317,7 @@ void stepapu(const int_fast32_t aputicks)
 {
 	for (int_fast32_t i = 0; i < aputicks; ++i) {
 		tick_frame_counter();
-		tick_timers();
+		tick_timer();
 		mixaudio();
 		oddtick = !oddtick;
 	}
