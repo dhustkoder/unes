@@ -25,7 +25,7 @@ PLATFORM_SRC=$(PLATFORM_DIR)/%.c
 OBJS=$(patsubst $(SRC_DIR)/%.c, $(OBJS_DIR)/%.o, $(wildcard $(SRC_DIR)/*.c))
 ASM=$(patsubst $(SRC_DIR)/%.c, $(ASM_DIR)/%.asm, $(wildcard $(SRC_DIR)/*.c))
 PLATFORM_OBJS=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_OBJS_DIR)/%.o, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
-PLATFORM_ASM=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_ASM_DIR)/%.asm, $(wildcard $(PLATFORM_SRC_DIR)/*.c)))
+PLATFORM_ASM=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_ASM_DIR)/%.asm, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 
 
 ifeq ($(PLATFORM),SDL2)
@@ -48,7 +48,7 @@ endif
 
 
 all: $(BUILD_DIR)/unes
-asm: $(ASM)
+asm: $(ASM) ${PLATFORM_ASM}
 
 
 $(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)

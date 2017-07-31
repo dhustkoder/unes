@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include "audio.h"
 #include "cpu.h"
 #include "apu.h"
@@ -20,7 +21,7 @@ static bool oddtick;
 
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
 static int_fast16_t sound_buffer_idx;
-static double apu_samples[APU_SAMPLE_BUFFER_SIZE];
+static int16_t apu_samples[APU_SAMPLE_BUFFER_SIZE];
 static int_fast8_t apu_samples_idx;
 
 
@@ -230,38 +231,25 @@ static void update_channels_output(void)
 
 static void mixaudio(void)
 {
-	static const double pulse_mix_tbl[31] = {
-		0, 0.011609139523578026, 0.022939481268011527, 0.034000949216896059, 
-		0.044803001876172609, 0.055354659248956883, 0.065664527956003665,
-		0.075740824648844587, 0.085591397849462361, 0.095223748338502431, 
-		0.10464504820333041, 0.11386215864759427, 0.12288164665523155,
-		0.13170980059397538, 0.14035264483627205, 0.14881595346904861,
-		0.15710526315789472, 0.16522588522588522, 0.17318291700241739,
-		0.18098125249301955, 0.18862559241706162, 0.19612045365662886,
-		0.20347017815646784, 0.21067894131185272, 0.21775075987841944, 
-		0.22468949943545349, 0.23149888143176731, 0.23818248984115256,
-		0.24474377745241579, 0.2511860718171926,  0.25751258087706685
-	};
-
 	update_channels_output();
-	const double pulse_sample = pulse_mix_tbl[pulse[0].out + pulse[1].out];
-	apu_samples[apu_samples_idx++] = pulse_sample;
 
-	if (apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
-		double avg = 0;
+	apu_samples[apu_samples_idx] = 0;
+	mixsample(&apu_samples[apu_samples_idx], pulse[0].out, (AUDIO_MAX_VOLUME * pulse[0].out)/15);
+	mixsample(&apu_samples[apu_samples_idx], pulse[1].out, (AUDIO_MAX_VOLUME * pulse[1].out)/15);
+
+	if (++apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
+		apu_samples_idx = 0;
+
+		int16_t sum = 0;
 		for (int i = 0; i < APU_SAMPLE_BUFFER_SIZE; ++i)
-			avg += apu_samples[i];
-		avg /= APU_SAMPLE_BUFFER_SIZE;
+			sum += apu_samples[i];
 
-		const int_fast16_t sample = avg * INT16_MAX;
-		sound_buffer[sound_buffer_idx++] = sample;
-
-		if (sound_buffer_idx >= SOUND_BUFFER_SIZE) {
-			playbuffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
+		sound_buffer[sound_buffer_idx] = 0;
+		mixsample(&sound_buffer[sound_buffer_idx], sum, AUDIO_MAX_VOLUME);
+		if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
+			queue_sound_buffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
 			sound_buffer_idx = 0;
 		}
-
-		apu_samples_idx = 0;
 	}
 }
 
