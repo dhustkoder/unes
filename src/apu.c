@@ -8,7 +8,7 @@
 
 #define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
 #define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 44100)
-#define SOUND_BUFFER_SIZE      (1024)
+#define SOUND_BUFFER_SIZE      (2048)
 
 
 static int_fast32_t frame_counter_clock;
@@ -234,21 +234,18 @@ static void mixaudio(void)
 	update_channels_output();
 
 	apu_samples[apu_samples_idx] = 0;
-	mixsample(&apu_samples[apu_samples_idx], pulse[0].out, (AUDIO_MAX_VOLUME * pulse[0].out)/15);
-	mixsample(&apu_samples[apu_samples_idx], pulse[1].out, (AUDIO_MAX_VOLUME * pulse[1].out)/15);
+	mixsample(&apu_samples[apu_samples_idx], pulse[0].out * 2, AUDIO_MAX_VOLUME);
+	mixsample(&apu_samples[apu_samples_idx], pulse[1].out * 2, AUDIO_MAX_VOLUME);
 
 	if (++apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
 		apu_samples_idx = 0;
-
-		int16_t sum = 0;
-		for (int i = 0; i < APU_SAMPLE_BUFFER_SIZE; ++i)
-			sum += apu_samples[i];
-
 		sound_buffer[sound_buffer_idx] = 0;
-		mixsample(&sound_buffer[sound_buffer_idx], sum, AUDIO_MAX_VOLUME);
+		for (int i = 0; i < APU_SAMPLE_BUFFER_SIZE; ++i)
+			mixsample(&sound_buffer[sound_buffer_idx], apu_samples[i], AUDIO_MAX_VOLUME);
+
 		if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
-			queue_sound_buffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
 			sound_buffer_idx = 0;
+			queue_sound_buffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
 		}
 	}
 }
