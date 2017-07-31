@@ -33,12 +33,12 @@ static struct Pulse {
 	int16_t sweep_target;       
 	int8_t duty_mode;            //  0 - 3
 	int8_t duty_pos;             //  0 - 7
-	int8_t vol;                  //  0 - 15
-	int8_t out;                  //  0 - 15
+	uint8_t vol;                 //  0 - 15
+	uint8_t out;                 //  0 - 15
 	int8_t env_vol;              //  0 - 15
-	int8_t env_cnt;              // -1 - 15
-	int8_t sweep_period;         //  0 - 7
-	int8_t sweep_period_cnt;     // -1 - 7
+	int8_t env_cnt;              //  0 - 15
+	uint8_t sweep_period;        //  0 - 7
+	int8_t sweep_period_cnt;     //  0 - 7
 	uint8_t sweep_shift;         //  0 - 7
 	bool sweep_negate;
 	bool sweep_enabled;
@@ -113,7 +113,7 @@ static void write_dmc_reg0(const uint_fast8_t val)
 
 static void tick_timer(void)
 {
-	if (oddtick) {
+	if (!oddtick) {
 		for (int i = 0; i < 2; ++i) {
 			if (--pulse[i].timer_cnt < 0) {
 				pulse[i].timer_cnt = pulse[i].timer;
@@ -130,7 +130,7 @@ static void tick_envelope(void)
 			pulse[i].env_start = false;
 			pulse[i].env_vol = 15;
 			pulse[i].env_cnt = pulse[i].vol;
-		} else if (--pulse[i].env_cnt < 0) {
+		} else if (--pulse[i].env_cnt <= 0) {
 			pulse[i].env_cnt = pulse[i].vol;
 			if (pulse[i].env_vol > 0)
 				--pulse[i].env_vol;
@@ -263,7 +263,7 @@ static void update_channels_output(void)
 
 	for (int i = 0; i < 2; ++i) {
 		struct Pulse* const p = &pulse[i];
-		if (!p->enabled || p->len_cnt == 0 || p->timer < 8 ||
+		if (!p->enabled || p->len_cnt == 0 || p->timer < 8 || (p->timer&0xF800) ||
 		    (!p->sweep_negate && (p->sweep_target&0xF800) != 0) ||
 		    duty_tbl[p->duty_mode][p->duty_pos] == 0)
 			p->out = 0;
@@ -276,8 +276,8 @@ static void mixaudio(void)
 {
 	update_channels_output();
 	apu_samples[apu_samples_idx] = 0;
-	mixsample(&apu_samples[apu_samples_idx], pulse[0].out * 2, AUDIO_MAX_VOLUME);
-	mixsample(&apu_samples[apu_samples_idx], pulse[1].out * 2, AUDIO_MAX_VOLUME);
+	mixsample(&apu_samples[apu_samples_idx], pulse[0].out * 8, AUDIO_MAX_VOLUME);
+	mixsample(&apu_samples[apu_samples_idx], pulse[1].out * 8, AUDIO_MAX_VOLUME);
 
 	if (++apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
 		apu_samples_idx = 0;
@@ -306,8 +306,6 @@ void resetapu(void)
 	// sound buffer, apu sample buffer
 	sound_buffer_idx = 0;
 	apu_samples_idx = 0;
-	memset(sound_buffer, 0x00, sizeof(sound_buffer));
-	memset(apu_samples, 0x00, sizeof(apu_samples));
 
 	// Pulse
 	memset(pulse, 0x00, sizeof(pulse));
