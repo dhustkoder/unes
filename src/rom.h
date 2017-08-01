@@ -13,6 +13,7 @@
 extern bool loadrom(const char* path);
 extern void freerom(void);
 
-extern uint_fast8_t romread(int_fast32_t addr);
+extern uint_fast8_t romread(uint_fast16_t addr);
+extern void romwrite(uint_fast8_t value, uint_fast16_t addr);
 
 #endif

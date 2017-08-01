@@ -17,7 +17,7 @@ static const uint8_t* cartdata;  // prgrom,chrdata,cart_ram
 
 
 // support only NROM for now
-static struct ines {
+static struct {
 	char match[4];
 	uint8_t prgrom_nbanks; // number of 16 kib prg-rom banks.
 	uint8_t chrrom_nbanks;   // nuber of 8 kib vrom banks
@@ -27,6 +27,13 @@ static struct ines {
 	// uint8_t reserved[7];
 	// uint8_t trainer[];  // not supported yet
 } ines;
+
+
+static union {
+	struct {
+		uint_fast8_t reg[4];
+	} mmc1;
+} mapper;
 
 
 bool loadrom(const char* const path)
@@ -52,7 +59,7 @@ bool loadrom(const char* const path)
 
 	romtype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 
-	if (romtype != 0) {
+	if (romtype > 1) {
 		fprintf(stderr, "\'%s\': mapper %d not supported.\n", rompath, romtype);
 		goto Lfclose;
 	} else if ((ines.ctrl1&0x04) != 0) {
@@ -111,10 +118,51 @@ void freerom(void)
 }
 
 
-uint_fast8_t romread(const int_fast32_t addr)
+
+// NROM
+static uint_fast8_t nrom_read(const uint_fast16_t addr)
 {
 	if (addr >= ADDR_PRGROM_UPPER && ines.prgrom_nbanks == 1)
 		return cartdata[addr - ADDR_PRGROM_UPPER];
 	return cartdata[addr - ADDR_PRGROM];
+}
+
+static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	printf("NROM WRITE: %x to %lx\n", value, addr);
+}
+
+
+// MMC1
+static uint_fast8_t mmc1_read(const uint_fast16_t addr)
+{
+	((void)mapper.mmc1);
+	return nrom_read(addr);
+}
+
+static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	((void)mapper.mmc1);
+	printf("MMC1 WRITE: %x to %lx\n", value, addr);
+}
+
+
+
+
+uint_fast8_t romread(const uint_fast16_t addr)
+{
+	switch (romtype) {
+	case 0x00: return nrom_read(addr);
+	case 0x01: return mmc1_read(addr);
+	}
+	return 0;
+}
+
+void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	switch (romtype) {
+	case 0x00: nrom_write(value, addr); break;
+	case 0x01: mmc1_write(value, addr); break;
+	}
 }
 
