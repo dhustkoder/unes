@@ -13,25 +13,27 @@ static int_fast32_t chr_size;
 static int_fast32_t cart_ram_size;
 static uint_fast8_t romtype;
 static const char* rompath;
-static const uint8_t* cartdata;  // prgrom,chrdata,cart_ram
+static const uint8_t* cartdata;  // prgrom,chrdata,cart ram
 
 
 // support only NROM for now
 static struct {
 	char match[4];
-	uint8_t prgrom_nbanks; // number of 16 kib prg-rom banks.
-	uint8_t chrrom_nbanks;   // nuber of 8 kib vrom banks
+	uint8_t prgrom_nbanks;  // number of 16 kib prg-rom banks.
+	uint8_t chrrom_nbanks;  // nuber of 8 kib vrom banks
 	uint8_t ctrl1;
 	uint8_t ctrl2;
-	uint8_t ram_nbanks;    // number of 8 kib ram banks
+	uint8_t ram_nbanks;     // number of 8 kib ram banks
 	// uint8_t reserved[7];
-	// uint8_t trainer[];  // not supported yet
+	// uint8_t trainer[];   // not supported yet
 } ines;
 
 
 static union {
 	struct {
 		uint_fast8_t reg[4];
+		uint_fast8_t tmp;
+		int_fast8_t shiftcnt;
 	} mmc1;
 } mapper;
 
@@ -118,7 +120,6 @@ void freerom(void)
 }
 
 
-
 // NROM
 static uint_fast8_t nrom_read(const uint_fast16_t addr)
 {
@@ -136,14 +137,63 @@ static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
 // MMC1
 static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 {
-	((void)mapper.mmc1);
-	return nrom_read(addr);
+	const uint_fast8_t reg3 = mapper.mmc1.reg[3];
+	uint_fast16_t offset;
+	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
+	case 0x00:
+	case 0x01:
+		offset = (PRGROM_BANK_SIZE * 2 * (reg3&0x0E)) + (addr - ADDR_PRGROM);
+		break;
+	case 0x02:
+		if (addr < ADDR_PRGROM_UPPER) {
+			offset = addr - ADDR_PRGROM;
+			break;
+		}
+		offset = (PRGROM_BANK_SIZE * (reg3&0x0F)) + addr - ADDR_PRGROM_UPPER;
+		break;
+	case 0x03:
+		if (addr >= ADDR_PRGROM_UPPER) {
+			offset = ((ines.prgrom_nbanks - 1) * PRGROM_BANK_SIZE) + (addr - ADDR_PRGROM_UPPER);
+			break;
+		}
+		offset = (PRGROM_BANK_SIZE * (reg3&0x0F)) + (addr - ADDR_PRGROM);
+		break;
+	}
+
+	return cartdata[offset];
 }
 
 static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 {
-	((void)mapper.mmc1);
-	printf("MMC1 WRITE: %x to %lx\n", value, addr);
+	printf("MMC1 WRITE: $%x to $%lx\n", value, addr);
+
+	if ((value&0x80) == 0) {
+		mapper.mmc1.tmp >>= 1;
+		mapper.mmc1.tmp |= (value&0x01)<<4;
+		if (++mapper.mmc1.shiftcnt == 5) {
+			mapper.mmc1.shiftcnt = 0;
+
+			unsigned n;
+			if (addr <= 0x9FFF)
+				n = 0;
+			else if (addr <= 0xBFFF)
+				n = 1;
+			else if (addr <= 0xDFFF)
+				n = 2;
+			else
+				n = 3;
+
+			mapper.mmc1.reg[n] = mapper.mmc1.tmp;
+			mapper.mmc1.tmp = 0;
+			printf("REG %u evals %"PRIuFAST8"\n", 
+			       n, mapper.mmc1.reg[n]);
+		}
+	} else {
+		mapper.mmc1.shiftcnt = 0;
+		mapper.mmc1.tmp = 0;
+		mapper.mmc1.reg[0] |= 0x0C;
+	}
+
 }
 
 
