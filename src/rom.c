@@ -18,7 +18,7 @@ static const uint8_t* cartdata;  // prgrom,chrdata,cart ram
 
 // support only NROM for now
 static struct {
-	char match[4];
+	uint8_t match[4];
 	uint8_t prgrom_nbanks;  // number of 16 kib prg-rom banks.
 	uint8_t chrrom_nbanks;  // nuber of 8 kib vrom banks
 	uint8_t ctrl1;
@@ -137,30 +137,37 @@ static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
 // MMC1
 static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 {
+	const uint_fast8_t switch_mode = (mapper.mmc1.reg[0]&0x0C)>>2;
 	const uint_fast8_t reg3 = mapper.mmc1.reg[3];
-	uint_fast16_t offset;
-	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
+
+	unsigned bankidx;
+	switch (switch_mode) {
 	case 0x00:
 	case 0x01:
-		offset = (PRGROM_BANK_SIZE * 2 * (reg3&0x0E)) + (addr - ADDR_PRGROM);
+		// switch 32kb at $8000, ignoring low bit of bank number
+		bankidx = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
 		break;
 	case 0x02:
+		// fix first bank at $8000 and switch 16kb banks at $C000
 		if (addr < ADDR_PRGROM_UPPER) {
-			offset = addr - ADDR_PRGROM;
+			bankidx = 0;
 			break;
 		}
-		offset = (PRGROM_BANK_SIZE * (reg3&0x0F)) + addr - ADDR_PRGROM_UPPER;
+		bankidx = (PRGROM_BANK_SIZE * (reg3&0x0F));
 		break;
 	case 0x03:
+		// fix last bank at $C000 and switch 16kb banks at $8000
 		if (addr >= ADDR_PRGROM_UPPER) {
-			offset = ((ines.prgrom_nbanks - 1) * PRGROM_BANK_SIZE) + (addr - ADDR_PRGROM_UPPER);
+			bankidx = (ines.prgrom_nbanks - 1) * PRGROM_BANK_SIZE;
 			break;
 		}
-		offset = (PRGROM_BANK_SIZE * (reg3&0x0F)) + (addr - ADDR_PRGROM);
+		bankidx = PRGROM_BANK_SIZE * (reg3&0x0F);
 		break;
 	}
 
-	return cartdata[offset];
+	if (addr >= ADDR_PRGROM_UPPER)
+		return cartdata[bankidx + addr - ADDR_PRGROM_UPPER];
+	return cartdata[bankidx + addr - ADDR_PRGROM];
 }
 
 static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
