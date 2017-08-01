@@ -20,7 +20,6 @@ static bool odd_frame;
 static bool nmi_for_frame;
 
 static uint8_t spr_data[0x100];
-static uint8_t vram[0x4000];
 
 
 static uint_fast8_t read_status(void)
@@ -37,7 +36,8 @@ static uint_fast8_t read_spr_data(void)
 
 static uint_fast8_t read_vram_data(void)
 {
-	return vram[vram_addr];
+	//return vram[vram_addr];
+	return 0x00;
 }
 
 static void write_ctrl(const uint_fast8_t val)
@@ -129,10 +129,5 @@ uint_fast8_t ppuread(const uint_fast16_t addr)
 	case 7: return read_vram_data(); break;
 	}
 	return openbus;
-}
-
-void ppu_load_chr_rom(const uint8_t* const chr)
-{
-	memcpy(vram, chr, 0x2000);
 }
 

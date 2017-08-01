@@ -13,10 +13,20 @@ static int_fast32_t chr_size;
 static int_fast32_t cart_ram_size;
 static uint_fast8_t romtype;
 static const char* rompath;
+static const uint8_t* cartdata;  // prgrom,chrdata,cart_ram
 
-static uint8_t ines[0x10]   = { 0 };   // ines header
-static const uint8_t* cartdata;        // prgrom,chrdata,cart_ram
 
+// support only NROM for now
+static struct ines {
+	char match[4];
+	uint8_t prgrom_nbanks; // number of 16 kib prg-rom banks.
+	uint8_t chrrom_nbanks;   // nuber of 8 kib vrom banks
+	uint8_t ctrl1;
+	uint8_t ctrl2;
+	uint8_t ram_nbanks;    // number of 8 kib ram banks
+	// uint8_t reserved[7];
+	// uint8_t trainer[];  // not supported yet
+} ines;
 
 
 bool loadrom(const char* const path)
@@ -32,20 +42,33 @@ bool loadrom(const char* const path)
 		return false;
 	}
 
-	const uint8_t ines_match[] = { 'N', 'E', 'S', 0x1A };
-	fread(ines, 1, 0x10, file);
-	if (memcmp(ines, ines_match, sizeof(ines_match)) != 0) {
+	static const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
+
+	if (fread(&ines, 1, 9, file) < 9 ||
+	    memcmp(ines.match, match, sizeof(match)) != 0) {
 		fprintf(stderr, "\'%s\' is not an ines file.\n", rompath);
 		goto Lfclose;
 	}
 
-	romtype = (ines[7]&0xF0)|((ines[6]&0xF0)>>0x04);
-	prg_size = ines[4] * PRGROM_BANK_SIZE;
-	chr_size = ines[5] * CHR_BANK_SIZE;
-	cart_ram_size  = (ines[8] != 0) ? ines[8] * CART_RAM_BANK_SIZE : CART_RAM_BANK_SIZE;
-	const uint_fast32_t read_size = prg_size + chr_size /*((ines[6]&0x04) ? TRAINER_SIZE : 0) + */;
+	romtype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 
+	if (romtype != 0) {
+		fprintf(stderr, "\'%s\': mapper %d not supported.\n", rompath, romtype);
+		goto Lfclose;
+	} else if ((ines.ctrl1&0x04) != 0) {
+		fprintf(stderr, "\'%s\': trainer is not supported.\n", rompath);
+		goto Lfclose;
+	}
+
+	prg_size = ines.prgrom_nbanks * PRGROM_BANK_SIZE;
+	chr_size = ines.chrrom_nbanks * CHR_BANK_SIZE;
+	cart_ram_size  = (ines.ram_nbanks != 0)
+	                 ? ines.ram_nbanks * CART_RAM_BANK_SIZE
+	                 : CART_RAM_BANK_SIZE;
+
+	const uint_fast32_t read_size = prg_size + chr_size;
 	cartdata = malloc(read_size + cart_ram_size); 
+	fseek(file, 0x10, SEEK_SET);
 	if (fread((uint8_t*)cartdata, 1, read_size, file) < read_size) {
 		fprintf(stderr, "Couldn't read \'%s\' properly\n", rompath);
 		free((void*)cartdata);
@@ -65,19 +88,18 @@ bool loadrom(const char* const path)
 	       "\tBITS 0-3 RESERVED FOR FUTURE USE AND SHOULD ALL BE 0: $%.1x\n"
 	       "\tFOUR UPPER BITS OF MAPPER NUMBER: $%.1x\n"
 	       "MAPPER NUM %" PRIuFAST8 "\n",
-	       ines[4], prg_size,
-	       ines[5], chr_size,
-	       ines[8], cart_ram_size,
-	       (ines[6]&0x01), (ines[6]&0x01) ? "VERTICAL" : "HORIZONTAL",
-	       (ines[6]&0x02)>>1, (ines[6]&0x02) ? "YES" : "NO",
-	       (ines[6]&0x04)>>2, (ines[6]&0x04) ? "YES" : "NO",
-	       (ines[6]&0x08)>>3, (ines[6]&0x08) ? "YES" : "NO",
-	       (ines[6]&0xF0)>>4, ines[7]&0x0F, (ines[7]&0xF0)>>4, romtype);
+	       ines.prgrom_nbanks, prg_size,
+	       ines.chrrom_nbanks, chr_size,
+	       ines.ram_nbanks, cart_ram_size,
+	       (ines.ctrl1&0x01), (ines.ctrl1&0x01) ? "VERTICAL" : "HORIZONTAL",
+	       (ines.ctrl1&0x02)>>1, (ines.ctrl1&0x02) ? "YES" : "NO",
+	       (ines.ctrl1&0x04)>>2, (ines.ctrl1&0x04) ? "YES" : "NO",
+	       (ines.ctrl1&0x08)>>3, (ines.ctrl1&0x08) ? "YES" : "NO",
+	       (ines.ctrl1&0xF0)>>4, ines.ctrl2&0x0F, (ines.ctrl2&0xF0)>>4, romtype);
 
 	
-	ppu_load_chr_rom(&cartdata[prg_size]);
-
 	ret = true;
+
 Lfclose:
 	fclose(file);
 	return ret;
@@ -91,7 +113,7 @@ void freerom(void)
 
 uint_fast8_t romread(const int_fast32_t addr)
 {
-	if (addr >= ADDR_PRGROM_UPPER && ines[4] == 1)
+	if (addr >= ADDR_PRGROM_UPPER && ines.prgrom_nbanks == 1)
 		return cartdata[addr - ADDR_PRGROM_UPPER];
 	return cartdata[addr - ADDR_PRGROM];
 }
