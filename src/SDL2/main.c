@@ -26,6 +26,7 @@ static void runfor(const int_fast32_t cpu_clk_cycles)
 		const int_fast8_t ticks = stepcpu();
 		stepppu(ticks * 3);
 		stepapu(ticks);
+		//stepmapper(...)
 		clk += ticks;
 	} while (clk < cpu_clk_cycles);
 
@@ -53,10 +54,11 @@ int main(int argc, char *argv[])
 	signal(SIGKILL, &sighandler);
 	signal(SIGTERM, &sighandler);
 
+	// resetmapper()
 	resetcpu();
 	resetapu();
 	resetppu();
-	
+
 	while (!signal_term) {
 		const Uint32 time = SDL_GetTicks();
 		runfor(CPU_FREQ / 60);
@@ -66,8 +68,8 @@ int main(int argc, char *argv[])
 			SDL_Delay((1000 / 60) - frametime);
 	}
 
-	extern const uint8_t mmu_test_text[0x2000];
-	printf("TEST REPORT: %s\n", &mmu_test_text[4]);
+	extern const uint8_t rom_sram[0x2000];
+	printf("SRAM:\n%s\n", &rom_sram[4]);
 
 	exitcode = EXIT_SUCCESS;
 

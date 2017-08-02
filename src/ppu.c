@@ -112,7 +112,7 @@ void stepppu(const int_fast32_t pputicks)
 
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
-	switch (addr) {
+	switch (addr&0x0007) {
 	case 0: write_ctrl(val); break;
 	case 1: write_mask(val); break;
 	case 3: spr_addr = val; break;
@@ -123,7 +123,7 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 
 uint_fast8_t ppuread(const uint_fast16_t addr)
 {
-	switch (addr) {	
+	switch (addr&0x0007) {	
 	case 2: return read_status();   break;
 	case 4: return read_spr_data(); break;
 	case 7: return read_vram_data(); break;

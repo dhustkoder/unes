@@ -6,39 +6,36 @@
 #include "ppu.h"
 
 
-uint8_t mmu_test_text[0x2000] = { 0 }; // used for test roms text
-
 static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
 static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	if (addr >= 0x4000 && addr <= 0x4017) {
-		if (addr != 0x4014)
-			apuwrite(val, addr);
-		else
+		if (addr == 0x4014)
 			ppuwrite(val, addr);
+		else
+			apuwrite(val, addr);
 	} else if (addr >= 0x2000 && addr < 0x4000) {
-		ppuwrite(val, addr&0x07);
+		ppuwrite(val, addr);
 	} else {
-		assert(printf("$%.4lX\n", addr) && false && "UNKNOWN ADDRESS");
+		assert(printf("IO WRITE: $%.4lX\n", addr) && false);
 	}
 }
 
 static uint_fast8_t ioread(const uint_fast16_t addr)
 {
-	if (addr >= 0x4000 && addr <= 0x4017) {
-		if (addr < 0x4016) {
-			if (addr != 0x4014)
-				return apuread(addr);
-			else
-				return ppuread(addr);
-		}
-		// $4016 - $4017 is joypad's
+	if (addr >= 0x4000 && addr <= 0x4016) {
+		if (addr == 0x4014)
+			return ppuread(addr);
+		else
+			return apuread(addr);
+	} else if (addr >= 0x4016 && addr <= 0x4017) {
+		// read from $4016 - $4017 is joypad's
 	} else if (addr >= 0x2000 && addr <= 0x4000) {
-		return ppuread(addr&0x07);
+		return ppuread(addr);
 	} else {
-		assert(printf("$%.4lX\n", addr) && false && "UNKNOWN ADDRESS");
+		assert(printf("IO READ: $%.4lX\n", addr) && false);
 	}
 	return 0x00;
 }
@@ -47,8 +44,8 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 uint_fast8_t mmuread(const uint_fast16_t addr)
 {
 	if (addr < ADDR_IOREGS1)
-		return ram[addr&0x7FF]; // also handles mirrors
-	else if (addr >= ADDR_PRGROM)
+		return ram[addr&0x7FF];
+	else if (addr >= ADDR_SRAM)
 		return romread(addr);
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
@@ -59,12 +56,10 @@ uint_fast8_t mmuread(const uint_fast16_t addr)
 void mmuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	if (addr < ADDR_IOREGS1)
-		ram[addr&0x7FF] = val; // also handles mirrors
-	else if (addr >= ADDR_PRGROM)
-		romwrite(val, addr);
+		ram[addr&0x7FF] = val;
 	else if (addr < ADDR_EXPROM)
 		iowrite(val, addr);
-	else if (addr < ADDR_PRGROM)
-		mmu_test_text[addr - ADDR_SRAM] = val;
+	else if (addr >= ADDR_SRAM)
+		romwrite(val, addr);
 }
 

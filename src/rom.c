@@ -8,6 +8,9 @@
 #include "rom.h"
 
 
+uint8_t rom_sram[0x2000];
+
+
 static int_fast32_t prg_size;
 static int_fast32_t chr_size;
 static int_fast32_t cart_ram_size;
@@ -214,6 +217,9 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 
 uint_fast8_t romread(const uint_fast16_t addr)
 {
+	if (addr >= ADDR_SRAM && addr < ADDR_PRGROM)
+		return rom_sram[addr - ADDR_SRAM];
+
 	switch (romtype) {
 	case 0x00: return nrom_read(addr);
 	case 0x01: return mmc1_read(addr);
@@ -223,6 +229,11 @@ uint_fast8_t romread(const uint_fast16_t addr)
 
 void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
 {
+	if (addr >= ADDR_SRAM && addr < ADDR_PRGROM) {
+		rom_sram[addr - ADDR_SRAM] = value;
+		return;
+	}
+
 	switch (romtype) {
 	case 0x00: nrom_write(value, addr); break;
 	case 0x01: mmc1_write(value, addr); break;
