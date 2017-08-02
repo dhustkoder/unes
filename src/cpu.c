@@ -44,7 +44,7 @@ static const int8_t clock_table[0x100] = {
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
 static bool irq_pass;
-static int_fast32_t step_cycles;
+static int_fast8_t step_cycles;
 static int_fast32_t pc;
 static uint_fast8_t a, x, y, s;
 
@@ -267,18 +267,21 @@ void resetcpu(void)
 
 int_fast8_t stepcpu(void)
 {
-	#define fetch8()     (mmuread(pc++))
-	#define fetch16()    (pc += 2, mmuread16(pc - 2))
+	#define fetch8()  (mmuread(pc++))
+	#define fetch16() (pc += 2, mmuread16(pc - 2))
 
-	#define immediate()  (fetch8())
-	#define wzeropage()  (fetch8())
-	#define wzeropagex() ((fetch8() + x)&0xFF)
-	#define wzeropagey() ((fetch8() + y)&0xFF)
-	#define wabsolute()  (fetch16())
-	#define wabsolutex() (chkpagecross(fetch16(), x))
-	#define wabsolutey() (chkpagecross(fetch16(), y))
-	#define windirectx() (mmuread16msk((fetch8() + x)&0xFF))
-	#define windirecty() (chkpagecross(mmuread16msk(fetch8()), y))
+	#define immediate()      (fetch8())
+	#define wzeropage()      (fetch8())
+	#define wzeropagex()     ((fetch8() + x)&0xFF)
+	#define wzeropagey()     ((fetch8() + y)&0xFF)
+	#define wabsolute()      (fetch16())
+	#define wabsolutex()     (chkpagecross(fetch16(), x))
+	#define wabsolutexnchk() ((fetch16() + x)&0xFFFF)
+	#define wabsolutey()     (chkpagecross(fetch16(), y))
+	#define wabsoluteynchk() ((fetch16() + y)&0xFFFF)
+	#define windirectx()     (mmuread16msk((fetch8() + x)&0xFF))
+	#define windirecty()     (chkpagecross(mmuread16msk(fetch8()), y))
+	#define windirectynchk() ((mmuread16msk(fetch8()) + y)&0xFFFF)
 
 	#define rzeropage()  (mmuread(wzeropage()))
 	#define rzeropagex() (mmuread(wzeropagex()))
@@ -364,48 +367,48 @@ int_fast8_t stepcpu(void)
 	case 0x51: eor(rindirecty()); break;
 
 	// ASL
-	case 0x0A: asl(&a);                break;
-	case 0x06: opm(asl, wzeropage());  break;
-	case 0x16: opm(asl, wzeropagex()); break;
-	case 0x0E: opm(asl, wabsolute());  break;
-	case 0x1E: opm(asl, wabsolutex()); break;
+	case 0x0A: asl(&a);                    break;
+	case 0x06: opm(asl, wzeropage());      break;
+	case 0x16: opm(asl, wzeropagex());     break;
+	case 0x0E: opm(asl, wabsolute());      break;
+	case 0x1E: opm(asl, wabsolutexnchk()); break;
 
 	// LSR
-	case 0x4A: lsr(&a);                 break;
-	case 0x46: opm(lsr, wzeropage());   break;
-	case 0x56: opm(lsr, wzeropagex());  break;
-	case 0x4E: opm(lsr, wabsolute());   break;
-	case 0x5E: opm(lsr, wabsolutex());  break;
+	case 0x4A: lsr(&a);                    break;
+	case 0x46: opm(lsr, wzeropage());      break;
+	case 0x56: opm(lsr, wzeropagex());     break;
+	case 0x4E: opm(lsr, wabsolute());      break;
+	case 0x5E: opm(lsr, wabsolutexnchk()); break;
 
 	// ROL
-	case 0x2A: rol(&a);                  break;
-	case 0x26: opm(rol, wzeropage());    break;
-	case 0x36: opm(rol, wzeropagex());   break;
-	case 0x2E: opm(rol, wabsolute());    break;
-	case 0x3E: opm(rol, wabsolutex());   break;
+	case 0x2A: rol(&a);                    break;
+	case 0x26: opm(rol, wzeropage());      break;
+	case 0x36: opm(rol, wzeropagex());     break;
+	case 0x2E: opm(rol, wabsolute());      break;
+	case 0x3E: opm(rol, wabsolutexnchk()); break;
 
 	// ROR
-	case 0x6A: ror(&a);                  break;
-	case 0x66: opm(ror, wzeropage());    break;
-	case 0x76: opm(ror, wzeropagex());   break;
-	case 0x6E: opm(ror, wabsolute());    break;
-	case 0x7E: opm(ror, wabsolutex());   break;
+	case 0x6A: ror(&a);                    break;
+	case 0x66: opm(ror, wzeropage());      break;
+	case 0x76: opm(ror, wzeropagex());     break;
+	case 0x6E: opm(ror, wabsolute());      break;
+	case 0x7E: opm(ror, wabsolutexnchk()); break;
 
 	// BIT
 	case 0x24: bit(rzeropage()); break;
 	case 0x2C: bit(rabsolute()); break;
 
 	// INC
-	case 0xE6: opm(inc, wzeropage());  break;
-	case 0xF6: opm(inc, wzeropagex()); break;
-	case 0xEE: opm(inc, wabsolute());  break;
-	case 0xFE: opm(inc, wabsolutex()); break;
+	case 0xE6: opm(inc, wzeropage());      break;
+	case 0xF6: opm(inc, wzeropagex());     break;
+	case 0xEE: opm(inc, wabsolute());      break;
+	case 0xFE: opm(inc, wabsolutexnchk()); break;
 
 	// DEC
-	case 0xC6: opm(dec, wzeropage());  break; 
-	case 0xD6: opm(dec, wzeropagex()); break;
-	case 0xCE: opm(dec, wabsolute());  break;
-	case 0xDE: opm(dec, wabsolutex()); break;
+	case 0xC6: opm(dec, wzeropage());      break; 
+	case 0xD6: opm(dec, wzeropagex());     break;
+	case 0xCE: opm(dec, wabsolute());      break;
+	case 0xDE: opm(dec, wabsolutexnchk()); break;
 
 	// branches
 	case 0x90: branch(flags.c == 0); break; // BCC
@@ -442,13 +445,13 @@ int_fast8_t stepcpu(void)
 	case 0xBC: ld(&y, rabsolutex()); break;
 
 	// STA
-	case 0x85: mmuwrite(a, wzeropage());  break;
-	case 0x95: mmuwrite(a, wzeropagex()); break;
-	case 0x8D: mmuwrite(a, wabsolute());  break;
-	case 0x9D: mmuwrite(a, wabsolutex()); break;
-	case 0x99: mmuwrite(a, wabsolutey()); break;
-	case 0x81: mmuwrite(a, windirectx()); break;
-	case 0x91: mmuwrite(a, windirecty()); break;
+	case 0x85: mmuwrite(a, wzeropage());      break;
+	case 0x95: mmuwrite(a, wzeropagex());     break;
+	case 0x8D: mmuwrite(a, wabsolute());      break;
+	case 0x9D: mmuwrite(a, wabsolutexnchk()); break;
+	case 0x99: mmuwrite(a, wabsoluteynchk()); break;
+	case 0x81: mmuwrite(a, windirectx());     break;
+	case 0x91: mmuwrite(a, windirectynchk()); break;
 
 	// STX
 	case 0x86: mmuwrite(x, wzeropage());  break;
