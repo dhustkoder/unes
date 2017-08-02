@@ -84,6 +84,9 @@ bool loadrom(const char* const path)
 		goto Lfclose;
 	}
 
+	if (romtype == 1)
+		mapper.mmc1.reg[0] = 0x0C;
+
 	printf("PRG-ROM BANKS: %" PRIu8 " x 16Kib = %" PRIiFAST32 "\n"
 	       "VROM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
 	       "RAM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
@@ -140,13 +143,16 @@ static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 	const uint_fast8_t switch_mode = (mapper.mmc1.reg[0]&0x0C)>>2;
 	const uint_fast8_t reg3 = mapper.mmc1.reg[3];
 
-	unsigned bankidx;
+	unsigned bankidx = 0;
 	switch (switch_mode) {
 	case 0x00:
+		// switch 32kb at $8000
+		bankidx = PRGROM_BANK_SIZE * 2 * (reg3&0x0F);
+		return cartdata[bankidx + addr - ADDR_PRGROM];
 	case 0x01:
-		// switch 32kb at $8000, ignoring low bit of bank number
+		// switch 32kb at $8000 ignoring low bit of bank number
 		bankidx = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
-		break;
+		return cartdata[bankidx + addr - ADDR_PRGROM];
 	case 0x02:
 		// fix first bank at $8000 and switch 16kb banks at $C000
 		if (addr < ADDR_PRGROM_UPPER) {
