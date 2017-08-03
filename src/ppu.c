@@ -30,26 +30,38 @@ static uint8_t oam[0x100];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 
-static void render_pattern_tbls(void)
+static void draw_sprite(const uint8_t sprite[16], const int y, const int x)
 {
 	static const uint32_t colors[] = {
-		0x00000000, 0xFFFFFFFF, 0x5555555, 0x90909090
+		0xFFFFFF, 0x00, 0x5555555, 0x90909090
 	};
 
-	for (int i = 0; i < 0x2000 - 8;) {
-		for (int j = 0; j < 8; ++j, ++i) {
-			uint8_t b0 = romchrread(i);
-			uint8_t b1 = romchrread(i + 8);
-			for (int k = 0; k < 8; ++k) {
-				const uint32_t c = colors[(b1>>6)|(b0>>7)]; 
-				b0 <<= 1;
-				b1 <<= 1;
-				screen[j + ((i/512) * 8)][k + ((i/16) * 8)] = c;
-			}
+	for (int i = 0; i < 8; ++i) {
+		uint8_t b0 = sprite[i];
+		uint8_t b1 = sprite[i + 8];
+		for (int j = 0; j < 8; ++j) {
+			screen[y + i][x + j] = colors[((b1>>6)&0x02)|(b0>>7)];
+			b0 <<= 1;
+			b1 <<= 1;
 		}
+	}
+}
+
+static void render_pattern_tbls(void)
+{
+	uint8_t sprite[16];
+	for (int i = 0; i < 512; ++i) {
+		for (int j = 0; j < 16; ++j)
+			sprite[j] = romchrread(j + (i * 16));
+		draw_sprite(sprite, (i / 32) * 8, (i * 8) & 0xFF);
 	}
 
 	render((uint32_t*)screen, sizeof(screen));
+}
+
+static void render_nametable(void)
+{
+
 }
 
 
@@ -80,9 +92,7 @@ void stepppu(const int_fast32_t pputicks)
 			nmi_for_frame = true;
 		}
 
-		if  (scanline == 0 && ppuclk == 0 && (mask&0x18) == 0 && odd_frame) {
-			++scanline;
-		} else if (scanline == 241) {
+		if (scanline == 241) {
 			if (ppuclk == 1) {
 				nmi_occurred = true;
 				nmi_for_frame = false;
@@ -97,7 +107,7 @@ void stepppu(const int_fast32_t pputicks)
 			if (scanline++ == 261) {
 				render_pattern_tbls();
 				scanline = 0;
-				if ((mask&0x18) == 0 && odd_frame)
+				if ((mask&0x18) && odd_frame)
 					++ppuclk;
 				odd_frame = !odd_frame;
 			}
