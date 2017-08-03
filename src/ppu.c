@@ -22,44 +22,8 @@ static bool nmi_for_frame;
 static uint8_t oam[0x100];
 
 
-static uint_fast8_t read_status(void)
-{
-	const uint_fast8_t b7 = nmi_occurred ? 1 : 0;
-	nmi_occurred = false;
-	return (b7<<7)|(openbus&0x1F);
-}
 
-static uint_fast8_t read_oam(void)
-{
-	return oam[spr_addr];
-}
 
-static uint_fast8_t read_vram_data(void)
-{
-	//return vram[vram_addr];
-	return 0x00;
-}
-
-static void write_ctrl(const uint_fast8_t val)
-{
-	ctrl = val;
-	nmi_output = (val&0x80) == 0x80;
-}
-
-static void write_mask(const uint_fast8_t val)
-{
-	mask = val;
-}
-
-static void write_vram_addr(const uint_fast8_t val)
-{
-	if (vram_addr_phase)
-		vram_addr = (vram_addr&0xFF00)|val;
-	else
-		vram_addr = (vram_addr&0x00FF)|(val<<8);
-
-	vram_addr_phase = !vram_addr_phase;
-}
 
 void resetppu(void)
 {
@@ -109,6 +73,48 @@ void stepppu(const int_fast32_t pputicks)
 		}
 	}
 }
+
+
+// Registers read/write for CPU
+static uint_fast8_t read_status(void)
+{
+	const uint_fast8_t b7 = nmi_occurred ? 1 : 0;
+	nmi_occurred = false;
+	return (b7<<7)|(openbus&0x1F);
+}
+
+static uint_fast8_t read_oam(void)
+{
+	return oam[spr_addr];
+}
+
+static uint_fast8_t read_vram_data(void)
+{
+	//return vram[vram_addr];
+	return 0x00;
+}
+
+static void write_ctrl(const uint_fast8_t val)
+{
+	ctrl = val;
+	nmi_output = (val&0x80) == 0x80;
+}
+
+static void write_mask(const uint_fast8_t val)
+{
+	mask = val;
+}
+
+static void write_vram_addr(const uint_fast8_t val)
+{
+	if (vram_addr_phase)
+		vram_addr = (vram_addr&0xFF00)|val;
+	else
+		vram_addr = (vram_addr&0x00FF)|(val<<8);
+
+	vram_addr_phase = !vram_addr_phase;
+}
+
 
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {

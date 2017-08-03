@@ -9,6 +9,7 @@
 #include "apu.h"
 #include "ppu.h"
 
+
 SDL_AudioDeviceID audio_device;
 
 static bool initsdl(void);
@@ -32,7 +33,6 @@ static void runfor(const int_fast32_t cpu_clk_cycles)
 
 	clk -= cpu_clk_cycles;
 }
-
 
 int main(int argc, char *argv[])
 {

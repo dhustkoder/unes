@@ -17,7 +17,7 @@ static int_fast32_t chr_size;
 static int_fast32_t cart_ram_size;
 static uint_fast8_t romtype;
 static const char* rompath;
-static const uint8_t* cartdata;  // prgrom,chrdata,cart ram
+static const uint8_t* cartdata;  // prgrom,chrrom,cart ram
 
 
 // support only NROM for now
@@ -92,7 +92,7 @@ bool loadrom(const char* const path)
 		mapper.mmc1.reg[0] = 0x0C;
 
 	printf("PRG-ROM BANKS: %" PRIu8 " x 16Kib = %" PRIiFAST32 "\n"
-	       "VROM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
+	       "CHR-ROM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
 	       "RAM BANKS: %" PRIu8 " x 8 Kib = %" PRIiFAST32 "\n"
 	       "CTRL BYTE 1:\n"
 	       "\tMIRRORING: %d = %s\n"
@@ -142,6 +142,18 @@ static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
 	assert("NROM WRITE" && false);
 }
 
+static uint_fast8_t nrom_chrread(const uint_fast16_t addr)
+{
+	assert(addr < 0x2000);
+
+	if (ines.chrrom_nbanks > 0) {
+		const uint8_t* const chr = &cartdata[prg_size];
+		return chr[addr];
+	}
+
+	return 0;
+}
+
 
 // MMC1
 static uint_fast8_t mmc1_read(const uint_fast16_t addr)
@@ -170,7 +182,7 @@ static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 	case 0x03:
 		// fix last bank at $C000 and switch 16kb banks at $8000
 		if (addr >= ADDR_PRGROM_UPPER) {
-			bankidx = (ines.prgrom_nbanks - 1) * PRGROM_BANK_SIZE;
+			bankidx = prg_size - PRGROM_BANK_SIZE;
 			break;
 		}
 		bankidx = PRGROM_BANK_SIZE * (reg3&0x0F);
@@ -214,6 +226,12 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 	}
 }
 
+static uint_fast8_t mmc1_chrread(const uint_fast16_t addr)
+{
+	// TODO implement
+	assert(addr < 0x2000);
+	return 0;
+}
 
 
 
@@ -241,5 +259,15 @@ void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
 	case 0x00: nrom_write(value, addr); break;
 	case 0x01: mmc1_write(value, addr); break;
 	}
+}
+
+uint_fast8_t romchrread(const uint_fast16_t addr)
+{
+	switch (romtype) {
+	case 0x00: return nrom_chrread(addr);
+	case 0x01: return mmc1_chrread(addr);
+	}
+
+	return 0x00;
 }
 
