@@ -19,7 +19,7 @@ static bool nmi_output;
 static bool odd_frame;
 static bool nmi_for_frame;
 
-static uint8_t spr_data[0x100];
+static uint8_t oam[0x100];
 
 
 static uint_fast8_t read_status(void)
@@ -29,9 +29,9 @@ static uint_fast8_t read_status(void)
 	return (b7<<7)|(openbus&0x1F);
 }
 
-static uint_fast8_t read_spr_data(void)
+static uint_fast8_t read_oam(void)
 {
-	return spr_data[spr_addr];
+	return oam[spr_addr];
 }
 
 static uint_fast8_t read_vram_data(void)
@@ -125,7 +125,7 @@ uint_fast8_t ppuread(const uint_fast16_t addr)
 {
 	switch (addr&0x0007) {	
 	case 2: return read_status();   break;
-	case 4: return read_spr_data(); break;
+	case 4: return read_oam(); break;
 	case 7: return read_vram_data(); break;
 	}
 	return openbus;

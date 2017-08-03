@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 #include "mmu.h"
 #include "ppu.h"
 #include "rom.h"
@@ -136,7 +137,9 @@ static uint_fast8_t nrom_read(const uint_fast16_t addr)
 
 static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
 {
-	printf("NROM WRITE: %x to %lx\n", value, addr);
+	((void)value);
+	((void)addr);
+	assert("NROM WRITE" && false);
 }
 
 
@@ -209,7 +212,6 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 		mapper.mmc1.tmp = 0;
 		mapper.mmc1.reg[0] |= 0x0C;
 	}
-
 }
 
 
@@ -224,6 +226,7 @@ uint_fast8_t romread(const uint_fast16_t addr)
 	case 0x00: return nrom_read(addr);
 	case 0x01: return mmc1_read(addr);
 	}
+
 	return 0;
 }
 

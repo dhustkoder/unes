@@ -6,6 +6,14 @@
 #include "ppu.h"
 
 
+#ifdef DEBUG
+#define BAD_ACCESS(addr) \
+  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4lx", __FILE__, __LINE__, addr) && false)
+#else
+#define BAD_ACCESS(addr) ((void)addr)
+#endif
+
+
 static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
@@ -19,7 +27,7 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 	} else if (addr >= 0x2000 && addr < 0x4000) {
 		ppuwrite(val, addr);
 	} else {
-		assert(printf("IO WRITE: $%.4lX\n", addr) && false);
+		BAD_ACCESS(addr);
 	}
 }
 
@@ -35,8 +43,9 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 	} else if (addr >= 0x2000 && addr <= 0x4000) {
 		return ppuread(addr);
 	} else {
-		assert(printf("IO READ: $%.4lX\n", addr) && false);
+		BAD_ACCESS(addr);
 	}
+
 	return 0x00;
 }
 
@@ -49,6 +58,9 @@ uint_fast8_t mmuread(const uint_fast16_t addr)
 		return romread(addr);
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
+	else
+		BAD_ACCESS(addr);
+
 	return 0x00;
 }
 
@@ -61,5 +73,7 @@ void mmuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 		iowrite(val, addr);
 	else if (addr >= ADDR_SRAM)
 		romwrite(val, addr);
+	else
+		BAD_ACCESS(addr);
 }
 
