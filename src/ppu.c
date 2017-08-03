@@ -36,10 +36,10 @@ static void render_pattern_tbls(void)
 		0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
 	};
 
-	for (int i = 0; i < 0x1000 - 8;) {
+	for (int i = 0; i < 0x2000 - 8;) {
 		for (int j = 0; j < 8; ++j, ++i) {
-			uint8_t b0 = romchrread(0x1000 + i);
-			uint8_t b1 = romchrread(0x1000 + i + 8);
+			uint8_t b0 = romchrread(i);
+			uint8_t b1 = romchrread(i + 8);
 			for (int k = 0; k < 8; ++k) {
 				const uint32_t c = colors[(b1>>6)|(b0>>7)]; 
 				b0 <<= 1;
@@ -119,8 +119,12 @@ static uint_fast8_t read_oam(void)
 
 static uint_fast8_t read_vram_data(void)
 {
-	//return vram[vram_addr];
-	return 0x00;
+	uint_fast8_t r = 0;
+	if (vram_addr < 0x2000)
+		r = romchrread(vram_addr);
+	vram_addr += (ctrl&0x04) ? 1 : -32;
+	vram_addr &= 0x3FFF;
+	return r;
 }
 
 static void write_ctrl(const uint_fast8_t val)
@@ -132,6 +136,14 @@ static void write_ctrl(const uint_fast8_t val)
 static void write_mask(const uint_fast8_t val)
 {
 	mask = val;
+}
+
+static void write_vram_data(const uint_fast8_t val)
+{
+	if (vram_addr < 0x2000)
+		romchrwrite(val, vram_addr);
+	vram_addr += (ctrl&0x04) ? 1 : -32;
+	vram_addr &= 0x3FFF;
 }
 
 static void write_vram_addr(const uint_fast8_t val)
@@ -148,10 +160,11 @@ static void write_vram_addr(const uint_fast8_t val)
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	switch (addr&0x0007) {
-	case 0: write_ctrl(val); break;
-	case 1: write_mask(val); break;
-	case 3: spr_addr = val; break;
+	case 0: write_ctrl(val);      break;
+	case 1: write_mask(val);      break;
+	case 3: spr_addr = val;       break;
 	case 6: write_vram_addr(val); break;
+	case 7: write_vram_data(val); break;
 	}
 	openbus = val;
 }
@@ -159,8 +172,8 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 uint_fast8_t ppuread(const uint_fast16_t addr)
 {
 	switch (addr&0x0007) {	
-	case 2: return read_status();   break;
-	case 4: return read_oam(); break;
+	case 2: return read_status();    break;
+	case 4: return read_oam();       break;
 	case 7: return read_vram_data(); break;
 	}
 	return openbus;

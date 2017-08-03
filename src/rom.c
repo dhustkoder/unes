@@ -18,6 +18,7 @@ static int_fast32_t cart_ram_size;
 static uint_fast8_t romtype;
 static const char* rompath;
 static const uint8_t* cartdata;  // prgrom,chrrom,cart ram
+static uint8_t* chrram;
 
 
 // support only NROM for now
@@ -75,6 +76,9 @@ bool loadrom(const char* const path)
 
 	prg_size = ines.prgrom_nbanks * PRGROM_BANK_SIZE;
 	chr_size = ines.chrrom_nbanks * CHR_BANK_SIZE;
+	if (chr_size == 0)
+		chrram = malloc(CHR_BANK_SIZE);
+
 	cart_ram_size  = (ines.ram_nbanks != 0)
 	                 ? ines.ram_nbanks * CART_RAM_BANK_SIZE
 	                 : CART_RAM_BANK_SIZE;
@@ -147,11 +151,20 @@ static uint_fast8_t nrom_chrread(const uint_fast16_t addr)
 	assert(addr < 0x2000);
 
 	if (ines.chrrom_nbanks > 0) {
-		const uint8_t* const chr = &cartdata[prg_size];
-		return chr[addr];
+		const uint8_t* const chrrom = &cartdata[prg_size];
+		return chrrom[addr];
+	} else {
+		return chrram[addr];
 	}
 
 	return 0;
+}
+
+static void nrom_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	assert(addr < 0x2000);
+	if (ines.chrrom_nbanks == 0)
+		chrram[addr] = value;
 }
 
 
@@ -228,9 +241,23 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 
 static uint_fast8_t mmc1_chrread(const uint_fast16_t addr)
 {
-	// TODO implement
 	assert(addr < 0x2000);
+
+	if (ines.chrrom_nbanks > 0) {
+		const uint8_t* const chrrom = &cartdata[prg_size];
+		return chrrom[addr];
+	} else {
+		return chrram[addr];
+	}
+
 	return 0;
+}
+
+static void mmc1_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	assert(addr < 0x2000);
+	if (ines.chrrom_nbanks == 0)
+		chrram[addr] = value;
 }
 
 
@@ -269,5 +296,13 @@ uint_fast8_t romchrread(const uint_fast16_t addr)
 	}
 
 	return 0x00;
+}
+
+void romchrwrite(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	switch (romtype) {
+	case 0x00: nrom_chrwrite(value, addr); break;
+	case 0x01: mmc1_chrwrite(value, addr); break;
+	}
 }
 
