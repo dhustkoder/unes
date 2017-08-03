@@ -16,7 +16,7 @@ enum IrqSource {
 
 extern void resetcpu(void);
 extern void request_nmi(void);
-extern int_fast8_t stepcpu(void);
+extern int_fast16_t stepcpu(void);
 
 
 static inline void set_irq_source(const enum IrqSource src, const bool value)
@@ -35,6 +35,12 @@ static inline void trigger_nmi(void)
 {
 	extern bool cpu_nmi;
 	cpu_nmi = true;
+}
+
+static inline void notify_oam_dma(void)
+{
+	extern int_fast16_t cpu_step_cycles;
+	cpu_step_cycles += 512;
 }
 
 

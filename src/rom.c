@@ -76,8 +76,11 @@ bool loadrom(const char* const path)
 
 	prg_size = ines.prgrom_nbanks * PRGROM_BANK_SIZE;
 	chr_size = ines.chrrom_nbanks * CHR_BANK_SIZE;
-	if (chr_size == 0)
+	if (chr_size == 0) {
 		chrram = malloc(CHR_BANK_SIZE);
+		//fprintf(stderr, "\'%s\': CHR-RAM is not supported!\n", rompath);
+		//goto Lfclose;
+	}
 
 	cart_ram_size  = (ines.ram_nbanks != 0)
 	                 ? ines.ram_nbanks * CART_RAM_BANK_SIZE
@@ -151,8 +154,7 @@ static uint_fast8_t nrom_chrread(const uint_fast16_t addr)
 	assert(addr < 0x2000);
 
 	if (ines.chrrom_nbanks > 0) {
-		const uint8_t* const chrrom = &cartdata[prg_size];
-		return chrrom[addr];
+		return cartdata[prg_size + addr];
 	} else {
 		return chrram[addr];
 	}
@@ -244,8 +246,8 @@ static uint_fast8_t mmc1_chrread(const uint_fast16_t addr)
 	assert(addr < 0x2000);
 
 	if (ines.chrrom_nbanks > 0) {
-		const uint8_t* const chrrom = &cartdata[prg_size];
-		return chrrom[addr];
+		// TODO chr rom bank switch
+		return cartdata[prg_size + addr];
 	} else {
 		return chrram[addr];
 	}

@@ -43,8 +43,8 @@ static const int8_t clock_table[0x100] = {
 
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
+int_fast16_t cpu_step_cycles;
 static bool irq_pass;
-static int_fast8_t step_cycles;
 static int_fast32_t pc;
 static uint_fast8_t a, x, y, s;
 
@@ -71,7 +71,8 @@ static void setflags(const uint_fast8_t val)
 
 static inline void spush(const uint_fast8_t val)
 {
-	mmuwrite(val, 0x100|s--);
+	mmuwrite(val, 0x100|s);
+	--s;
 	s &= 0xFF;
 }
 
@@ -216,7 +217,7 @@ static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fas
 	// check for page cross in adding value to addr
 	// add 1 to step_cycles if it does cross a page
 	if ((addr&0xFF00) != ((addr + val)&0xFF00))
-		++step_cycles;
+		++cpu_step_cycles;
 	return (addr + val)&0xFFFF;
 }
 
@@ -224,7 +225,7 @@ static void branch(const bool cond)
 {
 	if (cond) {
 		const int_fast8_t val = mmuread(pc++);
-		++step_cycles;
+		++cpu_step_cycles;
 		pc = chkpagecross(pc, val);
 	} else {
 		++pc;
@@ -246,7 +247,7 @@ static void dointerrupt(const uint_fast16_t vector, const bool brk)
 	spush(getflags()|(brk ? FLAG_B : 0x00));
 	pc = mmuread16(vector);
 	flags.i = 1;
-	step_cycles += 7;
+	cpu_step_cycles += 7;
 }
 
 void resetcpu(void)
@@ -265,7 +266,7 @@ void resetcpu(void)
 	flags.i = 1;
 }
 
-int_fast8_t stepcpu(void)
+int_fast16_t stepcpu(void)
 {
 	#define fetch8()  (mmuread(pc++))
 	#define fetch16() (pc += 2, mmuread16(pc - 2))
@@ -302,7 +303,7 @@ int_fast8_t stepcpu(void)
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
 
-	step_cycles = 0;
+	cpu_step_cycles = 0;
 
 	if (cpu_nmi) {
 		dointerrupt(ADDR_NMI_VECTOR, false);
@@ -313,7 +314,7 @@ int_fast8_t stepcpu(void)
 
 	irq_pass = flags.i == 0;
 	const uint_fast8_t opcode = fetch8();
-	step_cycles += clock_table[opcode];
+	cpu_step_cycles += clock_table[opcode];
 
 	switch (opcode) {
 	// ADC
@@ -526,6 +527,6 @@ int_fast8_t stepcpu(void)
 	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode); break;
 	}
 
-	return step_cycles;
+	return cpu_step_cycles;
 }
 

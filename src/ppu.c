@@ -33,7 +33,7 @@ static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 static void render_pattern_tbls(void)
 {
 	static const uint32_t colors[] = {
-		0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
+		0x00000000, 0xFFFFFFFF, 0x5555555, 0x90909090
 	};
 
 	for (int i = 0; i < 0x2000 - 8;) {
@@ -75,30 +75,32 @@ void resetppu(void)
 void stepppu(const int_fast32_t pputicks)
 {
 	for (int_fast32_t i = 0; i < pputicks; ++i) {
-		if (++ppuclk == 341) {
+		if (!nmi_for_frame && nmi_occurred && nmi_output) {
+			trigger_nmi();
+			nmi_for_frame = true;
+		}
+
+		if  (scanline == 0 && ppuclk == 0 && (mask&0x18) == 0 && odd_frame) {
+			++scanline;
+		} else if (scanline == 241) {
+			if (ppuclk == 1) {
+				nmi_occurred = true;
+				nmi_for_frame = false;
+			}
+		} else if (scanline == 261) {
+			if (ppuclk == 1)
+				nmi_occurred = false;
+		}
+
+		if (ppuclk++ == 340) {
 			ppuclk = 0;
-			if (++scanline == 262) {
+			if (scanline++ == 261) {
 				render_pattern_tbls();
 				scanline = 0;
 				if ((mask&0x18) == 0 && odd_frame)
 					++ppuclk;
 				odd_frame = !odd_frame;
 			}
-		}
-
-		if (!nmi_for_frame && nmi_occurred && nmi_output) {
-			trigger_nmi();
-			nmi_for_frame = true;
-		}
-
-		if (scanline == 241) {
-			if (ppuclk == 1) {
-				nmi_occurred = true;
-				nmi_for_frame = false;
-			}
-		} else if (scanline == 261) {
-			if (ppuclk == 2)
-				nmi_occurred = false;
 		}
 	}
 }
@@ -122,7 +124,7 @@ static uint_fast8_t read_vram_data(void)
 	uint_fast8_t r = 0;
 	if (vram_addr < 0x2000)
 		r = romchrread(vram_addr);
-	vram_addr += (ctrl&0x04) ? 1 : -32;
+	vram_addr += (ctrl&0x04) ? 1 : 32;
 	vram_addr &= 0x3FFF;
 	return r;
 }
@@ -142,16 +144,18 @@ static void write_vram_data(const uint_fast8_t val)
 {
 	if (vram_addr < 0x2000)
 		romchrwrite(val, vram_addr);
-	vram_addr += (ctrl&0x04) ? 1 : -32;
+	vram_addr += (ctrl&0x04) ? 1 : 32;
 	vram_addr &= 0x3FFF;
 }
 
 static void write_vram_addr(const uint_fast8_t val)
 {
-	if (vram_addr_phase)
-		vram_addr = (vram_addr&0xFF00)|val;
-	else
-		vram_addr = (vram_addr&0x00FF)|(val<<8);
+	if (vram_addr_phase) {
+		vram_addr |= val;
+	} else {
+		vram_addr = 0;
+		vram_addr = val<<8;
+	}
 
 	vram_addr_phase = !vram_addr_phase;
 }
@@ -159,6 +163,12 @@ static void write_vram_addr(const uint_fast8_t val)
 
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
+	if (addr == 0x4014) {
+		// TODO OAM DMA TRANSFER
+		notify_oam_dma();
+		return;
+	}
+
 	switch (addr&0x0007) {
 	case 0: write_ctrl(val);      break;
 	case 1: write_mask(val);      break;

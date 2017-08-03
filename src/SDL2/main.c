@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
 	while (update_events()) {
 		do {
-			const int_fast8_t step_ticks = stepcpu();
+			const int_fast16_t step_ticks = stepcpu();
 			stepppu(step_ticks * 3);
 			stepapu(step_ticks);
 			//stepmapper(...)
