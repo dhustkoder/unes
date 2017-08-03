@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <signal.h>
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_audio.h"
 #include "rom.h"
@@ -10,29 +9,20 @@
 #include "ppu.h"
 
 
+#define WIN_WIDTH  (256)
+#define WIN_HEIGHT (240)
+
+
 SDL_AudioDeviceID audio_device;
+SDL_Texture* texture;
+SDL_Renderer* renderer;
+static SDL_Window* window;
+
 
 static bool initsdl(void);
 static void termsdl(void);
-static void sighandler(int signum);
-static bool signal_term = false;
+static bool update_events(void);
 
-
-
-static void runfor(const int_fast32_t cpu_clk_cycles)
-{
-	static int_fast32_t clk = 0;
-
-	do {
-		const int_fast8_t ticks = stepcpu();
-		stepppu(ticks * 3);
-		stepapu(ticks);
-		//stepmapper(...)
-		clk += ticks;
-	} while (clk < cpu_clk_cycles);
-
-	clk -= cpu_clk_cycles;
-}
 
 int main(int argc, char *argv[])
 {
@@ -49,23 +39,23 @@ int main(int argc, char *argv[])
 	if (!initsdl())
 		goto Lfreerom;
 
-
-	signal(SIGINT, &sighandler);
-	signal(SIGKILL, &sighandler);
-	signal(SIGTERM, &sighandler);
-
 	// resetmapper()
 	resetcpu();
 	resetapu();
 	resetppu();
 
-	while (!signal_term) {
-		const Uint32 time = SDL_GetTicks();
-		runfor(CPU_FREQ / 60);
-		//renderppu();
-		const Uint32 frametime = (SDL_GetTicks() - time);
-		if (frametime < (1000 / 60))
-			SDL_Delay((1000 / 60) - frametime);
+	const int_fast32_t ticks = CPU_FREQ / 60;
+	int_fast32_t clk = 0;
+
+	while (update_events()) {
+		do {
+			const int_fast8_t step_ticks = stepcpu();
+			stepppu(step_ticks * 3);
+			stepapu(step_ticks);
+			//stepmapper(...)
+			clk += step_ticks;
+		} while (clk < ticks);
+		clk -= ticks;
 	}
 
 	extern const uint8_t rom_sram[0x2000];
@@ -80,18 +70,53 @@ Lfreerom:
 	return exitcode;
 }
 
-void sighandler(const int signum)
+
+static bool update_events(void)
 {
-	signal_term = true;
-	printf("\nsignal %d received.\n", signum);
+	static SDL_Event event;
+	while (SDL_PollEvent(&event) != 0) {
+		switch (event.type) {
+		case SDL_QUIT: return false;
+		}
+	}
+
+	return true;
 }
+
 
 bool initsdl(void)
 {
-	if (SDL_Init(SDL_INIT_AUDIO) != 0) {
+	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
 		fprintf(stderr, "Couldn't initialize SDL: %s\n",
 		        SDL_GetError());
 		return false;
+	}
+
+	window = SDL_CreateWindow("µnes", SDL_WINDOWPOS_CENTERED,
+				  SDL_WINDOWPOS_CENTERED,
+				  WIN_WIDTH, WIN_HEIGHT,
+				  SDL_WINDOW_RESIZABLE);
+	if (window == NULL) {
+		fprintf(stderr, "Failed to create SDL_Window: %s\n",
+		        SDL_GetError());
+		goto Lquitsdl;
+	}
+
+	renderer = SDL_CreateRenderer(window, -1,
+	           SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	if (renderer == NULL) {
+		fprintf(stderr, "Failed to create SDL_Renderer: %s\n",
+		        SDL_GetError());
+		goto Lfreewindow;
+	}
+
+	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+		                    SDL_TEXTUREACCESS_STREAMING,
+		                    WIN_WIDTH, WIN_HEIGHT);
+	if (texture == NULL) {
+		fprintf(stderr, "Failed to create SDL_Texture: %s\n",
+		        SDL_GetError());
+		goto Lfreerenderer;
 	}
 
 	SDL_AudioSpec want;
@@ -102,13 +127,21 @@ bool initsdl(void)
 	want.samples = 2048;
 
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
-		fprintf(stderr, "Failed to open audio: %s", SDL_GetError());
-		goto Lquitsdl;
+		fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
+		goto Lfreetexture;
 	}
 
+	SDL_RenderClear(renderer);
+	SDL_RenderPresent(renderer);
 	SDL_PauseAudioDevice(audio_device, 0);
 	return true;
 
+Lfreetexture:
+	SDL_DestroyTexture(texture);
+Lfreerenderer:
+	SDL_DestroyRenderer(renderer);
+Lfreewindow:
+	SDL_DestroyWindow(window);
 Lquitsdl:
 	SDL_Quit();
 	return false;
@@ -117,6 +150,9 @@ Lquitsdl:
 void termsdl(void)
 {
 	SDL_CloseAudioDevice(audio_device);
+	SDL_DestroyTexture(texture);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
 

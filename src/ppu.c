@@ -1,7 +1,14 @@
 #include <string.h>
 #include <stdbool.h>
+#include "video.h"
 #include "cpu.h"
+#include "rom.h"
 #include "ppu.h"
+
+
+#define SCREEN_WIDTH  (256)
+#define SCREEN_HEIGHT (240)
+
 
 static uint_fast8_t openbus;
 static uint_fast8_t ctrl;           // $2000
@@ -20,9 +27,30 @@ static bool odd_frame;
 static bool nmi_for_frame;
 
 static uint8_t oam[0x100];
+static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 
+static void render_pattern_tbls(void)
+{
+	static const uint32_t colors[] = {
+		0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
+	};
 
+	for (int i = 0; i < 0x1000 - 8;) {
+		for (int j = 0; j < 8; ++j, ++i) {
+			uint8_t b0 = romchrread(0x1000 + i);
+			uint8_t b1 = romchrread(0x1000 + i + 8);
+			for (int k = 0; k < 8; ++k) {
+				const uint32_t c = colors[(b1>>6)|(b0>>7)]; 
+				b0 <<= 1;
+				b1 <<= 1;
+				screen[j + ((i/512) * 8)][k + ((i/16) * 8)] = c;
+			}
+		}
+	}
+
+	render((uint32_t*)screen, sizeof(screen));
+}
 
 
 void resetppu(void)
@@ -50,6 +78,7 @@ void stepppu(const int_fast32_t pputicks)
 		if (++ppuclk == 341) {
 			ppuclk = 0;
 			if (++scanline == 262) {
+				render_pattern_tbls();
 				scanline = 0;
 				if ((mask&0x18) == 0 && odd_frame)
 					++ppuclk;
