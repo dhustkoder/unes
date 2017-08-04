@@ -6,8 +6,12 @@
 #include "ppu.h"
 
 
-#define SCREEN_WIDTH  (256)
-#define SCREEN_HEIGHT (240)
+#define ADDR_PATTERN_TBL1 (0x0000)
+#define ADDR_PATTERN_TBL2 (0x1000)
+#define ADDR_NAME_TBL1    (0x2000)
+#define ADDR_NAME_TBL2    (0x2400)
+#define SCREEN_WIDTH      (256)
+#define SCREEN_HEIGHT     (240)
 
 
 static uint_fast8_t openbus;
@@ -27,6 +31,7 @@ static bool odd_frame;
 static bool nmi_for_frame;
 
 static uint8_t oam[0x100];
+static uint8_t nametbl[0x800];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 
@@ -61,7 +66,16 @@ static void render_pattern_tbls(void)
 
 static void render_nametable(void)
 {
+	uint8_t sprite[16];
+	for (int i = 0; i < 960; ++i) {
+		const int spriteid = nametbl[i];
+		//printf("NAME TBL %x: %x\n", i, spriteid);
+		for (int j = 0; j < 16; ++j)
+			sprite[j] = romchrread((0x1000 + (spriteid * 16)) + j);
+		draw_sprite(sprite, (i / 32) * 8, (i * 8) & 0xFF);
+	}
 
+	render((uint32_t*)screen, sizeof(screen));
 }
 
 
@@ -105,7 +119,8 @@ void stepppu(const int_fast32_t pputicks)
 		if (ppuclk++ == 340) {
 			ppuclk = 0;
 			if (scanline++ == 261) {
-				render_pattern_tbls();
+				// render_pattern_tbls();
+				render_nametable();
 				scanline = 0;
 				if ((mask&0x18) && odd_frame)
 					++ppuclk;
@@ -131,10 +146,14 @@ static uint_fast8_t read_oam(void)
 
 static uint_fast8_t read_vram_data(void)
 {
+	printf("READ VRAM %lx\n", vram_addr);
 	uint_fast8_t r = 0;
 	if (vram_addr < 0x2000)
 		r = romchrread(vram_addr);
-	vram_addr += (ctrl&0x04) ? 1 : 32;
+	else if (vram_addr < 0x2800)
+		r = nametbl[vram_addr - 0x2000];
+
+	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
 	vram_addr &= 0x3FFF;
 	return r;
 }
@@ -152,9 +171,12 @@ static void write_mask(const uint_fast8_t val)
 
 static void write_vram_data(const uint_fast8_t val)
 {
+	printf("WRITE TO VRAM %lx: %x\n", vram_addr, val);
 	if (vram_addr < 0x2000)
 		romchrwrite(val, vram_addr);
-	vram_addr += (ctrl&0x04) ? 1 : 32;
+	else if (vram_addr < 0x2800)
+		nametbl[vram_addr - 0x2000] = val;
+	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
 	vram_addr &= 0x3FFF;
 }
 
