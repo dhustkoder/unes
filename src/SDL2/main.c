@@ -76,7 +76,12 @@ static bool update_events(void)
 	static SDL_Event event;
 	while (SDL_PollEvent(&event) != 0) {
 		switch (event.type) {
-		case SDL_QUIT: return false;
+		case SDL_QUIT:
+			return false;
+		case SDL_KEYDOWN:
+			if (event.key.keysym.sym == SDLK_ESCAPE)
+				return false;
+			break;
 		}
 	}
 
