@@ -31,7 +31,7 @@ static bool odd_frame;
 static bool nmi_for_frame;
 
 static uint8_t oam[0x100];
-static uint8_t nametbl[0x800];
+static uint8_t nametable[0x800];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 
@@ -66,12 +66,16 @@ static void render_pattern_tbls(void)
 
 static void render_nametable(void)
 {
+	static const int nametable_addrs[] = { 0x00, 0x400, 0x00, 0x400 };
+	const uint8_t* const pnametbl = &nametable[nametable_addrs[ctrl&0x03]];
+	const int patterntbl = (ctrl&0x10) ? 0x1000 : 0x00;
+
 	uint8_t sprite[16];
+
 	for (int i = 0; i < 960; ++i) {
-		const int spriteid = nametbl[i];
-		//printf("NAME TBL %x: %x\n", i, spriteid);
+		const int spriteid = pnametbl[i];
 		for (int j = 0; j < 16; ++j)
-			sprite[j] = romchrread((0x1000 + (spriteid * 16)) + j);
+			sprite[j] = romchrread((patterntbl + (spriteid * 16)) + j);
 		draw_sprite(sprite, (i / 32) * 8, (i * 8) & 0xFF);
 	}
 
@@ -151,7 +155,7 @@ static uint_fast8_t read_vram_data(void)
 	if (vram_addr < 0x2000)
 		r = romchrread(vram_addr);
 	else if (vram_addr < 0x2800)
-		r = nametbl[vram_addr - 0x2000];
+		r = nametable[vram_addr - 0x2000];
 
 	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
 	vram_addr &= 0x3FFF;
@@ -175,7 +179,7 @@ static void write_vram_data(const uint_fast8_t val)
 	if (vram_addr < 0x2000)
 		romchrwrite(val, vram_addr);
 	else if (vram_addr < 0x2800)
-		nametbl[vram_addr - 0x2000] = val;
+		nametable[vram_addr - 0x2000] = val;
 	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
 	vram_addr &= 0x3FFF;
 }
