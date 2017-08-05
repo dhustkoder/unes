@@ -211,8 +211,6 @@ static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 
 static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 {
-	printf("MMC1 WRITE: $%x to $%lx\n", value, addr);
-
 	if ((value&0x80) == 0) {
 		mapper.mmc1.tmp >>= 1;
 		mapper.mmc1.tmp |= (value&0x01)<<4;
@@ -231,8 +229,6 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 
 			mapper.mmc1.reg[n] = mapper.mmc1.tmp;
 			mapper.mmc1.tmp = 0;
-			printf("REG %u evals %"PRIuFAST8"\n", 
-			       n, mapper.mmc1.reg[n]);
 		}
 	} else {
 		mapper.mmc1.shiftcnt = 0;

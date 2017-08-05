@@ -19,8 +19,8 @@ static uint_fast8_t ctrl;           // $2000
 static uint_fast8_t mask;           // $2001
 static uint_fast8_t status;         // $2002
 static uint_fast8_t scroll;         // $2005
-static uint_fast8_t spr_addr;       // $2003 
-static uint_fast16_t vram_addr;     // $2006
+static uint_fast8_t oam_addr;       // $2003 
+static int_fast16_t vram_addr;      // $2006
 static bool vram_addr_phase;
 
 static int_fast16_t ppuclk;         // 0 - 341
@@ -47,16 +47,16 @@ static uint8_t palettes[0x20];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 
-static void draw_scanline(void)
+static void draw_bg_scanline(void)
 {
 	static const uint16_t nametbl_mirrors[] = {
-		0x000, 0x400, 0x000, 0x400
+		0x000, 0x000, 0x400, 0x400
 	};
 
 	const uint8_t* const nametbl = &nametables[nametbl_mirrors[ctrl&0x03]];
 	const uint8_t* const attrtbl = nametbl + 0x3C0;
-	const int bkgpattern = (ctrl&0x10) ? 0x1000 : 0x0000;
-	const int spritey = scanline & 0x07;
+	const int bgpattern = (ctrl&0x10) ? 0x1000 : 0x0000;
+	const int spritey = scanline&0x07;
 	const int ysprite = scanline / 8;
 
 	for (int i = 0; i < 32; ++i) {
@@ -65,9 +65,9 @@ static void draw_scanline(void)
 		palnum >>= ((ysprite&0x03) > 1) ? 4 : 0;
 		palnum &= 0x03;
 
-		const uint8_t spriteid = nametbl[ysprite * 32 + i];
-		uint8_t b0 = romchrread(bkgpattern + spriteid * 16 + spritey);
-		uint8_t b1 = romchrread(bkgpattern + spriteid * 16 + spritey + 8);
+		const int spridx = nametbl[ysprite * 32 + i] * 16;
+		uint8_t b0 = romchrread(bgpattern + spridx + spritey);
+		uint8_t b1 = romchrread(bgpattern + spridx + spritey + 8);
 		for (int p = 0; p < 8; ++p) {
 			const uint8_t c = ((b1>>6)&0x02)|(b0>>7);
 			const uint8_t rgb_index = palettes[palnum * 4 + c];
@@ -85,7 +85,7 @@ void resetppu(void)
 	mask = 0x00;
 	status = 0xA0;
 	scroll = 0x00;
-	spr_addr = 0x00;
+	oam_addr = 0x00;
 	vram_addr = 0x0000;
 	vram_addr_phase = false;
 
@@ -117,13 +117,11 @@ void stepppu(const int_fast32_t pputicks)
 
 		if (ppuclk++ == 340) {
 			ppuclk = 0;
-
-			if (scanline < 240)
-				draw_scanline();
-
+			if (scanline < 240 && (mask&0x08))
+				draw_bg_scanline();
 			if (scanline++ == 261) {
-				render((const uint32_t*)screen, sizeof(screen));
 				scanline = 0;
+				render((const uint32_t*)screen, sizeof(screen));
 				if ((mask&0x18) && odd_frame)
 					++ppuclk;
 				odd_frame = !odd_frame;
@@ -143,12 +141,11 @@ static uint_fast8_t read_status(void)
 
 static uint_fast8_t read_oam(void)
 {
-	return oam[spr_addr];
+	return oam[oam_addr];
 }
 
 static uint_fast8_t read_vram_data(void)
 {
-	printf("READ VRAM %lx\n", vram_addr);
 	uint_fast8_t r = 0;
 	if (vram_addr < 0x2000) {
 		r = romchrread(vram_addr);
@@ -181,7 +178,6 @@ static void write_mask(const uint_fast8_t val)
 
 static void write_vram_data(const uint_fast8_t val)
 {
-	printf("WRITE TO VRAM %lx: %x\n", vram_addr, val);
 	if (vram_addr < 0x2000) {
 		romchrwrite(val, vram_addr);
 	} else if (vram_addr < 0x3000) {
@@ -224,7 +220,7 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 	switch (addr&0x0007) {
 	case 0: write_ctrl(val);      break;
 	case 1: write_mask(val);      break;
-	case 3: spr_addr = val;       break;
+	case 3: oam_addr = val;       break;
 	case 6: write_vram_addr(val); break;
 	case 7: write_vram_data(val); break;
 	}
