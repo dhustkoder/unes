@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 
-#define PRGROM_BANK_SIZE   ((int_fast32_t)0x4000)
-#define CHR_BANK_SIZE      ((int_fast32_t)0x2000)
-#define CART_RAM_BANK_SIZE ((int_fast32_t)0x2000)
-#define TRAINER_SIZE       ((int_fast32_t)0x0200)
+#define PRGROM_BANK_SIZE ((int_fast32_t)0x4000)
+#define CHR_BANK_SIZE    ((int_fast32_t)0x2000)
+#define SRAM_BANK_SIZE   ((int_fast32_t)0x2000)
+#define TRAINER_SIZE     ((int_fast32_t)0x0200)
 
 
 extern bool loadrom(const char* path);

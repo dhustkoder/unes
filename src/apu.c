@@ -321,6 +321,7 @@ void stepapu(const int_fast32_t aputicks)
 	}
 }
 
+
 static void write_apu_status(const uint_fast8_t val)
 {
 	for (int i = 0; i < 2; ++i) {
@@ -336,16 +337,12 @@ static uint_fast8_t read_apu_status(void)
 {
 	const bool frame_irq = get_irq_source(IRQ_SRC_APU_FRAME_COUNTER);
 	const bool dmc_irq = get_irq_source(IRQ_SRC_APU_DMC_TIMER);
-
-	const uint_fast8_t ret =
-		(dmc_irq<<7)                |
-		(frame_irq<<6)              |
-		((pulse[1].len_cnt > 0)<<1) |
-		(pulse[0].len_cnt > 0);
-
 	set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
-	return ret;
+
+	return (dmc_irq<<7)|(frame_irq<<6)|
+		((pulse[1].len_cnt > 0)<<1)|(pulse[0].len_cnt > 0);
 }
+
 
 void apuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {

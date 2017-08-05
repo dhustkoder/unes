@@ -58,9 +58,6 @@ int main(int argc, char *argv[])
 		clk -= ticks;
 	}
 
-	extern const uint8_t rom_sram[0x2000];
-	printf("SRAM:\n%s\n", &rom_sram[4]);
-
 	exitcode = EXIT_SUCCESS;
 
 //Ltermsdl:

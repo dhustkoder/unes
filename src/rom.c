@@ -9,15 +9,13 @@
 #include "rom.h"
 
 
-uint8_t rom_sram[0x2000];
-
-
 static int_fast32_t prg_size;
 static int_fast32_t chr_size;
-static int_fast32_t cart_ram_size;
+static int_fast32_t sram_size;
 static uint_fast8_t romtype;
 static const char* rompath;
-static const uint8_t* cartdata;  // prgrom,chrrom,cart ram
+static const uint8_t* cartdata; // prgrom, chrrom
+static uint8_t* sram;
 static uint8_t* chrram;
 
 
@@ -28,7 +26,7 @@ static struct {
 	uint8_t chrrom_nbanks;  // nuber of 8 kib vrom banks
 	uint8_t ctrl1;
 	uint8_t ctrl2;
-	uint8_t ram_nbanks;     // number of 8 kib ram banks
+	uint8_t sram_nbanks;    // number of 8 kib ram banks
 	// uint8_t reserved[7];
 	// uint8_t trainer[];   // not supported yet
 } ines;
@@ -64,13 +62,20 @@ bool loadrom(const char* const path)
 		goto Lfclose;
 	}
 
-	romtype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 
+	// check if cartridge type and is supported
+	romtype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 	if (romtype > 1) {
 		fprintf(stderr, "\'%s\': mapper %d not supported.\n", rompath, romtype);
 		goto Lfclose;
+	} else if ((ines.ctrl1&0x08) != 0) {
+		fprintf(stderr, "\'%s\': four screen mirroring not supported.\n", rompath);
+		goto Lfclose;
 	} else if ((ines.ctrl1&0x04) != 0) {
 		fprintf(stderr, "\'%s\': trainer is not supported.\n", rompath);
+		goto Lfclose;
+	} else if (ines.sram_nbanks > 1) {
+		fprintf(stderr, "\'%s\': sram bank switching not supported.\n", rompath);
 		goto Lfclose;
 	}
 
@@ -82,18 +87,21 @@ bool loadrom(const char* const path)
 		//goto Lfclose;
 	}
 
-	cart_ram_size  = (ines.ram_nbanks != 0)
-	                 ? ines.ram_nbanks * CART_RAM_BANK_SIZE
-	                 : CART_RAM_BANK_SIZE;
 
 	const uint_fast32_t read_size = prg_size + chr_size;
-	cartdata = malloc(read_size + cart_ram_size); 
+	cartdata = malloc(read_size);
 	fseek(file, 0x10, SEEK_SET);
 	if (fread((uint8_t*)cartdata, 1, read_size, file) < read_size) {
 		fprintf(stderr, "Couldn't read \'%s\' properly\n", rompath);
 		free((void*)cartdata);
 		goto Lfclose;
 	}
+
+	sram_size = (ines.sram_nbanks != 0)
+	            ? ines.sram_nbanks * SRAM_BANK_SIZE
+	            : SRAM_BANK_SIZE;
+
+	sram = calloc(sram_size, sizeof(char));
 
 	if (romtype == 1)
 		mapper.mmc1.reg[0] = 0x0C;
@@ -113,7 +121,7 @@ bool loadrom(const char* const path)
 	       "MAPPER NUM %" PRIuFAST8 "\n",
 	       ines.prgrom_nbanks, prg_size,
 	       ines.chrrom_nbanks, chr_size,
-	       ines.ram_nbanks, cart_ram_size,
+	       ines.sram_nbanks, sram_size,
 	       (ines.ctrl1&0x01), (ines.ctrl1&0x01) ? "VERTICAL" : "HORIZONTAL",
 	       (ines.ctrl1&0x02)>>1, (ines.ctrl1&0x02) ? "YES" : "NO",
 	       (ines.ctrl1&0x04)>>2, (ines.ctrl1&0x04) ? "YES" : "NO",
@@ -263,7 +271,7 @@ static void mmc1_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
 uint_fast8_t romread(const uint_fast16_t addr)
 {
 	if (addr >= ADDR_SRAM && addr < ADDR_PRGROM)
-		return rom_sram[addr - ADDR_SRAM];
+		return sram[addr - ADDR_SRAM];
 
 	switch (romtype) {
 	case 0x00: return nrom_read(addr);
@@ -276,7 +284,7 @@ uint_fast8_t romread(const uint_fast16_t addr)
 void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
 {
 	if (addr >= ADDR_SRAM && addr < ADDR_PRGROM) {
-		rom_sram[addr - ADDR_SRAM] = value;
+		sram[addr - ADDR_SRAM] = value;
 		return;
 	}
 
