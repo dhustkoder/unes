@@ -32,7 +32,7 @@ static bool odd_frame;
 static bool nmi_for_frame;
 
 static uint8_t oam[0x100];
-static uint8_t nametables[0x800];   // TODO implement nametables mirrors on write/read vram data
+static uint8_t nametables[0x800];
 static uint8_t palettes[0x20];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
@@ -48,27 +48,53 @@ static const uint32_t rgb_palette[0x40] = {
 };
 
 
+static int_fast16_t eval_nt_offset(uint_fast16_t addr)
+{
+	assert(addr >= 0x2000 && addr <= 0x3EFF);
+
+	if (addr >= 0x3000)
+		addr &= 0x2EFF;
+
+	int_fast16_t offset = 0;
+	switch (get_ntmirroring_mode()) {
+	case NTMIRRORING_HORIZONTAL:
+		if (addr < 0x2800)
+			offset = addr&0x3FF;
+		else
+			offset = 0x400 + ((addr - 0x2800)&0x3FF);
+		break;
+	case NTMIRRORING_VERTICAL:
+		if (addr >= 0x2400 || addr >= 0x2C00)
+			offset = 0x400 + (addr&0x3FF);
+		else
+			offset = addr&0x3FF;
+		break;
+	}
+
+	return offset;
+}
+
 static void draw_bg_scanline(void)
 {
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
-	static const uint16_t nametbl_mirrors[] = {
-		0x000, 0x400, 0x000, 0x400
+	static const uint16_t nt_addrs[] = {
+		0x2000, 0x2400, 0x2800, 0x2C00
 	};
 
-	const uint8_t* const nametbl = &nametables[nametbl_mirrors[ctrl&0x03]];
-	const uint8_t* const attrtbl = nametbl + 0x3C0;
+	const uint8_t* const nt = &nametables[eval_nt_offset(nt_addrs[ctrl&0x03])];
+	const uint8_t* const at = nt + 0x3C0;
 	const int bgpattern = (ctrl&0x10) ? 0x1000 : 0x0000;
 	const int spritey = scanline&0x07;
 	const int ysprite = scanline / 8;
 
 	for (int i = 0; i < 32; ++i) {
-		uint8_t palnum = attrtbl[(((ysprite / 4) * 8) + (i / 4))&0x3F];
+		uint8_t palnum = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
 		palnum >>= ((i&0x03) > 1) ? 2 : 0;
 		palnum >>= ((ysprite&0x03) > 1) ? 4 : 0;
 		palnum &= 0x03;
 
-		const int spridx = nametbl[ysprite * 32 + i] * 16;
+		const int spridx = nt[ysprite * 32 + i] * 16;
 		uint8_t b0 = romchrread(bgpattern + spridx + spritey);
 		uint8_t b1 = romchrread(bgpattern + spridx + spritey + 8);
 		for (int p = 0; p < 8; ++p) {
@@ -120,7 +146,7 @@ void stepppu(const int_fast32_t pputicks)
 
 		if (ppuclk++ == 340) {
 			ppuclk = 0;
-			if (scanline < 240)
+			if (scanline < 240 && (mask&0x08) != 0)
 				draw_bg_scanline();
 			if (scanline++ == 261) {
 				scanline = 0;
@@ -171,8 +197,8 @@ static uint_fast8_t read_vram_data(void)
 	uint_fast8_t r = 0;
 	if (vram_addr < 0x2000)
 		r = romchrread(vram_addr);
-	else if (vram_addr < 0x2400/*0x3F00*/)
-		r = nametables[vram_addr&0x7FF];
+	else if (vram_addr < 0x3F00)
+		r = nametables[eval_nt_offset(vram_addr)];
 	else
 		r = palettes[vram_addr&0x1F];
 
@@ -184,8 +210,8 @@ static void write_vram_data(const uint_fast8_t val)
 {
 	if (vram_addr < 0x2000)
 		romchrwrite(val, vram_addr);
-	else if (vram_addr < 0x2400/*0x3F00*/)
-		nametables[vram_addr&0x7FF] = val;
+	else if (vram_addr < 0x3F00)
+		nametables[eval_nt_offset(vram_addr)] = val;
 	else
 		palettes[vram_addr&0x1F] = val;
 
