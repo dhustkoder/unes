@@ -8,7 +8,7 @@
 
 #ifdef DEBUG
 #define BAD_ACCESS(addr) \
-  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4lx", __FILE__, __LINE__, addr) && false)
+  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4lx\n", __FILE__, __LINE__, addr) && false)
 #else
 #define BAD_ACCESS(addr) ((void)addr)
 #endif

@@ -42,40 +42,41 @@ static const uint32_t rgb_palette[] = {
 };
 
 static uint8_t oam[0x100];
-static uint8_t nametable[0x800];
-static uint8_t palette[0x20];
+static uint8_t nametables[0x800];
+static uint8_t palettes[0x20];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
-static void draw_sprite(const uint8_t sprite[16], const int y, const int x)
+
+static void draw_scanline(void)
 {
-	static const uint32_t testpalette[] = {
-		0x00000000, 0xFFFFFFFF, 0x50505050, 0x90909090
+	static const uint16_t nametbl_mirrors[] = {
+		0x000, 0x400, 0x000, 0x400
 	};
 
-	for (int i = 0; i < 8; ++i) {
-		uint8_t b0 = sprite[i];
-		uint8_t b1 = sprite[i + 8];
-		for (int j = 0; j < 8; ++j) {
-			const uint8_t c =  ((b1>>6)&0x02)|(b0>>7); 
-			screen[y + i][x + j] = testpalette[c];
+	const uint8_t* const nametbl = &nametables[nametbl_mirrors[ctrl&0x03]];
+	const uint8_t* const attrtbl = nametbl + 0x3C0;
+	const int bkgpattern = (ctrl&0x10) ? 0x1000 : 0x0000;
+	const int spritey = scanline & 0x07;
+	const int ysprite = scanline / 8;
+
+	for (int i = 0; i < 32; ++i) {
+		uint8_t palnum = attrtbl[(((ysprite / 4) * 8) + (i / 4))&0x3F];
+		palnum >>= ((i&0x03) > 1) ? 2 : 0;
+		palnum >>= ((ysprite&0x03) > 1) ? 4 : 0;
+		palnum &= 0x03;
+
+		const uint8_t spriteid = nametbl[ysprite * 32 + i];
+		uint8_t b0 = romchrread(bkgpattern + spriteid * 16 + spritey);
+		uint8_t b1 = romchrread(bkgpattern + spriteid * 16 + spritey + 8);
+		for (int p = 0; p < 8; ++p) {
+			const uint8_t c = ((b1>>6)&0x02)|(b0>>7);
+			const uint8_t rgb_index = palettes[palnum * 4 + c];
+			screen[scanline][i * 8 + p] = rgb_palette[rgb_index];
 			b0 <<= 1;
 			b1 <<= 1;
 		}
 	}
 }
-
-static void render_pattern_tbls(void)
-{
-	uint8_t sprite[16];
-	for (int i = 0; i < 512; ++i) {
-		for (int j = 0; j < 16; ++j)
-			sprite[j] = romchrread(j + (i * 16));
-		draw_sprite(sprite, (i / 32) * 8, (i * 8) & 0xFF);
-	}
-
-	render((uint32_t*)screen, sizeof(screen));
-}
-
 
 void resetppu(void)
 {
@@ -116,8 +117,12 @@ void stepppu(const int_fast32_t pputicks)
 
 		if (ppuclk++ == 340) {
 			ppuclk = 0;
+
+			if (scanline < 240)
+				draw_scanline();
+
 			if (scanline++ == 261) {
-				render_pattern_tbls();
+				render((const uint32_t*)screen, sizeof(screen));
 				scanline = 0;
 				if ((mask&0x18) && odd_frame)
 					++ppuclk;
@@ -148,11 +153,14 @@ static uint_fast8_t read_vram_data(void)
 	if (vram_addr < 0x2000) {
 		r = romchrread(vram_addr);
 	} else if (vram_addr < 0x3000) {
-		r = nametable[(vram_addr - 0x2000)&0x7FF];
+		r = nametables[(vram_addr - 0x2000)&0x7FF];
 	} else if (vram_addr < 0x3F00) {
-		r = nametable[(vram_addr - 0x3000)&0x7FF];
-	} else if (vram_addr < 0x3F20) {
-		r = palette[vram_addr - 0x3F00];
+		r = nametables[(vram_addr - 0x3000)&0x7FF];
+	} else {
+		if (vram_addr >= 0x3F20)
+			r = palettes[vram_addr - 0x3F20];
+		else
+			r = palettes[vram_addr - 0x3F00];
 	}
 
 	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
@@ -177,11 +185,14 @@ static void write_vram_data(const uint_fast8_t val)
 	if (vram_addr < 0x2000) {
 		romchrwrite(val, vram_addr);
 	} else if (vram_addr < 0x3000) {
-		nametable[(vram_addr - 0x2000)&0x7FF] = val;
+		nametables[(vram_addr - 0x2000)&0x7FF] = val;
 	} else if (vram_addr < 0x3F00) {
-		nametable[(vram_addr - 0x3000)&0x7FF] = val;
-	} else if (vram_addr < 0x3F20) {
-		palette[vram_addr - 0x3F00] = val;
+		nametables[(vram_addr - 0x3000)&0x7FF] = val;
+	} else {
+		if (vram_addr >= 0x3F20)
+			palettes[vram_addr - 0x3F20] = val;
+		else
+			palettes[vram_addr - 0x3F00] = val;
 	}
 
 	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
@@ -197,7 +208,7 @@ static void write_vram_addr(const uint_fast8_t val)
 		vram_addr = val<<8;
 	}
 
-	vram_addr &= 0xFFFF;
+	vram_addr &= 0x3FFF;
 	vram_addr_phase = !vram_addr_phase;
 }
 
