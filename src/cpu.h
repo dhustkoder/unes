@@ -52,11 +52,5 @@ static inline void trigger_nmi(void)
 	cpu_nmi = true;
 }
 
-static inline void notify_oam_dma(void)
-{
-	extern int_fast16_t cpu_step_cycles;
-	cpu_step_cycles += 512;
-}
-
 
 #endif

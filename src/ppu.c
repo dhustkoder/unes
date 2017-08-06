@@ -31,7 +31,7 @@ static bool nmi_output;
 static bool odd_frame;
 static bool nmi_for_frame;
 
-static uint8_t oam[0x100];
+uint8_t ppu_oam[0x100];
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x20];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
@@ -170,7 +170,7 @@ static uint_fast8_t read_status(void)
 
 static uint_fast8_t read_oam(void)
 {
-	return oam[oam_addr];
+	return ppu_oam[oam_addr];
 }
 
 static void write_ctrl(const uint_fast8_t val)
@@ -234,12 +234,6 @@ static void write_vram_addr(const uint_fast8_t val)
 
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
-	if (addr == 0x4014) {
-		// TODO OAM DMA TRANSFER
-		notify_oam_dma();
-		return;
-	}
-
 	switch (addr&0x0007) {
 	case 0: write_ctrl(val);      break;
 	case 1: write_mask(val);      break;

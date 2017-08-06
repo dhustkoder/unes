@@ -53,7 +53,7 @@ static const int8_t clock_table[0x100] = {
 
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
-int_fast16_t cpu_step_cycles;
+static int_fast16_t step_cycles;
 static bool irq_pass;
 static int_fast32_t pc;
 static uint_fast8_t a, x, y, s;
@@ -78,12 +78,12 @@ static void setflags(const uint_fast8_t val)
 }
 
 // cpu memory bus
+static void oam_dma(uint_fast8_t n);
+
 static uint_fast8_t ioread(const uint_fast16_t addr)
 {
 	if (addr >= 0x4000 && addr <= 0x4016) {
-		if (addr == 0x4014)
-			return ppuread(addr);
-		else
+		if (addr != 0x4014)
 			return apuread(addr);
 	} else if (addr >= 0x4016 && addr <= 0x4017) {
 		// read from $4016 - $4017 is joypad's
@@ -100,7 +100,7 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	if (addr >= 0x4000 && addr <= 0x4017) {
 		if (addr == 0x4014)
-			ppuwrite(val, addr);
+			oam_dma(val);
 		else
 			apuwrite(val, addr);
 	} else if (addr >= 0x2000 && addr < 0x4000) {
@@ -134,6 +134,19 @@ static void write(const uint_fast8_t val, const uint_fast16_t addr)
 		romwrite(val, addr);
 	else
 		BAD_ACCESS(addr);
+}
+
+static void oam_dma(const uint_fast8_t n)
+{
+	extern uint8_t ppu_oam[0x100];
+	const uint_fast16_t offset = 0x100 * n;
+	if (offset < (ADDR_IOREGS1 - 0x100)) {
+		memcpy(ppu_oam, &ram[offset&0x7FF], 0x100);
+	} else {
+		for (int i = 0; i < 0x100; ++i)
+			ppu_oam[i] = read(offset + i);
+	}
+	step_cycles += 513;
 }
 
 static uint_fast16_t read16(const int_fast32_t addr)
@@ -300,7 +313,7 @@ static uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t v
 	// check for page cross in adding value to addr
 	// add 1 to step_cycles if it does cross a page
 	if ((addr&0xFF00) != ((addr + val)&0xFF00))
-		++cpu_step_cycles;
+		++step_cycles;
 	return (addr + val)&0xFFFF;
 }
 
@@ -308,7 +321,7 @@ static void branch(const bool cond)
 {
 	if (cond) {
 		const int_fast8_t val = read(pc++);
-		++cpu_step_cycles;
+		++step_cycles;
 		pc = chkpagecross(pc, val);
 	} else {
 		++pc;
@@ -329,7 +342,7 @@ static void dointerrupt(const uint_fast16_t vector, const bool brk)
 	spush(getflags()|(brk ? FLAG_B : 0x00));
 	pc = read16(vector);
 	flags.i = 1;
-	cpu_step_cycles += 7;
+	step_cycles += 7;
 }
 
 
@@ -387,7 +400,7 @@ int_fast16_t stepcpu(void)
 	       (flags.v == 0 || flags.v == 1) &&
 	       (flags.n == 0 || flags.n == 1));
 
-	cpu_step_cycles = 0;
+	step_cycles = 0;
 
 	if (cpu_nmi) {
 		dointerrupt(ADDR_NMI_VECTOR, false);
@@ -398,7 +411,7 @@ int_fast16_t stepcpu(void)
 
 	irq_pass = flags.i == 0;
 	const uint_fast8_t opcode = fetch8();
-	cpu_step_cycles += clock_table[opcode];
+	step_cycles += clock_table[opcode];
 
 	switch (opcode) {
 	// ADC
@@ -613,6 +626,6 @@ int_fast16_t stepcpu(void)
 		break;
 	}
 
-	return cpu_step_cycles;
+	return step_cycles;
 }
 
