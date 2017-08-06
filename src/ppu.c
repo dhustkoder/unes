@@ -168,11 +168,6 @@ static uint_fast8_t read_status(void)
 	return (b7<<7)|(openbus&0x1F);
 }
 
-static uint_fast8_t read_oam(void)
-{
-	return ppu_oam[oam_addr];
-}
-
 static void write_ctrl(const uint_fast8_t val)
 {
 	ctrl = val;
@@ -184,6 +179,17 @@ static void write_mask(const uint_fast8_t val)
 	mask = val;
 }
 
+// oam data
+static uint_fast8_t read_oam(void)
+{
+	return ppu_oam[oam_addr];
+}
+
+static void write_oam(const uint_fast8_t data)
+{
+	ppu_oam[oam_addr++] = data;
+	oam_addr &= 0xFF;
+}
 
 // vram_addr
 static void vram_addr_inc(void)
@@ -238,6 +244,7 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 	case 0: write_ctrl(val);      break;
 	case 1: write_mask(val);      break;
 	case 3: oam_addr = val;       break;
+	case 4: write_oam(val);       break;
 	case 6: write_vram_addr(val); break;
 	case 7: write_vram_data(val); break;
 	}

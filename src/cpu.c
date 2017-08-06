@@ -140,7 +140,7 @@ static void oam_dma(const uint_fast8_t n)
 {
 	extern uint8_t ppu_oam[0x100];
 	const uint_fast16_t offset = 0x100 * n;
-	if (offset < (ADDR_IOREGS1 - 0x100)) {
+	if ((offset&0x7FF) <= (sizeof(ram) - 0x100)) {
 		memcpy(ppu_oam, &ram[offset&0x7FF], 0x100);
 	} else {
 		for (int i = 0; i < 0x100; ++i)
