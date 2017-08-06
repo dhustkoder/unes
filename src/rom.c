@@ -8,11 +8,16 @@
 #include "ppu.h"
 #include "rom.h"
 
+enum RomType {
+	NROM = 0,
+	MMC1 = 1
+};
+
 
 static int_fast32_t prg_size;
 static int_fast32_t chr_size;
 static int_fast32_t sram_size;
-static uint_fast8_t romtype;
+static enum RomType romtype;
 static const char* rompath;
 static const uint8_t* cartdata; // prgrom, chrrom
 static uint8_t* sram;
@@ -47,7 +52,6 @@ bool loadrom(const char* const path)
 
 	rompath = path;
 	FILE* const file = fopen(rompath, "r");
-
 	if (file == NULL) {
 		fprintf(stderr, "Couldn't open rom \'%s\': %s\n",
 		        rompath, strerror(errno));
@@ -55,7 +59,6 @@ bool loadrom(const char* const path)
 	}
 
 	static const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
-
 	if (fread(&ines, 1, 9, file) < 9 ||
 	    memcmp(ines.match, match, sizeof(match)) != 0) {
 		fprintf(stderr, "\'%s\' is not an ines file.\n", rompath);
@@ -103,7 +106,7 @@ bool loadrom(const char* const path)
 
 	sram = calloc(sram_size, sizeof(char));
 
-	if (romtype == 1)
+	if (romtype == MMC1)
 		mapper.mmc1.reg[0] = 0x0C;
 
 	printf("PRG-ROM BANKS: %" PRIu8 " x 16Kib = %" PRIiFAST32 "\n"
@@ -182,13 +185,13 @@ static void nrom_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
 static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 {
 	const uint_fast8_t switch_mode = (mapper.mmc1.reg[0]&0x0C)>>2;
-	const uint_fast8_t reg3 = mapper.mmc1.reg[3];
+	const uint_fast8_t reg3 = mapper.mmc1.reg[3]&0x0F;
 
 	unsigned bankidx = 0;
 	switch (switch_mode) {
 	case 0x00:
 		// switch 32kb at $8000
-		bankidx = PRGROM_BANK_SIZE * 2 * (reg3&0x0F);
+		bankidx = PRGROM_BANK_SIZE * 2 * reg3;
 		return cartdata[bankidx + addr - ADDR_PRGROM];
 	case 0x01:
 		// switch 32kb at $8000 ignoring low bit of bank number
@@ -200,7 +203,7 @@ static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 			bankidx = 0;
 			break;
 		}
-		bankidx = (PRGROM_BANK_SIZE * (reg3&0x0F));
+		bankidx = PRGROM_BANK_SIZE * reg3;
 		break;
 	case 0x03:
 		// fix last bank at $C000 and switch 16kb banks at $8000
@@ -208,7 +211,7 @@ static uint_fast8_t mmc1_read(const uint_fast16_t addr)
 			bankidx = prg_size - PRGROM_BANK_SIZE;
 			break;
 		}
-		bankidx = PRGROM_BANK_SIZE * (reg3&0x0F);
+		bankidx = PRGROM_BANK_SIZE * reg3;
 		break;
 	}
 
@@ -224,18 +227,7 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 		mapper.mmc1.tmp |= (value&0x01)<<4;
 		if (++mapper.mmc1.shiftcnt == 5) {
 			mapper.mmc1.shiftcnt = 0;
-
-			unsigned n;
-			if (addr <= 0x9FFF)
-				n = 0;
-			else if (addr <= 0xBFFF)
-				n = 1;
-			else if (addr <= 0xDFFF)
-				n = 2;
-			else
-				n = 3;
-
-			mapper.mmc1.reg[n] = mapper.mmc1.tmp;
+			mapper.mmc1.reg[(addr&0x6000)>>13] = mapper.mmc1.tmp;
 			mapper.mmc1.tmp = 0;
 		}
 	} else {
@@ -249,14 +241,17 @@ static uint_fast8_t mmc1_chrread(const uint_fast16_t addr)
 {
 	assert(addr < 0x2000);
 
-	if (ines.chrrom_nbanks > 0) {
-		// TODO chr rom bank switch
-		return cartdata[prg_size + addr];
-	} else {
+	if (ines.chrrom_nbanks == 0)
 		return chrram[addr];
-	}
 
-	return 0;
+	const uint8_t* const reg = mapper.mmc1.reg;
+	const uint8_t* const chr = &cartdata[prg_size];
+	if ((reg[0]&0x10) == 0) // switch 8kb banks at $0000 - $1FFF
+		return chr[((reg[1]&0x1E) * 8192) + addr];
+	else if (addr < 0x1000) // switch 4kb banks at $0000 - $0FFF
+		return chr[(reg[1] * 4096) + addr];
+	else                    // switch 4kb banks at $1000 - $1FFF
+		return chr[(reg[2] * 4096) + (addr - 0x1000)];
 }
 
 static void mmc1_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
@@ -274,8 +269,8 @@ uint_fast8_t romread(const uint_fast16_t addr)
 		return sram[addr - ADDR_SRAM];
 
 	switch (romtype) {
-	case 0x00: return nrom_read(addr);
-	case 0x01: return mmc1_read(addr);
+	case NROM: return nrom_read(addr);
+	case MMC1: return mmc1_read(addr);
 	}
 
 	return 0;
@@ -289,16 +284,16 @@ void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
 	}
 
 	switch (romtype) {
-	case 0x00: nrom_write(value, addr); break;
-	case 0x01: mmc1_write(value, addr); break;
+	case NROM: nrom_write(value, addr); break;
+	case MMC1: mmc1_write(value, addr); break;
 	}
 }
 
 uint_fast8_t romchrread(const uint_fast16_t addr)
 {
 	switch (romtype) {
-	case 0x00: return nrom_chrread(addr);
-	case 0x01: return mmc1_chrread(addr);
+	case NROM: return nrom_chrread(addr);
+	case MMC1: return mmc1_chrread(addr);
 	}
 
 	return 0x00;
@@ -307,13 +302,27 @@ uint_fast8_t romchrread(const uint_fast16_t addr)
 void romchrwrite(const uint_fast8_t value, const uint_fast16_t addr)
 {
 	switch (romtype) {
-	case 0x00: nrom_chrwrite(value, addr); break;
-	case 0x01: mmc1_chrwrite(value, addr); break;
+	case NROM: nrom_chrwrite(value, addr); break;
+	case MMC1: mmc1_chrwrite(value, addr); break;
 	}
 }
 
 enum NTMirroring get_ntmirroring_mode(void)
 {
-	return (ines.ctrl1&0x01) ? NTMIRRORING_VERTICAL : NTMIRRORING_HORIZONTAL;
+	switch (romtype) {
+	default: break;
+	case MMC1:
+		switch (mapper.mmc1.reg[0]&0x03) {
+		case 0x00: return NTMIRRORING_ONE_SCREEN_LOW;
+		case 0x01: return NTMIRRORING_ONE_SCREEN_UPPER;
+		case 0x02: return NTMIRRORING_VERTICAL;
+		case 0x03: return NTMIRRORING_HORIZONTAL;
+		}
+		break;
+	}
+
+	return (ines.ctrl1&0x01)
+		? NTMIRRORING_VERTICAL
+		: NTMIRRORING_HORIZONTAL;
 }
 

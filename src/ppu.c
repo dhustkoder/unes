@@ -62,10 +62,13 @@ static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 			offset = 0x400 + (addr&0x3FF);
 		break;
 	case NTMIRRORING_VERTICAL:
-		if ((addr >= 0x2400 && addr <= 0x27FF) || addr >= 0x2C00)
-			offset = 0x400 + (addr&0x3FF);
-		else
-			offset = addr&0x3FF;
+		offset = addr&0x7FF;
+		break;
+	case NTMIRRORING_ONE_SCREEN_LOW:
+		offset = addr&0x3FF;
+		break;
+	case NTMIRRORING_ONE_SCREEN_UPPER:
+		offset = 0x400 + (addr&0x3FF);
 		break;
 	}
 
