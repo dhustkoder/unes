@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#include "mmu.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "rom.h"
 

@@ -5,10 +5,20 @@
 #include <string.h>
 #include <signal.h>
 #include <inttypes.h>
-#include "mmu.h"
+#include "rom.h"
+#include "ppu.h"
+#include "apu.h"
 #include "cpu.h"
 
 
+#ifdef DEBUG
+#define BAD_ACCESS(addr) \
+  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4lx\n", __FILE__, __LINE__, addr) && false)
+#else
+#define BAD_ACCESS(addr) ((void)addr)
+#endif
+
+  
 #define FLAG_C (0x01)
 #define FLAG_Z (0x02)
 #define FLAG_I (0x04)
@@ -47,10 +57,8 @@ int_fast16_t cpu_step_cycles;
 static bool irq_pass;
 static int_fast32_t pc;
 static uint_fast8_t a, x, y, s;
-
-static struct {
-	uint_fast8_t c, z, i, d, v, n;
-} flags;
+static struct { uint_fast8_t c, z, i, d, v, n; } flags;
+static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
 static uint_fast8_t getflags(void)
@@ -69,33 +77,108 @@ static void setflags(const uint_fast8_t val)
 	flags.c = val&0x01;
 }
 
-static inline void spush(const uint_fast8_t val)
+// cpu memory bus
+static uint_fast8_t ioread(const uint_fast16_t addr)
 {
-	mmuwrite(val, 0x100|s);
+	if (addr >= 0x4000 && addr <= 0x4016) {
+		if (addr == 0x4014)
+			return ppuread(addr);
+		else
+			return apuread(addr);
+	} else if (addr >= 0x4016 && addr <= 0x4017) {
+		// read from $4016 - $4017 is joypad's
+	} else if (addr >= 0x2000 && addr <= 0x4000) {
+		return ppuread(addr);
+	} else {
+		BAD_ACCESS(addr);
+	}
+
+	return 0x00;
+}
+
+static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
+{
+	if (addr >= 0x4000 && addr <= 0x4017) {
+		if (addr == 0x4014)
+			ppuwrite(val, addr);
+		else
+			apuwrite(val, addr);
+	} else if (addr >= 0x2000 && addr < 0x4000) {
+		ppuwrite(val, addr);
+	} else {
+		BAD_ACCESS(addr);
+	}
+}
+
+static uint_fast8_t read(const uint_fast16_t addr)
+{
+	if (addr < ADDR_IOREGS1)
+		return ram[addr&0x7FF];
+	else if (addr >= ADDR_SRAM)
+		return romread(addr);
+	else if (addr < ADDR_EXPROM)
+		return ioread(addr);
+	else
+		BAD_ACCESS(addr);
+
+	return 0x00;
+}
+
+static void write(const uint_fast8_t val, const uint_fast16_t addr)
+{
+	if (addr < ADDR_IOREGS1)
+		ram[addr&0x7FF] = val;
+	else if (addr < ADDR_EXPROM)
+		iowrite(val, addr);
+	else if (addr >= ADDR_SRAM)
+		romwrite(val, addr);
+	else
+		BAD_ACCESS(addr);
+}
+
+static uint_fast16_t read16(const int_fast32_t addr)
+{
+	return (read(addr + 1)<<8)|read(addr);
+}
+
+static uint_fast16_t read16msk(const uint_fast16_t addr)
+{
+	if ((addr&0x00FF) == 0xFF)
+		return (read(addr&0xFF00)<<8)|read(addr);
+	return read16(addr);
+}
+
+
+// stack
+static void spush(const uint_fast8_t val)
+{
+	write(val, 0x100|s);
 	--s;
 	s &= 0xFF;
 }
 
-static inline void spush16(const uint_fast16_t val)
+static void spush16(const uint_fast16_t val)
 {
 	spush((val&0xFF00)>>8);
 	spush(val&0xFF);
 }
 
-static inline uint_fast8_t spop(void)
+static uint_fast8_t spop(void)
 {
 	++s;
 	s &= 0xFF;
-	return mmuread(0x100|s);
+	return read(0x100|s);
 }
 
-static inline uint_fast16_t spop16(void)
+static uint_fast16_t spop16(void)
 {
 	const uint_fast8_t lsb = spop();
 	const uint_fast16_t msb = spop();
 	return (msb<<8)|lsb;
 }
 
+
+// instructions
 static void ld(uint_fast8_t* const reg, const uint_fast8_t val)
 {
 	*reg = val;
@@ -178,9 +261,9 @@ static void asl(uint_fast8_t* const val)
 
 static inline void opm(void(*const op)(uint_fast8_t*), const uint_fast16_t addr)
 {
-	uint_fast8_t val = mmuread(addr);
+	uint_fast8_t val = read(addr);
 	op(&val);
-	mmuwrite(val, addr);
+	write(val, addr);
 }
 
 static void bit(const uint_fast8_t val)
@@ -207,12 +290,12 @@ static void adc(const int_fast16_t val)
 	flags.n = a>>7;
 }
 
-static inline void sbc(const uint_fast8_t val)
+static void sbc(const uint_fast8_t val)
 {
 	adc(val ^ 0xFF);
 }
 
-static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t val)
+static uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t val)
 {
 	// check for page cross in adding value to addr
 	// add 1 to step_cycles if it does cross a page
@@ -224,7 +307,7 @@ static inline uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fas
 static void branch(const bool cond)
 {
 	if (cond) {
-		const int_fast8_t val = mmuread(pc++);
+		const int_fast8_t val = read(pc++);
 		++cpu_step_cycles;
 		pc = chkpagecross(pc, val);
 	} else {
@@ -232,12 +315,11 @@ static void branch(const bool cond)
 	}
 }
 
-static inline bool check_irq_sources(void)
+static bool check_irq_sources(void)
 {
-	for (int i = 0; i < IRQ_SRC_SIZE; ++i) {
+	for (int i = 0; i < IRQ_SRC_SIZE; ++i)
 		if (cpu_irq_sources[i])
 			return true;
-	}
 	return false;
 }
 
@@ -245,10 +327,12 @@ static void dointerrupt(const uint_fast16_t vector, const bool brk)
 {
 	spush16(brk ? pc + 1 : pc);
 	spush(getflags()|(brk ? FLAG_B : 0x00));
-	pc = mmuread16(vector);
+	pc = read16(vector);
 	flags.i = 1;
 	cpu_step_cycles += 7;
 }
+
+
 
 void resetcpu(void)
 {
@@ -256,7 +340,7 @@ void resetcpu(void)
 	memset(cpu_irq_sources, 0x00, sizeof(cpu_irq_sources));
 	irq_pass = false;
 
-	pc = mmuread16(ADDR_RESET_VECTOR);
+	pc = read16(ADDR_RESET_VECTOR);
 	a = 0x00;
 	x = 0x00;
 	y = 0x00;
@@ -268,8 +352,8 @@ void resetcpu(void)
 
 int_fast16_t stepcpu(void)
 {
-	#define fetch8()  (mmuread(pc++))
-	#define fetch16() (pc += 2, mmuread16(pc - 2))
+	#define fetch8()  (read(pc++))
+	#define fetch16() (pc += 2, read16(pc - 2))
 
 	#define immediate()      (fetch8())
 	#define wzeropage()      (fetch8())
@@ -280,18 +364,18 @@ int_fast16_t stepcpu(void)
 	#define wabsolutexnchk() ((fetch16() + x)&0xFFFF)
 	#define wabsolutey()     (chkpagecross(fetch16(), y))
 	#define wabsoluteynchk() ((fetch16() + y)&0xFFFF)
-	#define windirectx()     (mmuread16msk((fetch8() + x)&0xFF))
-	#define windirecty()     (chkpagecross(mmuread16msk(fetch8()), y))
-	#define windirectynchk() ((mmuread16msk(fetch8()) + y)&0xFFFF)
+	#define windirectx()     (read16msk((fetch8() + x)&0xFF))
+	#define windirecty()     (chkpagecross(read16msk(fetch8()), y))
+	#define windirectynchk() ((read16msk(fetch8()) + y)&0xFFFF)
 
-	#define rzeropage()  (mmuread(wzeropage()))
-	#define rzeropagex() (mmuread(wzeropagex()))
-	#define rzeropagey() (mmuread(wzeropagey()))
-	#define rabsolute()  (mmuread(wabsolute()))
-	#define rabsolutex() (mmuread(wabsolutex()))
-	#define rabsolutey() (mmuread(wabsolutey()))
-	#define rindirectx() (mmuread(windirectx()))
-	#define rindirecty() (mmuread(windirecty()))
+	#define rzeropage()  (ram[wzeropage()])
+	#define rzeropagex() (ram[wzeropagex()])
+	#define rzeropagey() (ram[wzeropagey()])
+	#define rabsolute()  (read(wabsolute()))
+	#define rabsolutex() (read(wabsolutex()))
+	#define rabsolutey() (read(wabsolutey()))
+	#define rindirectx() (read(windirectx()))
+	#define rindirecty() (read(windirecty()))
 
 
 	assert(pc <= 0xFFFF);
@@ -446,23 +530,23 @@ int_fast16_t stepcpu(void)
 	case 0xBC: ld(&y, rabsolutex()); break;
 
 	// STA
-	case 0x85: mmuwrite(a, wzeropage());      break;
-	case 0x95: mmuwrite(a, wzeropagex());     break;
-	case 0x8D: mmuwrite(a, wabsolute());      break;
-	case 0x9D: mmuwrite(a, wabsolutexnchk()); break;
-	case 0x99: mmuwrite(a, wabsoluteynchk()); break;
-	case 0x81: mmuwrite(a, windirectx());     break;
-	case 0x91: mmuwrite(a, windirectynchk()); break;
+	case 0x85: write(a, wzeropage());      break;
+	case 0x95: write(a, wzeropagex());     break;
+	case 0x8D: write(a, wabsolute());      break;
+	case 0x9D: write(a, wabsolutexnchk()); break;
+	case 0x99: write(a, wabsoluteynchk()); break;
+	case 0x81: write(a, windirectx());     break;
+	case 0x91: write(a, windirectynchk()); break;
 
 	// STX
-	case 0x86: mmuwrite(x, wzeropage());  break;
-	case 0x96: mmuwrite(x, wzeropagey()); break;
-	case 0x8E: mmuwrite(x, wabsolute());  break;
+	case 0x86: write(x, wzeropage());  break;
+	case 0x96: write(x, wzeropagey()); break;
+	case 0x8E: write(x, wabsolute());  break;
 
 	// STY
-	case 0x84: mmuwrite(y, wzeropage());  break;
-	case 0x94: mmuwrite(y, wzeropagex()); break;
-	case 0x8C: mmuwrite(y, wabsolute());  break;
+	case 0x84: write(y, wzeropage());  break;
+	case 0x94: write(y, wzeropagex()); break;
+	case 0x8C: write(y, wabsolute());  break;
 
 	// CMP
 	case 0xC9: cmp(a, immediate());  break;
@@ -492,7 +576,7 @@ int_fast16_t stepcpu(void)
 
 	// JMP
 	case 0x4C: pc = wabsolute(); break;
-	case 0x6C: pc = mmuread16msk(fetch16()); break;
+	case 0x6C: pc = read16msk(fetch16()); break;
 
 	// implieds
 	case 0x00: dointerrupt(ADDR_IRQ_VECTOR, true);          break; // BRK
@@ -524,7 +608,9 @@ int_fast16_t stepcpu(void)
 	case 0xBA: ld(&x, (s&0xFF));                            break; // TSX
 	case 0x9A: s = x;                                       break; // TXS
 	case 0x98: ld(&a, y);                                   break; // TYA
-	default: fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode); break;
+	default:
+		fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);
+		break;
 	}
 
 	return cpu_step_cycles;
