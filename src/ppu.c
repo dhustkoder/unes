@@ -33,7 +33,7 @@ static bool nmi_for_frame;
 
 uint8_t ppu_oam[0x100];
 static uint8_t nametables[0x800];
-static uint8_t palettes[0x20];
+static uint8_t palettes[0x19];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 static const uint32_t rgb_palette[0x40] = {
@@ -51,9 +51,7 @@ static const uint32_t rgb_palette[0x40] = {
 static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 {
 	assert(addr >= 0x2000 && addr <= 0x3EFF);
-
-	if (addr >= 0x3000)
-		addr &= 0x2EFF;
+	addr &= 0x2FFF;
 
 	int_fast16_t offset = 0;
 	switch (get_ntmirroring_mode()) {
@@ -61,10 +59,10 @@ static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 		if (addr < 0x2800)
 			offset = addr&0x3FF;
 		else
-			offset = 0x400 + ((addr - 0x2800)&0x3FF);
+			offset = 0x400 + (addr&0x3FF);
 		break;
 	case NTMIRRORING_VERTICAL:
-		if (addr >= 0x2400 || addr >= 0x2C00)
+		if ((addr >= 0x2400 && addr <= 0x27FF) || addr >= 0x2C00)
 			offset = 0x400 + (addr&0x3FF);
 		else
 			offset = addr&0x3FF;
@@ -72,6 +70,16 @@ static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 	}
 
 	return offset;
+}
+
+static int_fast8_t eval_palette_offset(uint_fast16_t addr)
+{
+	assert((addr >= 0x3F00 && addr <= 0x3FFF) || addr <= 0x1F);
+
+	if (addr >= 0x3F00)
+		addr &= 0x1F;
+
+	return (addr&0x03) ? addr - (addr>>2) : 0;
 }
 
 static void draw_bg_scanline(void)
@@ -84,12 +92,13 @@ static void draw_bg_scanline(void)
 
 	const uint8_t* const nt = &nametables[eval_nt_offset(nt_addrs[ctrl&0x03])];
 	const uint8_t* const at = nt + 0x3C0;
+	const uint8_t greymsk = (mask&0x01) ? 0x30 : 0xFF;
 	const int bgpattern = (ctrl&0x10) ? 0x1000 : 0x0000;
 	const int spritey = scanline&0x07;
 	const int ysprite = scanline / 8;
 
 	for (int i = 0; i < 32; ++i) {
-		uint8_t palnum = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
+		unsigned palnum = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
 		palnum >>= ((i&0x03) > 1) ? 2 : 0;
 		palnum >>= ((ysprite&0x03) > 1) ? 4 : 0;
 		palnum &= 0x03;
@@ -98,9 +107,10 @@ static void draw_bg_scanline(void)
 		uint8_t b0 = romchrread(bgpattern + spridx + spritey);
 		uint8_t b1 = romchrread(bgpattern + spridx + spritey + 8);
 		for (int p = 0; p < 8; ++p) {
-			const uint8_t c = ((b1>>6)&0x02)|(b0>>7);
-			const uint8_t rgb_index = palettes[palnum * 4 + c];
-			screen[scanline][i * 8 + p] = rgb_palette[rgb_index&0x3F];
+			const int c = ((b1>>6)&0x02)|(b0>>7);
+			const int pal = palettes[eval_palette_offset(palnum * 4 + c)];
+			const uint32_t color = rgb_palette[pal&greymsk&0x3F];
+			screen[scanline][i * 8 + p] = color;
 			b0 <<= 1;
 			b1 <<= 1;
 		}
@@ -206,7 +216,7 @@ static uint_fast8_t read_vram_data(void)
 	else if (vram_addr < 0x3F00)
 		r = nametables[eval_nt_offset(vram_addr)];
 	else
-		r = palettes[vram_addr&0x1F];
+		r = palettes[eval_palette_offset(vram_addr)];
 
 	vram_addr_inc();
 	return r;
@@ -218,8 +228,8 @@ static void write_vram_data(const uint_fast8_t val)
 		romchrwrite(val, vram_addr);
 	else if (vram_addr < 0x3F00)
 		nametables[eval_nt_offset(vram_addr)] = val;
-	else
-		palettes[vram_addr&0x1F] = val;
+	else 
+		palettes[eval_palette_offset(vram_addr)] = val;
 
 	vram_addr_inc();
 }

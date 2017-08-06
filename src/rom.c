@@ -314,6 +314,6 @@ void romchrwrite(const uint_fast8_t value, const uint_fast16_t addr)
 
 enum NTMirroring get_ntmirroring_mode(void)
 {
-	return ines.ctrl1&0x01 ? NTMIRRORING_VERTICAL : NTMIRRORING_HORIZONTAL;
+	return (ines.ctrl1&0x01) ? NTMIRRORING_VERTICAL : NTMIRRORING_HORIZONTAL;
 }
 
