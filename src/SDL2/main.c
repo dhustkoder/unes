@@ -9,8 +9,10 @@
 #include "ppu.h"
 
 
-#define WIN_WIDTH  (256)
-#define WIN_HEIGHT (240)
+#define TEXTURE_WIDTH  (256)
+#define TEXTURE_HEIGHT (240)
+#define WIN_WIDTH  (TEXTURE_WIDTH  * 2)
+#define WIN_HEIGHT (TEXTURE_HEIGHT * 2)
 
 
 const uint32_t keys_id[KEY_NKEYS] = {
@@ -136,7 +138,7 @@ bool initsdl(void)
 
 	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
 		                    SDL_TEXTUREACCESS_STREAMING,
-		                    WIN_WIDTH, WIN_HEIGHT);
+		                    TEXTURE_WIDTH, TEXTURE_HEIGHT);
 	if (texture == NULL) {
 		fprintf(stderr, "Failed to create SDL_Texture: %s\n",
 		        SDL_GetError());

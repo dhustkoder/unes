@@ -7,10 +7,6 @@
 #include "ppu.h"
 
 
-#define ADDR_PATTERN_TBL1 (0x0000)
-#define ADDR_PATTERN_TBL2 (0x1000)
-#define ADDR_NAME_TBL1    (0x2000)
-#define ADDR_NAME_TBL2    (0x2400)
 #define SCREEN_WIDTH      (256)
 #define SCREEN_HEIGHT     (240)
 
@@ -51,15 +47,11 @@ static const uint32_t rgb_palette[0x40] = {
 static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 {
 	assert(addr >= 0x2000 && addr <= 0x3EFF);
-	addr &= 0x2FFF;
 
 	int_fast16_t offset = 0;
 	switch (get_ntmirroring_mode()) {
 	case NTMIRRORING_HORIZONTAL:
-		if (addr < 0x2800)
-			offset = addr&0x3FF;
-		else
-			offset = 0x400 + (addr&0x3FF);
+		offset = ((addr>>1)&0x400) + (addr&0x3FF);
 		break;
 	case NTMIRRORING_VERTICAL:
 		offset = addr&0x7FF;
@@ -118,7 +110,62 @@ static void draw_bg_scanline(void)
 			b1 <<= 1;
 		}
 	}
+
+	oam_addr = 0;
 }
+
+static void draw_sprite_scanline(void)
+{
+	static const struct {
+		uint8_t y;
+		uint8_t tile;
+		uint8_t attr;
+		uint8_t x;
+	} *pspr;
+
+	for (int i = 0; i < 0x100; i += 4) {
+		pspr = (void*)&ppu_oam[i];
+		if (pspr->y > scanline || (scanline >= (pspr->y + 8)))
+			continue;
+
+		const int spry = (pspr->attr&0x80) != 0
+		 ? -((scanline - pspr->y) - 7) // flip vertically
+		 : (scanline - pspr->y);
+
+		const int sprx = pspr->x;
+		const int pattern = (ctrl&0x08) ? 0x1000 : 0x0000;
+		const int tileidx = pspr->tile * 16;
+		const int palidx = 0x10 + (pspr->attr&0x03) * 4;
+		uint8_t b0 = romchrread(pattern + tileidx + spry);
+		uint8_t b1 = romchrread(pattern + tileidx + spry + 8);
+
+		if ((pspr->attr&0x40) != 0) {
+			// flip horizontally
+			uint8_t tmp0 = 0;
+			uint8_t tmp1 = 0;
+			for (int j = 0; j < 8; ++j) {
+				tmp0 |= ((b0>>j)&0x01)<<(7 - j);
+				tmp1 |= ((b1>>j)&0x01)<<(7 - j);
+			}
+			b0 = tmp0;
+			b1 = tmp1;
+		}
+
+		for (int p = 0; p < 8 && (sprx + p) < 256; ++p) {
+			const int c = ((b1>>6)&0x02)|(b0>>7);
+			b0 <<= 1;
+			b1 <<= 1;
+
+			if (c == 0)
+				continue;
+
+			const int pal = palettes[eval_palette_offset(palidx + c)];
+			const uint32_t color = rgb_palette[pal&0x3F];
+			screen[scanline][sprx + p] = color;
+		}
+	}
+}
+
 
 void resetppu(void)
 {
@@ -159,8 +206,12 @@ void stepppu(const int_fast32_t pputicks)
 
 		if (ppuclk++ == 340) {
 			ppuclk = 0;
-			if (scanline < 240 && (mask&0x08) != 0)
-				draw_bg_scanline();
+			if (scanline < 240) {
+				if ((mask&0x08) != 0)
+					draw_bg_scanline();
+				if ((mask&0x10) != 0)
+					draw_sprite_scanline();
+			}
 			if (scanline++ == 261) {
 				scanline = 0;
 				render((const uint32_t*)screen, sizeof(screen));
