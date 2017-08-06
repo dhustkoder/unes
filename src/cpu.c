@@ -5,6 +5,7 @@
 #include <string.h>
 #include <signal.h>
 #include <inttypes.h>
+#include "input.h"
 #include "rom.h"
 #include "ppu.h"
 #include "apu.h"
@@ -58,6 +59,7 @@ static bool irq_pass;
 static int_fast32_t pc;
 static uint_fast8_t a, x, y, s;
 static struct { uint_fast8_t c, z, i, d, v, n; } flags;
+static enum Key currkey;
 static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
@@ -82,11 +84,15 @@ static void oam_dma(uint_fast8_t n);
 
 static uint_fast8_t ioread(const uint_fast16_t addr)
 {
-	if (addr >= 0x4000 && addr <= 0x4016) {
+	if (addr >= 0x4000 && addr < 0x4016) {
 		if (addr != 0x4014)
 			return apuread(addr);
 	} else if (addr >= 0x4016 && addr <= 0x4017) {
 		// read from $4016 - $4017 is joypad's
+		const enum Key k = currkey++;
+		if (currkey >= KEY_NKEYS)
+			currkey = KEY_A;
+		return getkeystate(k);
 	} else if (addr >= 0x2000 && addr <= 0x4000) {
 		return ppuread(addr);
 	} else {
@@ -101,6 +107,8 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 	if (addr >= 0x4000 && addr <= 0x4017) {
 		if (addr == 0x4014)
 			oam_dma(val);
+		else if (addr == 0x4016)
+			;// joypad strobe
 		else
 			apuwrite(val, addr);
 	} else if (addr >= 0x2000 && addr < 0x4000) {
@@ -361,6 +369,7 @@ void resetcpu(void)
 
 	memset(&flags, 0x00, sizeof(flags));
 	flags.i = 1;
+	currkey = KEY_A;
 }
 
 int_fast16_t stepcpu(void)

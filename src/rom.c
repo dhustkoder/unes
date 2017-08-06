@@ -8,6 +8,7 @@
 #include "ppu.h"
 #include "rom.h"
 
+
 enum RomType {
 	NROM = 0,
 	MMC1 = 1
@@ -247,11 +248,11 @@ static uint_fast8_t mmc1_chrread(const uint_fast16_t addr)
 	const uint8_t* const reg = mapper.mmc1.reg;
 	const uint8_t* const chr = &cartdata[prg_size];
 	if ((reg[0]&0x10) == 0) // switch 8kb banks at $0000 - $1FFF
-		return chr[((reg[1]&0x1E) * 8192) + addr];
+		return chr[(reg[1]&0x1E) * 8192 + addr];
 	else if (addr < 0x1000) // switch 4kb banks at $0000 - $0FFF
-		return chr[(reg[1] * 4096) + addr];
+		return chr[reg[1] * 4096 + addr];
 	else                    // switch 4kb banks at $1000 - $1FFF
-		return chr[(reg[2] * 4096) + (addr - 0x1000)];
+		return chr[reg[2] * 4096 + (addr - 0x1000)];
 }
 
 static void mmc1_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
