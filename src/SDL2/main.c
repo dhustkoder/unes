@@ -15,11 +15,11 @@
 #define WIN_HEIGHT (TEXTURE_HEIGHT * 2)
 
 
-const uint32_t keys_id[KEY_NKEYS] = {
-	[KEY_A] = SDLK_z, [KEY_B] = SDLK_x,
-	[KEY_SELECT] = SDLK_c, [KEY_START] = SDLK_v,
-	[KEY_UP] = SDLK_UP, [KEY_DOWN] = SDLK_DOWN,
-	[KEY_LEFT] = SDLK_LEFT, [KEY_RIGHT] = SDLK_RIGHT
+const uint8_t keys_id[KEY_NKEYS] = {
+	[KEY_A] = SDL_SCANCODE_Z, [KEY_B] = SDL_SCANCODE_X,
+	[KEY_SELECT] = SDL_SCANCODE_C, [KEY_START] = SDL_SCANCODE_V,
+	[KEY_UP] = SDL_SCANCODE_UP, [KEY_DOWN] = SDL_SCANCODE_DOWN,
+	[KEY_LEFT] = SDL_SCANCODE_LEFT, [KEY_RIGHT] = SDL_SCANCODE_RIGHT
 };
 
 enum KeyState keys_state[KEY_NKEYS] = { KEYSTATE_UP };
@@ -78,10 +78,10 @@ Lfreerom:
 	return exitcode;
 }
 
-static void update_key(const uint32_t sym, const enum KeyState state)
+static void update_key(const uint32_t code, const enum KeyState state)
 {
 	for (int i = 0; i < KEY_NKEYS; ++i) {
-		if (keys_id[i] == sym) {
+		if (keys_id[i] == code) {
 			keys_state[i] = state;
 			break;
 		}
@@ -96,12 +96,12 @@ static bool update_events(void)
 		case SDL_QUIT:
 			return false;
 		case SDL_KEYDOWN:
-			if (event.key.keysym.sym == SDLK_ESCAPE)
+			if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
 				return false;
-			update_key(event.key.keysym.sym, KEYSTATE_DOWN);
+			update_key(event.key.keysym.scancode, KEYSTATE_DOWN);
 			break;
 		case SDL_KEYUP:
-			update_key(event.key.keysym.sym, KEYSTATE_UP);
+			update_key(event.key.keysym.scancode, KEYSTATE_UP);
 			break;
 		}
 	}
