@@ -101,13 +101,11 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	if (addr >= 0x4000 && addr <= 0x4017) {
-
 		switch (addr) {
 		default: apuwrite(val, addr); break;
 		case 0x4014: oam_dma(val);    break;
 		case 0x4016: joywrite(val);   break;
 		}
-
 	} else if (addr >= 0x2000 && addr < 0x4000) {
 		ppuwrite(val, addr);
 	} else {

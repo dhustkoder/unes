@@ -15,10 +15,11 @@ static uint_fast8_t ppuopenbus;
 static uint_fast8_t ppuctrl;     // $2000
 static uint_fast8_t ppumask;     // $2001
 static uint_fast8_t ppustatus;   // $2002
-static uint_fast8_t ppuscroll;   // $2005
 static uint_fast8_t oamaddr;     // $2003 
+static uint_fast16_t ppuscroll;  // $2005
 static int_fast16_t ppuaddr;     // $2006
 static bool ppuaddr_phase;
+static bool ppuscroll_phase;
 
 static int_fast16_t ppuclk;      // 0 - 341
 static int_fast16_t scanline;    // 0 - 262
@@ -173,10 +174,11 @@ void resetppu(void)
 	ppuctrl = 0x00;
 	ppumask = 0x00;
 	ppustatus = 0xA0;
-	ppuscroll = 0x00;
 	oamaddr = 0x00;
+	ppuscroll = 0x0000;
 	ppuaddr = 0x0000;
 	ppuaddr_phase = false;
+	ppuscroll_phase = false;
 
 	ppuclk = 0;
 	scanline = 240;
@@ -243,7 +245,7 @@ static void write_ppumask(const uint_fast8_t val)
 	ppumask = val;
 }
 
-// oam data
+
 static uint_fast8_t read_oamdata(void)
 {
 	return ppu_oam[oamaddr];
@@ -255,7 +257,7 @@ static void write_oamdata(const uint_fast8_t data)
 	oamaddr &= 0xFF;
 }
 
-// ppuaddr
+
 static void ppuaddr_inc(void)
 {
 	ppuaddr += (ppuctrl&0x04) == 0 ? 1 : 32;
@@ -301,6 +303,18 @@ static void write_ppuaddr(const uint_fast8_t val)
 	ppuaddr_phase = !ppuaddr_phase;
 }
 
+static void write_ppuscroll(const uint_fast8_t val)
+{
+	if (ppuscroll_phase) {
+		ppuscroll |= val;
+	} else {
+		ppuscroll = 0;
+		ppuscroll = val<<8;
+	}
+
+	ppuscroll_phase = !ppuscroll_phase;
+}
+
 
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
@@ -309,6 +323,7 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 	case 1: write_ppumask(val);   break;
 	case 3: oamaddr = val;        break;
 	case 4: write_oamdata(val);   break;
+	case 5: write_ppuscroll(val); break;
 	case 6: write_ppuaddr(val);   break;
 	case 7: write_ppudata(val);   break;
 	}
