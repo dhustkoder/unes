@@ -7,6 +7,7 @@
 #include "cpu.h"
 #include "apu.h"
 #include "ppu.h"
+#include "keys.h"
 
 
 #define TEXTURE_WIDTH  (256)

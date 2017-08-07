@@ -21,23 +21,6 @@
 #define ADDR_STACK        (0x0100)
 #define ADDR_ZEROPAGE     (0x0000)
 
-enum KeyState {
-	KEYSTATE_UP,
-	KEYSTATE_DOWN
-};
-
-enum Key {
-	KEY_A,
-	KEY_B,
-	KEY_SELECT,
-	KEY_START,
-	KEY_UP,
-	KEY_DOWN,
-	KEY_LEFT,
-	KEY_RIGHT,
-	KEY_NKEYS
-};
-
 enum IrqSource {
 	IRQ_SRC_APU_FRAME_COUNTER,
 	IRQ_SRC_APU_DMC_TIMER,
