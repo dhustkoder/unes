@@ -11,20 +11,20 @@
 #define SCREEN_HEIGHT     (240)
 
 
-static uint_fast8_t openbus;
-static uint_fast8_t ctrl;           // $2000
-static uint_fast8_t mask;           // $2001
-static uint_fast8_t status;         // $2002
-static uint_fast8_t scroll;         // $2005
-static uint_fast8_t oam_addr;       // $2003 
-static int_fast16_t vram_addr;      // $2006
-static bool vram_addr_phase;
+static uint_fast8_t ppuopenbus;
+static uint_fast8_t ppuctrl;     // $2000
+static uint_fast8_t ppumask;     // $2001
+static uint_fast8_t ppustatus;   // $2002
+static uint_fast8_t ppuscroll;   // $2005
+static uint_fast8_t oamaddr;     // $2003 
+static int_fast16_t ppuaddr;     // $2006
+static bool ppuaddr_phase;
 
-static int_fast16_t ppuclk;         // 0 - 341
-static int_fast16_t scanline;       // 0 - 262
+static int_fast16_t ppuclk;      // 0 - 341
+static int_fast16_t scanline;    // 0 - 262
 static bool nmi_occurred;
 static bool nmi_output;
-static bool odd_frame;
+static bool oddframe;
 static bool nmi_for_frame;
 
 uint8_t ppu_oam[0x100];
@@ -85,10 +85,10 @@ static void draw_bg_scanline(void)
 		0x2000, 0x2400, 0x2800, 0x2C00
 	};
 
-	const uint8_t* const nt = &nametables[eval_nt_offset(nt_addrs[ctrl&0x03])];
+	const uint8_t* const nt = &nametables[eval_nt_offset(nt_addrs[ppuctrl&0x03])];
 	const uint8_t* const at = nt + 0x3C0;
-	const uint8_t greymsk = (mask&0x01) ? 0x30 : 0xFF;
-	const int bgpattern = (ctrl&0x10) ? 0x1000 : 0x0000;
+	const uint8_t greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
+	const int bgpattern = (ppuctrl&0x10) ? 0x1000 : 0x0000;
 	const int spritey = scanline&0x07;
 	const int ysprite = scanline / 8;
 
@@ -111,7 +111,7 @@ static void draw_bg_scanline(void)
 		}
 	}
 
-	oam_addr = 0;
+	oamaddr = 0;
 }
 
 static void draw_sprite_scanline(void)
@@ -133,7 +133,7 @@ static void draw_sprite_scanline(void)
 		 : (scanline - pspr->y);
 
 		const int sprx = pspr->x;
-		const int pattern = (ctrl&0x08) ? 0x1000 : 0x0000;
+		const int pattern = (ppuctrl&0x08) ? 0x1000 : 0x0000;
 		const int tileidx = pspr->tile * 16;
 		const int palidx = 0x10 + (pspr->attr&0x03) * 4;
 		uint8_t b0 = romchrread(pattern + tileidx + spry);
@@ -169,21 +169,21 @@ static void draw_sprite_scanline(void)
 
 void resetppu(void)
 {
-	openbus = 0x00;
-	ctrl = 0x00;
-	mask = 0x00;
-	status = 0xA0;
-	scroll = 0x00;
-	oam_addr = 0x00;
-	vram_addr = 0x0000;
-	vram_addr_phase = false;
+	ppuopenbus = 0x00;
+	ppuctrl = 0x00;
+	ppumask = 0x00;
+	ppustatus = 0xA0;
+	ppuscroll = 0x00;
+	oamaddr = 0x00;
+	ppuaddr = 0x0000;
+	ppuaddr_phase = false;
 
 	ppuclk = 0;
 	scanline = 240;
 	nmi_occurred = false;
 	nmi_output = false;
 	nmi_for_frame = false;
-	odd_frame = false;
+	oddframe = false;
 }
 
 void stepppu(const int_fast32_t pputicks)
@@ -207,17 +207,17 @@ void stepppu(const int_fast32_t pputicks)
 		if (ppuclk++ == 340) {
 			ppuclk = 0;
 			if (scanline < 240) {
-				if ((mask&0x08) != 0)
+				if ((ppumask&0x08) != 0)
 					draw_bg_scanline();
-				if ((mask&0x10) != 0)
+				if ((ppumask&0x10) != 0)
 					draw_sprite_scanline();
 			}
 			if (scanline++ == 261) {
 				scanline = 0;
 				render((const uint32_t*)screen, sizeof(screen));
-				if ((mask&0x18) && odd_frame)
+				if ((ppumask&0x18) && oddframe)
 					++ppuclk;
-				odd_frame = !odd_frame;
+				oddframe = !oddframe;
 			}
 		}
 	}
@@ -225,103 +225,103 @@ void stepppu(const int_fast32_t pputicks)
 
 
 // Registers read/write for CPU
-static uint_fast8_t read_status(void)
+static uint_fast8_t read_ppustatus(void)
 {
-	const uint_fast8_t b7 = nmi_occurred ? 1 : 0;
+	const uint_fast8_t b7 = nmi_occurred<<7;
 	nmi_occurred = false;
-	return (b7<<7)|(openbus&0x1F);
+	return b7|(ppuopenbus&0x1F);
 }
 
-static void write_ctrl(const uint_fast8_t val)
+static void write_ppuctrl(const uint_fast8_t val)
 {
-	ctrl = val;
+	ppuctrl = val;
 	nmi_output = (val&0x80) == 0x80;
 }
 
-static void write_mask(const uint_fast8_t val)
+static void write_ppumask(const uint_fast8_t val)
 {
-	mask = val;
+	ppumask = val;
 }
 
 // oam data
-static uint_fast8_t read_oam(void)
+static uint_fast8_t read_oamdata(void)
 {
-	return ppu_oam[oam_addr];
+	return ppu_oam[oamaddr];
 }
 
-static void write_oam(const uint_fast8_t data)
+static void write_oamdata(const uint_fast8_t data)
 {
-	ppu_oam[oam_addr++] = data;
-	oam_addr &= 0xFF;
+	ppu_oam[oamaddr++] = data;
+	oamaddr &= 0xFF;
 }
 
-// vram_addr
-static void vram_addr_inc(void)
+// ppuaddr
+static void ppuaddr_inc(void)
 {
-	vram_addr += (ctrl&0x04) == 0 ? 1 : 32;
-	vram_addr &= 0x3FFF;
+	ppuaddr += (ppuctrl&0x04) == 0 ? 1 : 32;
+	ppuaddr &= 0x3FFF;
 }
 
-static uint_fast8_t read_vram_data(void)
+static uint_fast8_t read_ppudata(void)
 {
 	uint_fast8_t r = 0;
-	if (vram_addr < 0x2000)
-		r = romchrread(vram_addr);
-	else if (vram_addr < 0x3F00)
-		r = nametables[eval_nt_offset(vram_addr)];
+	if (ppuaddr < 0x2000)
+		r = romchrread(ppuaddr);
+	else if (ppuaddr < 0x3F00)
+		r = nametables[eval_nt_offset(ppuaddr)];
 	else
-		r = palettes[eval_palette_offset(vram_addr)];
+		r = palettes[eval_palette_offset(ppuaddr)];
 
-	vram_addr_inc();
+	ppuaddr_inc();
 	return r;
 }
 
-static void write_vram_data(const uint_fast8_t val)
+static void write_ppudata(const uint_fast8_t val)
 {
-	if (vram_addr < 0x2000)
-		romchrwrite(val, vram_addr);
-	else if (vram_addr < 0x3F00)
-		nametables[eval_nt_offset(vram_addr)] = val;
+	if (ppuaddr < 0x2000)
+		romchrwrite(val, ppuaddr);
+	else if (ppuaddr < 0x3F00)
+		nametables[eval_nt_offset(ppuaddr)] = val;
 	else 
-		palettes[eval_palette_offset(vram_addr)] = val;
+		palettes[eval_palette_offset(ppuaddr)] = val;
 
-	vram_addr_inc();
+	ppuaddr_inc();
 }
 
-static void write_vram_addr(const uint_fast8_t val)
+static void write_ppuaddr(const uint_fast8_t val)
 {
-	if (vram_addr_phase) {
-		vram_addr |= val;
+	if (ppuaddr_phase) {
+		ppuaddr |= val;
 	} else {
-		vram_addr = 0;
-		vram_addr = val<<8;
+		ppuaddr = 0;
+		ppuaddr = val<<8;
 	}
 
-	vram_addr &= 0x3FFF;
-	vram_addr_phase = !vram_addr_phase;
+	ppuaddr &= 0x3FFF;
+	ppuaddr_phase = !ppuaddr_phase;
 }
 
 
 void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
 	switch (addr&0x0007) {
-	case 0: write_ctrl(val);      break;
-	case 1: write_mask(val);      break;
-	case 3: oam_addr = val;       break;
-	case 4: write_oam(val);       break;
-	case 6: write_vram_addr(val); break;
-	case 7: write_vram_data(val); break;
+	case 0: write_ppuctrl(val);   break;
+	case 1: write_ppumask(val);   break;
+	case 3: oamaddr = val;        break;
+	case 4: write_oamdata(val);   break;
+	case 6: write_ppuaddr(val);   break;
+	case 7: write_ppudata(val);   break;
 	}
-	openbus = val;
+	ppuopenbus = val;
 }
 
 uint_fast8_t ppuread(const uint_fast16_t addr)
 {
 	switch (addr&0x0007) {	
-	case 2: return read_status();    break;
-	case 4: return read_oam();       break;
-	case 7: return read_vram_data(); break;
+	case 2: return read_ppustatus(); break;
+	case 4: return read_oamdata();   break;
+	case 7: return read_ppudata();   break;
 	}
-	return openbus;
+	return ppuopenbus;
 }
 

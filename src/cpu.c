@@ -154,7 +154,7 @@ static void oam_dma(const uint_fast8_t n)
 	step_cycles += 513;
 }
 
-static uint_fast16_t read16(const int_fast32_t addr)
+static uint_fast16_t read16(const uint_fast16_t addr)
 {
 	return (read(addr + 1)<<8)|read(addr);
 }
