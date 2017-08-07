@@ -3,12 +3,14 @@
 #include <stdint.h>
 
 
-enum KeyState {
-	KEYSTATE_UP,
-	KEYSTATE_DOWN
+typedef uint_fast8_t KeyState;
+enum {
+	KEYSTATE_UP = 0,
+	KEYSTATE_DOWN = 1
 };
 
-enum Key {
+typedef uint_fast8_t Key;
+enum {
 	KEY_A,
 	KEY_B,
 	KEY_SELECT,

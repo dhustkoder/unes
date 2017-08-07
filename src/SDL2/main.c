@@ -16,70 +16,27 @@
 #define WIN_HEIGHT (TEXTURE_HEIGHT * 2)
 
 
-const uint8_t keys_id[KEY_NKEYS] = {
-	[KEY_A] = SDL_SCANCODE_Z, [KEY_B] = SDL_SCANCODE_X,
-	[KEY_SELECT] = SDL_SCANCODE_C, [KEY_START] = SDL_SCANCODE_V,
-	[KEY_UP] = SDL_SCANCODE_UP, [KEY_DOWN] = SDL_SCANCODE_DOWN,
-	[KEY_LEFT] = SDL_SCANCODE_LEFT, [KEY_RIGHT] = SDL_SCANCODE_RIGHT
-};
-
-enum KeyState keys_state[KEY_NKEYS] = { KEYSTATE_UP };
-
 SDL_AudioDeviceID audio_device;
 SDL_Texture* texture;
 SDL_Renderer* renderer;
 static SDL_Window* window;
 
 
-static bool initsdl(void);
-static void termsdl(void);
-static bool update_events(void);
+static const uint8_t keys_id[KEY_NKEYS] = {
+	[KEY_A]      = SDL_SCANCODE_Z,
+	[KEY_B]      = SDL_SCANCODE_X,
+	[KEY_SELECT] = SDL_SCANCODE_C,
+	[KEY_START]  = SDL_SCANCODE_V,
+	[KEY_UP]     = SDL_SCANCODE_UP,
+	[KEY_DOWN]   = SDL_SCANCODE_DOWN,
+	[KEY_LEFT]   = SDL_SCANCODE_LEFT,
+	[KEY_RIGHT]  = SDL_SCANCODE_RIGHT
+};
+
+KeyState keys_state[KEY_NKEYS];
 
 
-int main(int argc, char *argv[])
-{
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s [rom]\n", argv[0]);
-		return EXIT_FAILURE;
-	}
-
-	if (!loadrom(argv[1]))
-		return EXIT_FAILURE;
-
-	int exitcode = EXIT_FAILURE;
-
-	if (!initsdl())
-		goto Lfreerom;
-
-	// resetmapper()
-	resetcpu();
-	resetapu();
-	resetppu();
-
-	const int_fast32_t ticks = CPU_FREQ / 60;
-	int_fast32_t clk = 0;
-
-	while (update_events()) {
-		do {
-			const int_fast16_t step_ticks = stepcpu();
-			stepppu(step_ticks * 3);
-			stepapu(step_ticks);
-			//stepmapper(...)
-			clk += step_ticks;
-		} while (clk < ticks);
-		clk -= ticks;
-	}
-
-	exitcode = EXIT_SUCCESS;
-
-//Ltermsdl:
-	termsdl();
-Lfreerom:
-	freerom();
-	return exitcode;
-}
-
-static void update_key(const uint32_t code, const enum KeyState state)
+static void update_key(const uint32_t code, const KeyState state)
 {
 	for (int i = 0; i < KEY_NKEYS; ++i) {
 		if (keys_id[i] == code) {
@@ -110,8 +67,7 @@ static bool update_events(void)
 	return true;
 }
 
-
-bool initsdl(void)
+static bool initsdl(void)
 {
 	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
 		fprintf(stderr, "Couldn't initialize SDL: %s\n",
@@ -158,6 +114,9 @@ bool initsdl(void)
 		goto Lfreetexture;
 	}
 
+	for (int i = 0; i < KEY_NKEYS; ++i)
+		keys_state[i] = KEYSTATE_UP;
+
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);
 	SDL_PauseAudioDevice(audio_device, 0);
@@ -174,12 +133,54 @@ Lquitsdl:
 	return false;
 }
 
-void termsdl(void)
+static void termsdl(void)
 {
 	SDL_CloseAudioDevice(audio_device);
 	SDL_DestroyTexture(texture);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+
+int main(const int argc, const char* const* const argv)
+{
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s [rom]\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	if (!loadrom(argv[1]))
+		return EXIT_FAILURE;
+
+	int exitcode = EXIT_FAILURE;
+
+	if (!initsdl())
+		goto Lfreerom;
+
+	resetcpu();
+	resetapu();
+	resetppu();
+
+	static const int_fast32_t frameticks = CPU_FREQ / 60;
+	int_fast32_t clk = 0;
+
+	while (update_events()) {
+		do {
+			const int_fast16_t ticks = stepcpu();
+			stepppu(ticks * 3);
+			stepapu(ticks);
+			clk += ticks;
+		} while (clk < frameticks);
+		clk -= frameticks;
+	}
+
+	exitcode = EXIT_SUCCESS;
+
+//Ltermsdl:
+	termsdl();
+Lfreerom:
+	freerom();
+	return exitcode;
 }
 
