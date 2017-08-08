@@ -30,7 +30,7 @@ static bool nmi_for_frame;
 
 uint8_t ppu_oam[0x100];
 static uint8_t nametables[0x800];
-static uint8_t palettes[0x19];
+static uint8_t palettes[0x1A];
 static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 static const uint32_t rgb_palette[0x40] = {
@@ -68,14 +68,20 @@ static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 	return offset;
 }
 
-static int_fast8_t eval_palette_offset(uint_fast16_t addr)
+static uint_fast8_t eval_palette_offset(const uint_fast16_t addr)
 {
-	assert((addr >= 0x3F00 && addr <= 0x3FFF) || addr <= 0x1F);
+	static const uint_fast8_t mirrors[0x20] = {
+		0x00, 0x01, 0x02, 0x03,
+		0x00, 0x04, 0x05, 0x06,
+		0x00, 0x07, 0x08, 0x09,
+		0x00, 0x0A, 0x0B, 0x0C,
+		0x0D, 0x0E, 0x0F, 0x10,
+		0x0D, 0x11, 0x12, 0x13,
+		0x0D, 0x14, 0x15, 0x16,
+		0x0D, 0x17, 0x18, 0x19
+	};
 
-	if (addr >= 0x3F00)
-		addr &= 0x1F;
-
-	return (addr&0x03) ? addr - (addr>>2) : 0;
+	return mirrors[addr&0x001F];
 }
 
 static void draw_bg_scanline(void)
@@ -111,12 +117,12 @@ static void draw_bg_scanline(void)
 			b1 <<= 1;
 		}
 	}
-
-	oamaddr = 0;
 }
 
 static void draw_sprite_scanline(void)
 {
+	assert(scanline >= 0 && scanline <= 239); // visible lines
+
 	static const struct {
 		uint8_t y;
 		uint8_t tile;
@@ -165,6 +171,8 @@ static void draw_sprite_scanline(void)
 			screen[scanline][sprx + p] = color;
 		}
 	}
+
+	oamaddr = 0;
 }
 
 
@@ -297,10 +305,9 @@ static void write_ppudata(const uint_fast8_t val)
 static void write_ppuaddr(const uint_fast8_t val)
 {
 	if (ppuaddr_phase) {
-		ppuaddr |= val;
+		ppuaddr = (ppuaddr&0xFF00)|val;
 	} else {
-		ppuaddr = 0;
-		ppuaddr = val<<8;
+		ppuaddr = (ppuaddr&0x00FF)|(val<<8);
 	}
 
 	ppuaddr &= 0x3FFF;
