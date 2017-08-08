@@ -191,6 +191,27 @@ void resetppu(void)
 void stepppu(const int_fast32_t pputicks)
 {
 	for (int_fast32_t i = 0; i < pputicks; ++i) {
+		++ppuclk;
+
+		if (ppuclk == 256 && scanline < 240) {
+			if ((ppumask&0x08) != 0)
+				draw_bg_scanline();
+			if ((ppumask&0x10) != 0)
+				draw_sprite_scanline();
+		}
+
+		if (ppuclk == 341) {
+			ppuclk = 0;
+			++scanline;
+			if (scanline == 262) {
+				scanline = 0;
+				render((void*)screen, sizeof(screen));
+				if ((ppumask&0x18) && oddframe)
+					++ppuclk;
+				oddframe = !oddframe;
+			}
+		}
+
 		if (!nmi_for_frame && nmi_occurred && nmi_output) {
 			trigger_nmi();
 			nmi_for_frame = true;
@@ -204,23 +225,6 @@ void stepppu(const int_fast32_t pputicks)
 		} else if (scanline == 261) {
 			if (ppuclk == 1)
 				nmi_occurred = false;
-		}
-
-		if (ppuclk++ == 340) {
-			ppuclk = 0;
-			if (scanline < 240) {
-				if ((ppumask&0x08) != 0)
-					draw_bg_scanline();
-				if ((ppumask&0x10) != 0)
-					draw_sprite_scanline();
-			}
-			if (scanline++ == 261) {
-				scanline = 0;
-				render((const uint32_t*)screen, sizeof(screen));
-				if ((ppumask&0x18) && oddframe)
-					++ppuclk;
-				oddframe = !oddframe;
-			}
 		}
 	}
 }
