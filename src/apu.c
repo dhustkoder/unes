@@ -287,7 +287,7 @@ static void mixaudio(void)
 
 		if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
 			sound_buffer_idx = 0;
-			queue_sound_buffer((uint8_t*)sound_buffer, sizeof(sound_buffer));
+			queue_sound_buffer((void*)sound_buffer, sizeof(sound_buffer));
 		}
 	}
 }
