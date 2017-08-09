@@ -130,18 +130,30 @@ static void draw_sprite_scanline(void)
 		uint8_t x;
 	} *pspr;
 
-	for (int i = 0; i < 0x100; i += 4) {
-		pspr = (void*)&ppu_oam[i];
-		if (pspr->y > scanline || (scanline >= (pspr->y + 8)))
+	const int spriteh = (ppuctrl&0x20) ? 16 : 8;
+	for (int i = 0, drawn = 0; i < 0x100 && drawn < 8; i += 4) {
+		pspr = (void*) &ppu_oam[i];
+		if (pspr->y > scanline || (scanline >= (pspr->y + spriteh)))
 			continue;
 
+		++drawn;
+		const int sprx = pspr->x;
 		const int spry = (pspr->attr&0x80) != 0
-		 ? -((scanline - pspr->y) - 7) // flip vertically
+		 ? -((scanline - pspr->y) - (spriteh - 1)) // flip vertically
 		 : (scanline - pspr->y);
 
-		const int sprx = pspr->x;
-		const int pattern = (ppuctrl&0x08) ? 0x1000 : 0x0000;
-		const int tileidx = pspr->tile * 16;
+		int tileidx;
+		int pattern;
+		if (spriteh == 8) {
+			tileidx = pspr->tile * 16;
+			pattern = (ppuctrl&0x20) ? 0x1000 : 0;
+		} else {
+			tileidx = (pspr->tile>>1) * 32;
+			pattern = (pspr->tile&0x01)<<12;
+			if (spry > 7)
+				tileidx += 8;
+		}
+
 		const int palidx = 0x10 + (pspr->attr&0x03) * 4;
 		uint8_t b0 = romchrread(pattern + tileidx + spry);
 		uint8_t b1 = romchrread(pattern + tileidx + spry + 8);
@@ -167,8 +179,7 @@ static void draw_sprite_scanline(void)
 				continue;
 
 			const int pal = palettes[eval_palette_offset(palidx + c)];
-			const uint32_t color = rgb_palette[pal&0x3F];
-			screen[scanline][sprx + p] = color;
+		 	screen[scanline][sprx + p] = rgb_palette[pal&0x3F];
 		}
 	}
 

@@ -13,14 +13,6 @@
 #include "cpu.h"
 
 
-#ifdef DEBUG
-#define BAD_ACCESS(addr) \
-  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4"PRIxFAST16"\n", __FILE__, __LINE__, addr) && false)
-#else
-#define BAD_ACCESS(addr) ((void)addr)
-#endif
-
-  
 #define FLAG_C (0x01)
 #define FLAG_Z (0x02)
 #define FLAG_I (0x04)
@@ -79,6 +71,7 @@ static void setflags(const uint_fast8_t val)
 	flags.c = val&0x01;
 }
 
+
 // cpu memory bus
 static void oam_dma(uint_fast8_t n);
 
@@ -91,8 +84,6 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 		return joyread(addr);
 	} else if (addr >= 0x2000 && addr <= 0x4000) {
 		return ppuread(addr);
-	} else {
-		BAD_ACCESS(addr);
 	}
 
 	return 0x00;
@@ -108,8 +99,6 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 		}
 	} else if (addr >= 0x2000 && addr < 0x4000) {
 		ppuwrite(val, addr);
-	} else {
-		BAD_ACCESS(addr);
 	}
 }
 
@@ -121,8 +110,6 @@ static uint_fast8_t read(const uint_fast16_t addr)
 		return romread(addr);
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-	else
-		BAD_ACCESS(addr);
 
 	return 0x00;
 }
@@ -135,8 +122,6 @@ static void write(const uint_fast8_t val, const uint_fast16_t addr)
 		iowrite(val, addr);
 	else if (addr >= ADDR_SRAM)
 		romwrite(val, addr);
-	else
-		BAD_ACCESS(addr);
 }
 
 static void oam_dma(const uint_fast8_t n)
