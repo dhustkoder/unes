@@ -9,7 +9,7 @@
 #include "rom.h"
 #include "ppu.h"
 #include "apu.h"
-#include "keys.h"
+#include "joypad.h"
 #include "cpu.h"
 
 

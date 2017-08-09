@@ -9,6 +9,12 @@
 #define SRAM_BANK_SIZE   ((int_fast32_t)0x2000)
 #define TRAINER_SIZE     ((int_fast32_t)0x0200)
 
+
+enum MapperType {
+	NROM,
+	MMC1
+};
+
 enum NTMirroring {
 	NTMIRRORING_HORIZONTAL,
 	NTMIRRORING_VERTICAL,

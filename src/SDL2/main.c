@@ -7,7 +7,7 @@
 #include "cpu.h"
 #include "apu.h"
 #include "ppu.h"
-#include "keys.h"
+#include "joypad.h"
 
 
 #define TEXTURE_WIDTH  (256)
@@ -22,26 +22,41 @@ SDL_Renderer* renderer;
 static SDL_Window* window;
 
 
-static const uint8_t keys_id[KEY_NKEYS] = {
-	[KEY_A]      = SDL_SCANCODE_Z,
-	[KEY_B]      = SDL_SCANCODE_X,
-	[KEY_SELECT] = SDL_SCANCODE_C,
-	[KEY_START]  = SDL_SCANCODE_V,
-	[KEY_UP]     = SDL_SCANCODE_UP,
-	[KEY_DOWN]   = SDL_SCANCODE_DOWN,
-	[KEY_LEFT]   = SDL_SCANCODE_LEFT,
-	[KEY_RIGHT]  = SDL_SCANCODE_RIGHT
+static const uint8_t keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
+	[JOYPAD_ONE] = {
+		[KEY_A]      = SDL_SCANCODE_Z,
+		[KEY_B]      = SDL_SCANCODE_X,
+		[KEY_SELECT] = SDL_SCANCODE_C,
+		[KEY_START]  = SDL_SCANCODE_V,
+		[KEY_UP]     = SDL_SCANCODE_UP,
+		[KEY_DOWN]   = SDL_SCANCODE_DOWN,
+		[KEY_LEFT]   = SDL_SCANCODE_LEFT,
+		[KEY_RIGHT]  = SDL_SCANCODE_RIGHT
+	},
+
+	[JOYPAD_TWO] = {
+		[KEY_A]      = SDL_SCANCODE_Q,
+		[KEY_B]      = SDL_SCANCODE_E,
+		[KEY_SELECT] = SDL_SCANCODE_R,
+		[KEY_START]  = SDL_SCANCODE_T,
+		[KEY_UP]     = SDL_SCANCODE_W,
+		[KEY_DOWN]   = SDL_SCANCODE_S,
+		[KEY_LEFT]   = SDL_SCANCODE_A,
+		[KEY_RIGHT]  = SDL_SCANCODE_D
+	}
 };
 
-KeyState keys_state[KEY_NKEYS];
+uint8_t keys_state[JOYPAD_NJOYPADS][KEY_NKEYS];
 
 
-static void update_key(const uint32_t code, const KeyState state)
+static void update_key(const uint32_t code, const enum KeyState state)
 {
-	for (int i = 0; i < KEY_NKEYS; ++i) {
-		if (keys_id[i] == code) {
-			keys_state[i] = state;
-			break;
+	for (int pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
+		for (int key = KEY_A; key < KEY_NKEYS; ++key) {
+			if (keys_id[pad][key] == code) {
+				keys_state[pad][key] = state;
+				break;
+			}
 		}
 	}
 }
@@ -114,8 +129,9 @@ static bool initsdl(void)
 		goto Lfreetexture;
 	}
 
-	for (int i = 0; i < KEY_NKEYS; ++i)
-		keys_state[i] = KEYSTATE_UP;
+	for (int pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad)
+		for (int key = KEY_A; key < KEY_NKEYS; ++key)
+			keys_state[pad][key] = KEYSTATE_UP;
 
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);

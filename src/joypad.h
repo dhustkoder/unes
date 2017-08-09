@@ -1,16 +1,21 @@
-#ifndef UNES_KEYS_H_
-#define UNES_KEYS_H_
+#ifndef UNES_JOYPAD_H_
+#define UNES_JOYPAD_H_
 #include <stdint.h>
 
 
-typedef uint_fast8_t KeyState;
-enum {
-	KEYSTATE_UP = 0,
-	KEYSTATE_DOWN = 1
+enum Joypad {
+	JOYPAD_ONE,
+	JOYPAD_TWO,
+	JOYPAD_NJOYPADS
 };
 
-typedef uint_fast8_t Key;
-enum {
+enum KeyState {
+	KEYSTATE_UP,
+	KEYSTATE_DOWN,
+	KEYSTATE_NKEYSTATES
+};
+
+enum Key {
 	KEY_A,
 	KEY_B,
 	KEY_SELECT,
