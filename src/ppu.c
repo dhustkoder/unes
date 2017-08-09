@@ -18,8 +18,7 @@ static uint_fast8_t ppustatus;   // $2002
 static uint_fast8_t oamaddr;     // $2003 
 static uint_fast16_t ppuscroll;  // $2005
 static int_fast16_t ppuaddr;     // $2006
-static bool ppuaddr_phase;
-static bool ppuscroll_phase;
+static bool write_toggle;
 
 static int_fast16_t ppuclk;      // 0 - 341
 static int_fast16_t scanline;    // 0 - 262
@@ -196,8 +195,7 @@ void resetppu(void)
 	oamaddr = 0x00;
 	ppuscroll = 0x0000;
 	ppuaddr = 0x0000;
-	ppuaddr_phase = false;
-	ppuscroll_phase = false;
+	write_toggle = false;
 
 	ppuclk = 0;
 	scanline = 240;
@@ -315,26 +313,26 @@ static void write_ppudata(const uint_fast8_t val)
 
 static void write_ppuaddr(const uint_fast8_t val)
 {
-	if (ppuaddr_phase) {
+	if (write_toggle) {
 		ppuaddr = (ppuaddr&0xFF00)|val;
 	} else {
 		ppuaddr = (ppuaddr&0x00FF)|(val<<8);
 	}
 
 	ppuaddr &= 0x3FFF;
-	ppuaddr_phase = !ppuaddr_phase;
+	write_toggle = !write_toggle;
 }
 
 static void write_ppuscroll(const uint_fast8_t val)
 {
-	if (ppuscroll_phase) {
+	if (write_toggle) {
 		ppuscroll |= val;
 	} else {
 		ppuscroll = 0;
 		ppuscroll = val<<8;
 	}
 
-	ppuscroll_phase = !ppuscroll_phase;
+	write_toggle = !write_toggle;
 }
 
 
