@@ -7,10 +7,6 @@
 #include "ppu.h"
 
 
-#define SCREEN_WIDTH      (256)
-#define SCREEN_HEIGHT     (240)
-
-
 static uint_fast8_t ppuopenbus;
 static uint_fast8_t ppuctrl;     // $2000
 static uint_fast8_t ppumask;     // $2001
@@ -30,7 +26,7 @@ static bool nmi_for_frame;
 uint8_t ppu_oam[0x100];
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1A];
-static uint32_t screen[SCREEN_HEIGHT][SCREEN_WIDTH];
+static uint32_t screen[240][256];
 
 static const uint32_t rgb_palette[0x40] = {
 	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
@@ -129,23 +125,24 @@ static void draw_sprite_scanline(void)
 		uint8_t x;
 	} *pspr;
 
+	uint32_t* const pixels = &screen[scanline][0];
 	const int spriteh = (ppuctrl&0x20) ? 16 : 8;
-	for (int i = 0, drawn = 0; i < 0x100 && drawn < 8; i += 4) {
+	for (int i = 0xFC, drawn = 0; i >= 0 && drawn < 8; i -= 4) {
 		pspr = (void*) &ppu_oam[i];
-		if (pspr->y > scanline || (scanline >= (pspr->y + spriteh)))
+		if ((pspr->y + 1) > scanline || (scanline >= ((pspr->y + 1) + spriteh)))
 			continue;
 
 		++drawn;
 		const int sprx = pspr->x;
 		const int spry = (pspr->attr&0x80) != 0
-		 ? -((scanline - pspr->y) - (spriteh - 1)) // flip vertically
-		 : (scanline - pspr->y);
+		 ? -((scanline - (pspr->y + 1)) - (spriteh - 1)) // flip vertically
+		 : (scanline - (pspr->y + 1));
 
 		int tileidx;
 		int pattern;
 		if (spriteh == 8) {
 			tileidx = pspr->tile * 16;
-			pattern = (ppuctrl&0x20) ? 0x1000 : 0;
+			pattern = (ppuctrl&0x08)<<9;
 		} else {
 			tileidx = (pspr->tile>>1) * 32;
 			pattern = (pspr->tile&0x01)<<12;
@@ -169,16 +166,17 @@ static void draw_sprite_scanline(void)
 			b1 = tmp1;
 		}
 
+		const bool priority = (pspr->attr&0x20) != 0;
 		for (int p = 0; p < 8 && (sprx + p) < 256; ++p) {
 			const int c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
 
-			if (c == 0)
+			if (c == 0 || (priority && pixels[sprx + p] != 0))
 				continue;
 
 			const int pal = palettes[eval_palette_offset(palidx + c)];
-		 	screen[scanline][sprx + p] = rgb_palette[pal&0x3F];
+		 	pixels[sprx + p] = rgb_palette[pal&0x3F];
 		}
 	}
 
