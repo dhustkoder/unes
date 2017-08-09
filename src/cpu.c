@@ -15,7 +15,7 @@
 
 #ifdef DEBUG
 #define BAD_ACCESS(addr) \
-  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4"PRIuFAST16"x\n", __FILE__, __LINE__, addr) && false)
+  assert(fprintf(stderr, "BAD ACCESS: %s:%d $%.4"PRIxFAST16"\n", __FILE__, __LINE__, addr) && false)
 #else
 #define BAD_ACCESS(addr) ((void)addr)
 #endif
