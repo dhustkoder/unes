@@ -1,17 +1,15 @@
-ifeq ($(CC),)
-	CC:=gcc
-endif
-
-ifeq ($(PLATFORM),)
-	PLATFORM:=SDL2
-endif
-
-
 CFLAGS=-std=c11 -Wall -Wextra -Wshadow -pedantic-errors -I $(SRC_DIR)
 CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
-CFLAGS_RELEASE=-Werror -O3 -fomit-frame-pointer -DNDEBUG
-CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer -DNDEBUG
+CFLAGS_RELEASE=-Werror -O3 -march=native -ffast-math -fstrict-aliasing \
+	       -ffunction-sections -fdata-sections -fno-unwind-tables  \
+	       -fno-asynchronous-unwind-tables -DNDEBUG
+CFLAGS_PERF=$(CFLAGS_RELEASE) -fno-omit-frame-pointer
+
 LDFLAGS=
+LDFLAGS_DEBUG=
+LDFLAGS_RELEASE=-s -Wl,--gc-sections
+LDFLAGS_PERF=
+
 BUILD_DIR=./build
 OBJS_DIR=./objs
 ASM_DIR=./asm
@@ -28,6 +26,13 @@ ASM=$(patsubst $(SRC_DIR)/%.c, $(ASM_DIR)/%.asm, $(wildcard $(SRC_DIR)/*.c))
 PLATFORM_OBJS=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_OBJS_DIR)/%.o, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 PLATFORM_ASM=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_ASM_DIR)/%.asm, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 
+ifeq ($(CC),)
+	CC:=gcc
+endif
+
+ifeq ($(PLATFORM),)
+	PLATFORM:=SDL2
+endif
 
 ifeq ($(PLATFORM),SDL2)
 	CFLAGS += $(shell sdl2-config --cflags) -DPLATFORM_SDL2 -I$(PLATFORM_SRC_DIR)/
@@ -36,10 +41,13 @@ endif
 
 ifeq ($(BUILD_TYPE),Release)
 	CFLAGS += $(CFLAGS_RELEASE)
+	LDFLAGS += $(LDFLAGS_RELEASE)
 else ifeq ($(BUILD_TYPE),Perf)
-		CFLAGS += $(CFLAGS_PERF)
+	CFLAGS += $(CFLAGS_PERF)
+	LDFLAGS += $(LDFLAGS_PERF)
 else
 	CFLAGS += $(CFLAGS_DEBUG)
+	LDFLAGS += $(LDFLAGS_DEBUG)
 endif
 
 ifeq ($(ENABLE_LTO),ON)

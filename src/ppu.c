@@ -40,7 +40,7 @@ static const uint32_t nes_rgb[0x40] = {
 };
 
 
-static int_fast16_t eval_nt_offset(uint_fast16_t addr)
+static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 {
 	assert(addr >= 0x2000 && addr <= 0x3EFF);
 
@@ -224,8 +224,7 @@ void stepppu(const int_fast32_t pputicks)
 				draw_sprite_scanline();
 		} else if (ppuclk == 341) {
 			ppuclk = 0;
-			++scanline;
-			if (scanline == 262) {
+			if (++scanline == 262) {
 				scanline = 0;
 				render((void*)screen, sizeof(screen));
 				if ((ppumask&0x18) && oddframe)
