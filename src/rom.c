@@ -235,11 +235,9 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 		if (++mapper.mmc1.shiftcnt == 5) {
 			mapper.mmc1.shiftcnt = 0;
 			mapper.mmc1.reg[(addr&0x6000)>>13] = mapper.mmc1.tmp;
-			mapper.mmc1.tmp = 0;
 		}
 	} else {
 		mapper.mmc1.shiftcnt = 0;
-		mapper.mmc1.tmp = 0;
 		mapper.mmc1.reg[0] |= 0x0C;
 	}
 }
