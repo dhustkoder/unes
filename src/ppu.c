@@ -65,7 +65,7 @@ static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 
 static uint_fast8_t eval_palette_offset(const uint_fast16_t addr)
 {
-	static const uint_fast8_t mirrors[0x20] = {
+	const uint_fast8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
 		0x00, 0x04, 0x05, 0x06,
 		0x00, 0x07, 0x08, 0x09,
@@ -83,7 +83,7 @@ static void draw_bg_scanline(void)
 {
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
-	static const uint16_t nt_addrs[] = {
+	const uint16_t nt_addrs[] = {
 		0x2000, 0x2400, 0x2800, 0x2C00
 	};
 
@@ -118,7 +118,7 @@ static void draw_sprite_scanline(void)
 {
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
-	static const struct {
+	const struct {
 		uint8_t y;
 		uint8_t tile;
 		uint8_t attr;

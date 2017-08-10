@@ -63,7 +63,7 @@ static void update_key(const uint32_t code, const enum KeyState state)
 
 static bool update_events(void)
 {
-	static SDL_Event event;
+	SDL_Event event;
 	while (SDL_PollEvent(&event) != 0) {
 		switch (event.type) {
 		case SDL_QUIT:
@@ -178,7 +178,7 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
-	static const int_fast32_t frameticks = CPU_FREQ / 60;
+	const int_fast32_t frameticks = CPU_FREQ / 60;
 	int_fast32_t clk = 0;
 
 	while (update_events()) {

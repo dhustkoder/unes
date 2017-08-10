@@ -55,7 +55,7 @@ bool loadrom(const char* const path)
 		return false;
 	}
 
-	static const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
+	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
 	if (fread(&ines, 1, 9, file) < 9 ||
 	    memcmp(ines.match, match, sizeof(match)) != 0) {
 		fprintf(stderr, "\'%s\' is not an ines file.\n", rompath);

@@ -90,7 +90,7 @@ static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
 
 static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 {
-	static const uint8_t length_tbl[0x20] = {
+	const uint8_t length_tbl[0x20] = {
 		10, 254, 20, 2, 40, 4, 80, 6,
 		160, 8, 60, 10, 14, 12, 26, 14,
 		12, 16, 24, 18, 48, 20, 96, 22,
@@ -253,7 +253,7 @@ static void write_frame_counter(const uint_fast8_t val)
 
 static void update_channels_output(void)
 {
-	static const uint8_t duty_tbl[4][8] = {
+	const uint8_t duty_tbl[4][8] = {
 		{ 0, 1, 0, 0, 0, 0, 0, 0 },
 		{ 0, 1, 1, 0, 0, 0, 0, 0 },
 		{ 0, 1, 1, 1, 1, 0, 0, 0 },
