@@ -111,16 +111,17 @@ static void draw_bg_scanline(void)
 	const int ysprite = scanline / 8;
 
 	for (int i = 0; i < 32; ++i) {
-		unsigned palnum = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
-		palnum >>= ((i&0x03) > 1) ? 2 : 0;
-		palnum >>= ((ysprite&0x03) > 1) ? 4 : 0;
-		palnum &= 0x03;
+		unsigned palrow = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
+		palrow >>= ((i&0x03) > 1) ? 2 : 0;
+		palrow >>= ((ysprite&0x03) > 1) ? 4 : 0;
+		palrow &= 0x03;
+		palrow *= 4;
 
 		const int spridx = nt[ysprite * 32 + i] * 16;
 		uint8_t b0 = romchrread(bgpattern + spridx + spritey);
 		uint8_t b1 = romchrread(bgpattern + spridx + spritey + 8);
 		for (int p = 0; p < 8; ++p) {
-			const int paladdr = palnum * 4 + ((b1>>6)&0x02)|(b0>>7);
+			const int paladdr = palrow + (((b1>>6)&0x02)|(b0>>7));
 			const uint_fast8_t pal = get_palette(paladdr);
 			screen[scanline][i * 8 + p] = nes_rgb[pal&greymsk];
 			b0 <<= 1;

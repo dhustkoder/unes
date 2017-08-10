@@ -10,7 +10,7 @@ endif
 CFLAGS=-std=c11 -Wall -Wextra -Wshadow -pedantic-errors -I $(SRC_DIR)
 CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
 CFLAGS_RELEASE=-Werror -O3 -fomit-frame-pointer -DNDEBUG
-CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer
+CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer -DNDEBUG
 LDFLAGS=
 BUILD_DIR=./build
 OBJS_DIR=./objs
