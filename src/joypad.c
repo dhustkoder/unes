@@ -4,9 +4,9 @@
 #include "joypad.h"
 
 
-static uint8_t keys[2] = { 0x00 };
-static int8_t keyshift[2] = { 0x00 };
-static bool keystrobe = true;
+static uint8_t keys[JOYPAD_NJOYPADS];
+static int8_t keyshift[JOYPAD_NJOYPADS];
+static bool keystrobe;
 
 
 void joywrite(const uint_fast8_t val)
@@ -31,6 +31,7 @@ void joywrite(const uint_fast8_t val)
 uint_fast8_t joyread(const uint_fast16_t addr)
 {
 	assert(addr == 0x4016 || addr == 0x4017);
+
 	const enum Joypad pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
 
 	if (keystrobe)
