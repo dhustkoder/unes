@@ -9,7 +9,8 @@ endif
 
 CFLAGS=-std=c11 -Wall -Wextra -Wshadow -pedantic-errors -I $(SRC_DIR)
 CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
-CFLAGS_RELEASE=-Werror -O3 -DNDEBUG
+CFLAGS_RELEASE=-Werror -O3 -fomit-frame-pointer -DNDEBUG
+CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer
 LDFLAGS=
 BUILD_DIR=./build
 OBJS_DIR=./objs
@@ -35,6 +36,8 @@ endif
 
 ifeq ($(BUILD_TYPE),Release)
 	CFLAGS += $(CFLAGS_RELEASE)
+else ifeq ($(BUILD_TYPE),Perf)
+		CFLAGS += $(CFLAGS_PERF)
 else
 	CFLAGS += $(CFLAGS_DEBUG)
 endif

@@ -25,10 +25,10 @@ static bool nmi_for_frame;
 
 uint8_t ppu_oam[0x100];
 static uint8_t nametables[0x800];
-static uint8_t palettes[0x1A];
+static uint8_t palettes[0x1C];
 static uint32_t screen[240][256];
 
-static const uint32_t rgb_palette[0x40] = {
+static const uint32_t nes_rgb[0x40] = {
 	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
 	0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
 	0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
@@ -63,20 +63,36 @@ static int_fast16_t eval_nt_offset(uint_fast16_t addr)
 	return offset;
 }
 
-static uint_fast8_t eval_palette_offset(const uint_fast16_t addr)
+static uint_fast8_t eval_pal_rw_offset(const uint_fast16_t addr)
 {
 	const uint_fast8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
-		0x00, 0x04, 0x05, 0x06,
-		0x00, 0x07, 0x08, 0x09,
-		0x00, 0x0A, 0x0B, 0x0C,
-		0x0D, 0x0E, 0x0F, 0x10,
-		0x0D, 0x11, 0x12, 0x13,
-		0x0D, 0x14, 0x15, 0x16,
-		0x0D, 0x17, 0x18, 0x19
+		0x04, 0x05, 0x06, 0x07,
+		0x08, 0x09, 0x0A, 0x0B,
+		0x0C, 0x0D, 0x0E, 0x0F,
+		0x00, 0x10, 0x11, 0x12,
+		0x04, 0x13, 0x14, 0x15,
+		0x08, 0x16, 0x17, 0x18,
+		0x0C, 0x19, 0x1A, 0x1B
 	};
 
 	return mirrors[addr&0x001F];
+}
+
+static uint_fast8_t get_palette(const uint_fast16_t addr)
+{
+	const uint_fast8_t mirrors[0x20] = {
+		0x00, 0x01, 0x02, 0x03,
+		0x00, 0x05, 0x06, 0x07,
+		0x00, 0x09, 0x0A, 0x0B,
+		0x00, 0x0D, 0x0E, 0x0F,
+		0x00, 0x10, 0x11, 0x12,
+		0x00, 0x13, 0x14, 0x15,
+		0x00, 0x16, 0x17, 0x18,
+		0x00, 0x19, 0x1A, 0x1B
+	};
+
+	return palettes[mirrors[addr&0x001F]]&0x3F;
 }
 
 static void draw_bg_scanline(void)
@@ -104,10 +120,9 @@ static void draw_bg_scanline(void)
 		uint8_t b0 = romchrread(bgpattern + spridx + spritey);
 		uint8_t b1 = romchrread(bgpattern + spridx + spritey + 8);
 		for (int p = 0; p < 8; ++p) {
-			const int c = ((b1>>6)&0x02)|(b0>>7);
-			const int pal = palettes[eval_palette_offset(palnum * 4 + c)];
-			const uint32_t color = rgb_palette[pal&greymsk&0x3F];
-			screen[scanline][i * 8 + p] = color;
+			const int paladdr = palnum * 4 + ((b1>>6)&0x02)|(b0>>7);
+			const uint_fast8_t pal = get_palette(paladdr);
+			screen[scanline][i * 8 + p] = nes_rgb[pal&greymsk];
 			b0 <<= 1;
 			b1 <<= 1;
 		}
@@ -148,7 +163,6 @@ static void draw_sprite_scanline(void)
 				tileidx += 8;
 		}
 
-		const int palidx = 0x10 + (spr->attr&0x03) * 4;
 		uint8_t b0 = romchrread(pattern + tileidx + spry);
 		uint8_t b1 = romchrread(pattern + tileidx + spry + 8);
 		if ((spr->attr&0x40) != 0) {
@@ -163,17 +177,14 @@ static void draw_sprite_scanline(void)
 			b1 = tmp1;
 		}
 
-		const bool priority = (spr->attr&0x20) != 0;
 		for (int p = 0; p < 8 && (spr->x + p) < 256; ++p) {
 			const int c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
-
-			if (c == 0 || (priority && pixels[spr->x + p] != 0))
+			if (c == 0)
 				continue;
-
-			const int pal = palettes[eval_palette_offset(palidx + c)];
-		 	pixels[spr->x + p] = rgb_palette[pal&0x3F];
+			const int paladdr = 0x10 + (spr->attr&0x03) * 4 + c;
+		 	pixels[spr->x + p] = nes_rgb[get_palette(paladdr)];
 		}
 	}
 
@@ -205,14 +216,12 @@ void stepppu(const int_fast32_t pputicks)
 	for (int_fast32_t i = 0; i < pputicks; ++i) {
 		++ppuclk;
 
-		if (ppuclk == 256 && scanline < 240) {
+		if (scanline < 240 && ppuclk == 256) {
 			if ((ppumask&0x08) != 0)
 				draw_bg_scanline();
 			if ((ppumask&0x10) != 0)
 				draw_sprite_scanline();
-		}
-
-		if (ppuclk == 341) {
+		} else if (ppuclk == 341) {
 			ppuclk = 0;
 			++scanline;
 			if (scanline == 262) {
@@ -224,11 +233,6 @@ void stepppu(const int_fast32_t pputicks)
 			}
 		}
 
-		if (!nmi_for_frame && nmi_occurred && nmi_output) {
-			trigger_nmi();
-			nmi_for_frame = true;
-		}
-
 		if (scanline == 241) {
 			if (ppuclk == 1) {
 				nmi_occurred = true;
@@ -237,6 +241,11 @@ void stepppu(const int_fast32_t pputicks)
 		} else if (scanline == 261) {
 			if (ppuclk == 1)
 				nmi_occurred = false;
+		}
+
+		if (!nmi_for_frame && nmi_occurred && nmi_output) {
+			trigger_nmi();
+			nmi_for_frame = true;
 		}
 	}
 }
@@ -288,7 +297,7 @@ static uint_fast8_t read_ppudata(void)
 	else if (ppuaddr < 0x3F00)
 		r = nametables[eval_nt_offset(ppuaddr)];
 	else
-		r = palettes[eval_palette_offset(ppuaddr)];
+		r = palettes[eval_pal_rw_offset(ppuaddr)];
 
 	ppuaddr_inc();
 	return r;
@@ -301,7 +310,7 @@ static void write_ppudata(const uint_fast8_t val)
 	else if (ppuaddr < 0x3F00)
 		nametables[eval_nt_offset(ppuaddr)] = val;
 	else 
-		palettes[eval_palette_offset(ppuaddr)] = val;
+		palettes[eval_pal_rw_offset(ppuaddr)] = val;
 
 	ppuaddr_inc();
 }
