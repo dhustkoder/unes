@@ -118,43 +118,40 @@ static void draw_sprite_scanline(void)
 {
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
-	const struct {
-		uint8_t y;
-		uint8_t tile;
-		uint8_t attr;
-		uint8_t x;
-	} *pspr;
-
 	uint32_t* const pixels = &screen[scanline][0];
-	const int spriteh = (ppuctrl&0x20) ? 16 : 8;
+	const int sprh = (ppuctrl&0x20) ? 16 : 8;
 	for (int i = 0xFC, drawn = 0; i >= 0 && drawn < 8; i -= 4) {
-		pspr = (void*) &ppu_oam[i];
-		if ((pspr->y + 1) > scanline || (scanline >= ((pspr->y + 1) + spriteh)))
+		const struct {
+			uint8_t y;
+			uint8_t tile;
+			uint8_t attr;
+			uint8_t x;
+		} *const spr = (void*) &ppu_oam[i];
+
+		if ((spr->y + 1) > scanline ||
+		   (scanline >= ((spr->y + 1) + sprh)))
 			continue;
 
 		++drawn;
-		const int sprx = pspr->x;
-		const int spry = (pspr->attr&0x80) != 0
-		 ? -((scanline - (pspr->y + 1)) - (spriteh - 1)) // flip vertically
-		 : (scanline - (pspr->y + 1));
-
+		const int spry = (spr->attr&0x80) == 0
+		                 ? (scanline - (spr->y + 1))
+		                 : -((scanline - (spr->y + 1)) - (sprh - 1)); // flip vertically
 		int tileidx;
 		int pattern;
-		if (spriteh == 8) {
-			tileidx = pspr->tile * 16;
+		if (sprh == 8) {
+			tileidx = spr->tile * 16;
 			pattern = (ppuctrl&0x08)<<9;
 		} else {
-			tileidx = (pspr->tile>>1) * 32;
-			pattern = (pspr->tile&0x01)<<12;
+			tileidx = (spr->tile>>1) * 32;
+			pattern = (spr->tile&0x01)<<12;
 			if (spry > 7)
 				tileidx += 8;
 		}
 
-		const int palidx = 0x10 + (pspr->attr&0x03) * 4;
+		const int palidx = 0x10 + (spr->attr&0x03) * 4;
 		uint8_t b0 = romchrread(pattern + tileidx + spry);
 		uint8_t b1 = romchrread(pattern + tileidx + spry + 8);
-
-		if ((pspr->attr&0x40) != 0) {
+		if ((spr->attr&0x40) != 0) {
 			// flip horizontally
 			uint8_t tmp0 = 0;
 			uint8_t tmp1 = 0;
@@ -166,17 +163,17 @@ static void draw_sprite_scanline(void)
 			b1 = tmp1;
 		}
 
-		const bool priority = (pspr->attr&0x20) != 0;
-		for (int p = 0; p < 8 && (sprx + p) < 256; ++p) {
+		const bool priority = (spr->attr&0x20) != 0;
+		for (int p = 0; p < 8 && (spr->x + p) < 256; ++p) {
 			const int c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
 
-			if (c == 0 || (priority && pixels[sprx + p] != 0))
+			if (c == 0 || (priority && pixels[spr->x + p] != 0))
 				continue;
 
 			const int pal = palettes[eval_palette_offset(palidx + c)];
-		 	pixels[sprx + p] = rgb_palette[pal&0x3F];
+		 	pixels[spr->x + p] = rgb_palette[pal&0x3F];
 		}
 	}
 
