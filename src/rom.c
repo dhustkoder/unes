@@ -9,10 +9,10 @@
 #include "rom.h"
 
 
-static int_fast32_t prgrom_size;
-static int_fast32_t chrrom_size;
-static int_fast32_t chrram_size;
-static int_fast32_t sram_size;
+static int32_t prgrom_size;
+static int32_t chrrom_size;
+static int32_t chrram_size;
+static int32_t sram_size;
 static enum MapperType mappertype;
 static const char* rompath;
 static const uint8_t* cartdata; // prgrom, chrrom
@@ -57,7 +57,7 @@ bool loadrom(const char* const path)
 
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
 	if (fread(&ines, 1, 9, file) < 9 ||
-	    memcmp(ines.match, match, sizeof(match)) != 0) {
+	    memcmp(ines.match, match, sizeof match) != 0) {
 		fprintf(stderr, "\'%s\' is not an ines file.\n", rompath);
 		goto Lfclose;
 	}
@@ -93,7 +93,7 @@ bool loadrom(const char* const path)
 	            ? ines.sram_nbanks * SRAM_BANK_SIZE
 	            : SRAM_BANK_SIZE;
 
-	sram = calloc(sram_size, sizeof(char));
+	sram = calloc(sram_size, sizeof *sram);
 
 	const uint_fast32_t read_size = prgrom_size + chrrom_size;
 	cartdata = malloc(read_size);
@@ -104,10 +104,10 @@ bool loadrom(const char* const path)
 		goto Lfclose;
 	}
 
-	printf("PRG-ROM BANKS: %" PRIiFAST32 " x 16Kib = %" PRIiFAST32 "\n"
-	       "CHR-ROM BANKS: %" PRIiFAST32 " x 8 Kib = %" PRIiFAST32 "\n"
-	       "CHR-RAM BANKS: %" PRIiFAST32 " x 8 Kib = %" PRIiFAST32 "\n"
-	       "SRAM BANKS:    %" PRIiFAST32 " x 8 Kib = %" PRIiFAST32 "\n"
+	printf("PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
+	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
+	       "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
+	       "SRAM BANKS:    %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "CTRL BYTE 1:\n"
 	       "\tMIRRORING: %d = %s\n"
 	       "\tBATTERY-BACKED RAM AT $6000-$7FFF: %d = %s\n"
@@ -117,7 +117,7 @@ bool loadrom(const char* const path)
 	       "CTRL BYTE 2:\n"
 	       "\tBITS 0-3 RESERVED FOR FUTURE USE AND SHOULD ALL BE 0: $%.1x\n"
 	       "\tFOUR UPPER BITS OF MAPPER NUMBER: $%.1x\n"
-	       "MAPPER NUM %" PRIuFAST8 "\n",
+	       "MAPPER: %d\n",
 	       prgrom_size / PRGROM_BANK_SIZE, prgrom_size,
 	       chrrom_size / CHR_BANK_SIZE, chrrom_size,
 	       chrram_size / CHR_BANK_SIZE, chrram_size,
@@ -134,7 +134,7 @@ bool loadrom(const char* const path)
 	case NROM:
 		break;
 	case MMC1:
-		memset(&mapper.mmc1, 0, sizeof(mapper.mmc1));
+		memset(&mapper.mmc1, 0, sizeof mapper.mmc1);
 		mapper.mmc1.reg[0] = 0x0C;
 		break;
 	}

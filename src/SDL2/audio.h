@@ -8,10 +8,10 @@
 #define AUDIO_MAX_VOLUME (SDL_MIX_MAXVOLUME)
 
 
-static inline void mixsample(int16_t* const dest_sample, int16_t src_sample, int volume)
+static inline void mixsample(int16_t* const dest_sample, const int16_t src_sample, const int volume)
 {
-	SDL_MixAudioFormat((uint8_t*)dest_sample, (uint8_t*)&src_sample, AUDIO_S16SYS,
-	                   sizeof(int16_t), volume);
+	SDL_MixAudioFormat((uint8_t*)dest_sample, (uint8_t*)&src_sample,
+	                   AUDIO_S16SYS, sizeof src_sample, volume);
 }
 
 static inline void queue_sound_buffer(const uint8_t* const buffer, const uint_fast32_t len)

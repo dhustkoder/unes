@@ -47,11 +47,11 @@ static const int8_t clock_table[0x100] = {
 
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
-static int_fast16_t step_cycles;
+static int16_t step_cycles;
 static bool irq_pass;
-static int_fast32_t pc;
-static uint_fast8_t a, x, y, s;
-static struct { uint_fast8_t c, z, i, d, v, n; } flags;
+static uint16_t pc;
+static uint8_t a, x, y, s;
+static struct { bool c : 1, z : 1, i : 1, d : 1, v : 1, n : 1; } flags;
 static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
@@ -104,6 +104,8 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 
 static uint_fast8_t read(const uint_fast16_t addr)
 {
+	assert(addr <= 0xFFFF);
+
 	if (addr < ADDR_IOREGS1)
 		return ram[addr&0x7FF];
 	else if (addr >= ADDR_SRAM)
@@ -116,6 +118,8 @@ static uint_fast8_t read(const uint_fast16_t addr)
 
 static void write(const uint_fast8_t val, const uint_fast16_t addr)
 {
+	assert(addr <= 0xFFFF);
+
 	if (addr < ADDR_IOREGS1)
 		ram[addr&0x7FF] = val;
 	else if (addr < ADDR_EXPROM)
@@ -128,8 +132,8 @@ static void oam_dma(const uint_fast8_t n)
 {
 	extern uint8_t ppu_oam[0x100];
 	const uint_fast16_t offset = 0x100 * n;
-	if ((offset&0x7FF) <= (sizeof(ram) - 0x100)) {
-		memcpy(ppu_oam, &ram[offset&0x7FF], 0x100);
+	if ((offset&0x7FF) <= 0x700) {
+		memcpy(ppu_oam, &ram[offset&0x7FF], sizeof(*ram) * 0x100);
 	} else {
 		for (int i = 0; i < 0x100; ++i)
 			ppu_oam[i] = read(offset + i);
@@ -153,9 +157,7 @@ static uint_fast16_t read16msk(const uint_fast16_t addr)
 // stack
 static void spush(const uint_fast8_t val)
 {
-	write(val, 0x100|s);
-	--s;
-	s &= 0xFF;
+	write(val, 0x100|s--);
 }
 
 static void spush16(const uint_fast16_t val)
@@ -166,9 +168,7 @@ static void spush16(const uint_fast16_t val)
 
 static uint_fast8_t spop(void)
 {
-	++s;
-	s &= 0xFF;
-	return read(0x100|s);
+	return read(0x100|++s);
 }
 
 static uint_fast16_t spop16(void)
@@ -180,27 +180,68 @@ static uint_fast16_t spop16(void)
 
 
 // instructions
-static void ld(uint_fast8_t* const reg, const uint_fast8_t val)
+static void ld(uint8_t* const reg, const uint_fast8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
 	flags.n = (*reg)>>7;
 }
 
-static void inc(uint_fast8_t* const val)
+static void inc(uint8_t* const val)
 {
 	++(*val);
-	*val &= 0xFF;
 	flags.z = *val == 0x00;
 	flags.n = (*val)>>7;
 }
 
-static void dec(uint_fast8_t* const val)
+static void dec(uint8_t* const val)
 {
 	--(*val);
-	*val &= 0xFF;
 	flags.z = *val == 0x00;
 	flags.n = (*val)>>7;
+}
+
+static void lsr(uint8_t* const val)
+{
+	flags.c = ((*val)&0x01);
+	*val >>= 1;
+	flags.z = *val == 0x00;
+	flags.n = 0;
+}
+
+static void rol(uint8_t* const val)
+{
+	const uint_fast8_t oldc = flags.c;
+	flags.c = (*val)>>7;
+	*val = ((*val)<<1)|oldc;
+	(*val) &= 0xFF;
+	flags.z = *val == 0x00;
+	flags.n = (*val)>>7;
+}
+
+static void ror(uint8_t* const val)
+{
+	const uint_fast8_t oldc = flags.c;
+	flags.c = (*val)&0x01;
+	(*val) = ((*val)>>1)|(oldc<<7);
+	flags.z = *val == 0x00;
+	flags.n = (*val)>>7;
+}
+
+static void asl(uint8_t* const val)
+{
+	flags.c = (*val)>>7;
+	*val <<= 1;
+	(*val) &= 0xFF;
+	flags.z = *val == 0x00;
+	flags.n = (*val)>>7;
+}
+
+static inline void opm(void(*const op)(uint8_t*), const uint_fast16_t addr)
+{
+	uint8_t val = read(addr);
+	op(&val);
+	write(val, addr);
 }
 
 static void and(const uint_fast8_t val)
@@ -222,49 +263,6 @@ static void eor(const uint_fast8_t val)
 	a ^= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
-}
-
-static void lsr(uint_fast8_t* const val)
-{
-	flags.c = ((*val)&0x01);
-	*val >>= 1;
-	flags.z = *val == 0x00;
-	flags.n = 0;
-}
-
-static void rol(uint_fast8_t* const val)
-{
-	const uint_fast8_t oldc = flags.c;
-	flags.c = (*val)>>7;
-	*val = ((*val)<<1)|oldc;
-	(*val) &= 0xFF;
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
-}
-
-static void ror(uint_fast8_t* const val)
-{
-	const uint_fast8_t oldc = flags.c;
-	flags.c = (*val)&0x01;
-	(*val) = ((*val)>>1)|(oldc<<7);
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
-}
-
-static void asl(uint_fast8_t* const val)
-{
-	flags.c = (*val)>>7;
-	*val <<= 1;
-	(*val) &= 0xFF;
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
-}
-
-static inline void opm(void(*const op)(uint_fast8_t*), const uint_fast16_t addr)
-{
-	uint_fast8_t val = read(addr);
-	op(&val);
-	write(val, addr);
 }
 
 static void bit(const uint_fast8_t val)
@@ -338,7 +336,7 @@ static void dointerrupt(const uint_fast16_t vector, const bool brk)
 void resetcpu(void)
 {
 	cpu_nmi = false;
-	memset(cpu_irq_sources, 0x00, sizeof(cpu_irq_sources));
+	memset(cpu_irq_sources, 0, sizeof cpu_irq_sources);
 	irq_pass = false;
 
 	pc = read16(ADDR_RESET_VECTOR);
@@ -347,8 +345,8 @@ void resetcpu(void)
 	y = 0x00;
 	s = 0xFD;
 
-	memset(&flags, 0x00, sizeof(flags));
-	flags.i = 1;
+	memset(&flags, 0, sizeof flags);
+	flags.i = true;
 }
 
 int_fast16_t stepcpu(void)
@@ -377,16 +375,6 @@ int_fast16_t stepcpu(void)
 	#define rabsolutey() (read(wabsolutey()))
 	#define rindirectx() (read(windirectx()))
 	#define rindirecty() (read(windirecty()))
-
-
-	assert(pc <= 0xFFFF);
-
-	assert((flags.c == 0 || flags.c == 1) &&
-	       (flags.z == 0 || flags.z == 1) &&
-	       (flags.i == 0 || flags.i == 1) &&
-	       (flags.d == 0 || flags.d == 1) &&
-	       (flags.v == 0 || flags.v == 1) &&
-	       (flags.n == 0 || flags.n == 1));
 
 	step_cycles = 0;
 
@@ -497,14 +485,14 @@ int_fast16_t stepcpu(void)
 	case 0xDE: opm(dec, wabsolutexnchk()); break;
 
 	// branches
-	case 0x90: branch(flags.c == 0); break; // BCC
-	case 0xB0: branch(flags.c == 1); break; // BCS
-	case 0xD0: branch(flags.z == 0); break; // BNE
-	case 0xF0: branch(flags.z == 1); break; // BEQ
-	case 0x50: branch(flags.v == 0); break; // BVC
-	case 0x70: branch(flags.v == 1); break; // BVS
-	case 0x10: branch(flags.n == 0); break; // BPL
-	case 0x30: branch(flags.n == 1); break; // BMI
+	case 0x90: branch(!flags.c); break; // BCC
+	case 0xB0: branch(flags.c);  break; // BCS
+	case 0xD0: branch(!flags.z); break; // BNE
+	case 0xF0: branch(flags.z);  break; // BEQ
+	case 0x50: branch(!flags.v); break; // BVC
+	case 0x70: branch(flags.v);  break; // BVS
+	case 0x10: branch(!flags.n); break; // BPL
+	case 0x30: branch(flags.n);  break; // BMI
 
 	// LDA
 	case 0xA9: ld(&a, immediate());  break;
@@ -581,13 +569,13 @@ int_fast16_t stepcpu(void)
 
 	// implieds
 	case 0x00: dointerrupt(ADDR_IRQ_VECTOR, true);          break; // BRK
-	case 0x18: flags.c = 0;                                 break; // CLC
-	case 0x38: flags.c = 1;                                 break; // SEC
-	case 0x58: flags.i = 0;                                 break; // CLI
-	case 0x78: flags.i = 1;                                 break; // SEI
-	case 0xB8: flags.v = 0;                                 break; // CLV
-	case 0xD8: flags.d = 0;                                 break; // CLD
-	case 0xF8: flags.d = 1;                                 break; // SED
+	case 0x18: flags.c = false;                             break; // CLC
+	case 0x38: flags.c = true;                              break; // SEC
+	case 0x58: flags.i = false;                             break; // CLI
+	case 0x78: flags.i = true;                              break; // SEI
+	case 0xB8: flags.v = false;                             break; // CLV
+	case 0xD8: flags.d = false;                             break; // CLD
+	case 0xF8: flags.d = true;                              break; // SED
 	case 0xCA: dec(&x);                                     break; // DEX
 	case 0x88: dec(&y);                                     break; // DEY
 	case 0xE8: inc(&x);                                     break; // INX

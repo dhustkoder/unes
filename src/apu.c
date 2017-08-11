@@ -11,18 +11,18 @@
 #define SOUND_BUFFER_SIZE      (2048)
 
 
-static int_fast32_t frame_counter_clock;
-static int_fast8_t delayed_frame_timer_reset;
-static uint_fast8_t status;              // $4015
-static uint_fast8_t frame_counter_mode;  // $4017
+static int32_t frame_counter_clock;
+static int8_t delayed_frame_timer_reset;
+static uint8_t status;                   // $4015
+static uint8_t frame_counter_mode;       // $4017
 static bool irq_inhibit;                 // $4017
 static bool oddtick;
 
 
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
-static int_fast16_t sound_buffer_idx;
+static int16_t sound_buffer_idx;
 static int16_t apu_samples[APU_SAMPLE_BUFFER_SIZE];
-static int_fast8_t apu_samples_idx;
+static int8_t apu_samples_idx;
 
 
 // Pulse channels
@@ -40,13 +40,13 @@ static struct Pulse {
 	uint8_t sweep_period;        //  0 - 7
 	int8_t sweep_period_cnt;     //  0 - 7
 	uint8_t sweep_shift;         //  0 - 7
-	bool sweep_negate;
-	bool sweep_enabled;
-	bool sweep_reload;
-	bool enabled;
-	bool const_vol;
-	bool len_enabled;
-	bool env_start;
+	bool sweep_negate   : 1;
+	bool sweep_enabled  : 1;
+	bool sweep_reload   : 1;
+	bool enabled        : 1;
+	bool const_vol      : 1;
+	bool len_enabled    : 1;
+	bool env_start      : 1;
 } pulse[2];
 
 
@@ -287,7 +287,7 @@ static void mixaudio(void)
 
 		if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
 			sound_buffer_idx = 0;
-			queue_sound_buffer((void*)sound_buffer, sizeof(sound_buffer));
+			queue_sound_buffer((void*)sound_buffer, sizeof sound_buffer);
 		}
 	}
 }
@@ -308,7 +308,7 @@ void resetapu(void)
 	apu_samples_idx = 0;
 
 	// Pulse
-	memset(pulse, 0x00, sizeof(pulse));
+	memset(pulse, 0, sizeof pulse);
 }
 
 void stepapu(const int_fast32_t aputicks)

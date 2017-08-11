@@ -7,21 +7,24 @@
 #include "ppu.h"
 
 
-static uint_fast8_t ppuopenbus;
-static uint_fast8_t ppuctrl;     // $2000
-static uint_fast8_t ppumask;     // $2001
-static uint_fast8_t ppustatus;   // $2002
-static uint_fast8_t oamaddr;     // $2003 
-static uint_fast16_t ppuscroll;  // $2005
-static int_fast16_t ppuaddr;     // $2006
-static bool write_toggle;
+static uint8_t ppuopenbus;
+static uint8_t ppuctrl;     // $2000
+static uint8_t ppumask;     // $2001
+static uint8_t ppustatus;   // $2002
+static uint8_t oamaddr;     // $2003 
+static uint16_t ppuscroll;  // $2005
+static int16_t ppuaddr;     // $2006
 
-static int_fast16_t ppuclk;      // 0 - 341
-static int_fast16_t scanline;    // 0 - 262
-static bool nmi_occurred;
-static bool nmi_output;
-static bool oddframe;
-static bool nmi_for_frame;
+static int16_t ppuclk;      // 0 - 341
+static int16_t scanline;    // 0 - 262
+
+static struct {
+	bool nmi_occurred    : 1;
+	bool nmi_output      : 1;
+	bool oddframe        : 1;
+	bool nmi_for_frame   : 1;
+	bool write_toggle    : 1;
+} states;
 
 uint8_t ppu_oam[0x100];
 static uint8_t nametables[0x800];
@@ -65,7 +68,7 @@ static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 
 static uint_fast8_t eval_pal_rw_offset(const uint_fast16_t addr)
 {
-	const uint_fast8_t mirrors[0x20] = {
+	const uint8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
 		0x04, 0x05, 0x06, 0x07,
 		0x08, 0x09, 0x0A, 0x0B,
@@ -81,7 +84,7 @@ static uint_fast8_t eval_pal_rw_offset(const uint_fast16_t addr)
 
 static uint_fast8_t get_palette(const uint_fast16_t addr)
 {
-	const uint_fast8_t mirrors[0x20] = {
+	const uint8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
 		0x00, 0x05, 0x06, 0x07,
 		0x00, 0x09, 0x0A, 0x0B,
@@ -109,6 +112,7 @@ static void draw_bg_scanline(void)
 	const int bgpattern = (ppuctrl&0x10) ? 0x1000 : 0x0000;
 	const int spritey = scanline&0x07;
 	const int ysprite = scanline / 8;
+	uint32_t* const pixels = &screen[scanline][0];
 
 	for (int i = 0; i < 32; ++i) {
 		unsigned palrow = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
@@ -123,7 +127,7 @@ static void draw_bg_scanline(void)
 		for (int p = 0; p < 8; ++p) {
 			const int paladdr = palrow + (((b1>>6)&0x02)|(b0>>7));
 			const uint_fast8_t pal = get_palette(paladdr);
-			screen[scanline][i * 8 + p] = nes_rgb[pal&greymsk];
+			pixels[i * 8 + p] = nes_rgb[pal&greymsk];
 			b0 <<= 1;
 			b1 <<= 1;
 		}
@@ -202,14 +206,10 @@ void resetppu(void)
 	oamaddr = 0x00;
 	ppuscroll = 0x0000;
 	ppuaddr = 0x0000;
-	write_toggle = false;
 
 	ppuclk = 0;
 	scanline = 240;
-	nmi_occurred = false;
-	nmi_output = false;
-	nmi_for_frame = false;
-	oddframe = false;
+	memset(&states, 0, sizeof states);
 }
 
 void stepppu(const int_fast32_t pputicks)
@@ -226,26 +226,27 @@ void stepppu(const int_fast32_t pputicks)
 			ppuclk = 0;
 			if (++scanline == 262) {
 				scanline = 0;
-				render((void*)screen, sizeof(screen));
-				if ((ppumask&0x18) && oddframe)
+				render((void*)screen, sizeof screen);
+				if ((ppumask&0x18) && states.oddframe)
 					++ppuclk;
-				oddframe = !oddframe;
+				states.oddframe = !states.oddframe;
 			}
 		}
 
 		if (scanline == 241) {
 			if (ppuclk == 1) {
-				nmi_occurred = true;
-				nmi_for_frame = false;
+				states.nmi_occurred = true;
+				states.nmi_for_frame = false;
 			}
 		} else if (scanline == 261) {
 			if (ppuclk == 1)
-				nmi_occurred = false;
+				states.nmi_occurred = false;
 		}
 
-		if (!nmi_for_frame && nmi_occurred && nmi_output) {
+		if (!states.nmi_for_frame && states.nmi_occurred &&
+		    states.nmi_output) {
 			trigger_nmi();
-			nmi_for_frame = true;
+			states.nmi_for_frame = true;
 		}
 	}
 }
@@ -254,15 +255,15 @@ void stepppu(const int_fast32_t pputicks)
 // Registers read/write for CPU
 static uint_fast8_t read_ppustatus(void)
 {
-	const uint_fast8_t b7 = nmi_occurred<<7;
-	nmi_occurred = false;
+	const uint_fast8_t b7 = states.nmi_occurred<<7;
+	states.nmi_occurred = false;
 	return b7|(ppuopenbus&0x1F);
 }
 
 static void write_ppuctrl(const uint_fast8_t val)
 {
 	ppuctrl = val;
-	nmi_output = (val&0x80) == 0x80;
+	states.nmi_output = (val&0x80) == 0x80;
 }
 
 static void write_ppumask(const uint_fast8_t val)
@@ -317,26 +318,26 @@ static void write_ppudata(const uint_fast8_t val)
 
 static void write_ppuaddr(const uint_fast8_t val)
 {
-	if (write_toggle) {
+	if (states.write_toggle) {
 		ppuaddr = (ppuaddr&0xFF00)|val;
 	} else {
 		ppuaddr = (ppuaddr&0x00FF)|(val<<8);
 	}
 
 	ppuaddr &= 0x3FFF;
-	write_toggle = !write_toggle;
+	states.write_toggle = !states.write_toggle;
 }
 
 static void write_ppuscroll(const uint_fast8_t val)
 {
-	if (write_toggle) {
+	if (states.write_toggle) {
 		ppuscroll |= val;
 	} else {
 		ppuscroll = 0;
 		ppuscroll = val<<8;
 	}
 
-	write_toggle = !write_toggle;
+	states.write_toggle = !states.write_toggle;
 }
 
 

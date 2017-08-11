@@ -1,4 +1,3 @@
-#include <string.h>
 #include <stdbool.h>
 #include "input.h"
 #include "joypad.h"
@@ -14,8 +13,8 @@ void joywrite(const uint_fast8_t val)
 	const bool oldstrobe = keystrobe;
 	keystrobe = (val&0x01) != 0;
 	if (oldstrobe && !keystrobe) {
-		memset(keyshift, 0, sizeof(keyshift));
 		for (int i = JOYPAD_ONE; i < JOYPAD_NJOYPADS; ++i) {
+			keyshift[i] = 0;
 			keys[i] = getkeystate(i, KEY_RIGHT)<<7  |
 				  getkeystate(i, KEY_LEFT)<<6   |
 				  getkeystate(i, KEY_DOWN)<<5   |

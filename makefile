@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -Wall -Wextra -Wshadow -pedantic-errors -I $(SRC_DIR)
+CFLAGS=-std=c11 -pedantic-errors -Wall -Wextra -Wshadow -I $(SRC_DIR)
 CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
 CFLAGS_RELEASE=-Werror -O3 -march=native -ffast-math -fstrict-aliasing \
 	       -ffunction-sections -fdata-sections -fno-unwind-tables  \
