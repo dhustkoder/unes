@@ -77,27 +77,24 @@ static void oam_dma(uint_fast8_t n);
 
 static uint_fast8_t ioread(const uint_fast16_t addr)
 {
-	if (addr >= 0x4000 && addr < 0x4016) {
-		if (addr != 0x4014)
-			return apuread(addr);
-	} else if (addr >= 0x4016 && addr <= 0x4017) {
+	if (addr >= 0x4016)
 		return joyread(addr);
-	} else if (addr >= 0x2000 && addr <= 0x4000) {
+	else if (addr >= 0x4000 && addr != 0x4014)
+		return apuread(addr);
+	else if (addr < 0x4000)
 		return ppuread(addr);
-	}
-
-	return 0x00;
+	return 0;
 }
 
 static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 {
-	if (addr >= 0x4000 && addr <= 0x4017) {
+	if (addr >= 0x4000) {
 		switch (addr) {
 		default: apuwrite(val, addr); break;
 		case 0x4014: oam_dma(val);    break;
 		case 0x4016: joywrite(val);   break;
 		}
-	} else if (addr >= 0x2000 && addr < 0x4000) {
+	} else {
 		ppuwrite(val, addr);
 	}
 }
@@ -112,8 +109,7 @@ static uint_fast8_t read(const uint_fast16_t addr)
 		return romread(addr);
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-
-	return 0x00;
+	return 0;
 }
 
 static void write(const uint_fast8_t val, const uint_fast16_t addr)
@@ -180,68 +176,74 @@ static uint_fast16_t spop16(void)
 
 
 // instructions
-static void ld(uint8_t* const reg, const uint_fast8_t val)
+static inline void ld(uint8_t* const reg, const uint_fast8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
 	flags.n = (*reg)>>7;
 }
 
-static void inc(uint8_t* const val)
+static uint_fast8_t inc(uint_fast8_t val)
 {
-	++(*val);
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
+	++val;
+	val &= 0xFF;
+	flags.z = val == 0x00;
+	flags.n = val>>7;
+	return val;
 }
 
-static void dec(uint8_t* const val)
+static uint_fast8_t dec(uint_fast8_t val)
 {
-	--(*val);
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
+	--val;
+	val &= 0xFF;
+	flags.z = val == 0x00;
+	flags.n = val>>7;
+	return val;
 }
 
-static void lsr(uint8_t* const val)
+static uint_fast8_t lsr(uint_fast8_t val)
 {
-	flags.c = ((*val)&0x01);
-	*val >>= 1;
-	flags.z = *val == 0x00;
+	flags.c = val&0x01;
+	val >>= 1;
+	flags.z = val == 0x00;
 	flags.n = 0;
+	return val;
 }
 
-static void rol(uint8_t* const val)
+static uint_fast8_t rol(uint_fast8_t val)
 {
 	const uint_fast8_t oldc = flags.c;
-	flags.c = (*val)>>7;
-	*val = ((*val)<<1)|oldc;
-	(*val) &= 0xFF;
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
+	flags.c = val>>7;
+	val = (val<<1)|oldc;
+	val &= 0xFF;
+	flags.z = val == 0x00;
+	flags.n = val>>7;
+	return val;
 }
 
-static void ror(uint8_t* const val)
+static uint_fast8_t ror(uint_fast8_t val)
 {
 	const uint_fast8_t oldc = flags.c;
-	flags.c = (*val)&0x01;
-	(*val) = ((*val)>>1)|(oldc<<7);
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
+	flags.c = val&0x01;
+	val = (val>>1)|(oldc<<7);
+	flags.z = val == 0x00;
+	flags.n = val>>7;
+	return val;
 }
 
-static void asl(uint8_t* const val)
+static uint_fast8_t asl(uint_fast8_t val)
 {
-	flags.c = (*val)>>7;
-	*val <<= 1;
-	(*val) &= 0xFF;
-	flags.z = *val == 0x00;
-	flags.n = (*val)>>7;
+	flags.c = val>>7;
+	val <<= 1;
+	val &= 0xFF;
+	flags.z = val == 0x00;
+	flags.n = val>>7;
+	return val;
 }
 
-static inline void opm(void(*const op)(uint8_t*), const uint_fast16_t addr)
+static inline void opm(uint_fast8_t(*const op)(uint_fast8_t), const uint_fast16_t addr)
 {
-	uint8_t val = read(addr);
-	op(&val);
-	write(val, addr);
+	write(op(read(addr)), addr);
 }
 
 static void and(const uint_fast8_t val)
@@ -441,28 +443,28 @@ int_fast16_t stepcpu(void)
 	case 0x51: eor(rindirecty()); break;
 
 	// ASL
-	case 0x0A: asl(&a);                    break;
+	case 0x0A: a = asl(a);                 break;
 	case 0x06: opm(asl, wzeropage());      break;
 	case 0x16: opm(asl, wzeropagex());     break;
 	case 0x0E: opm(asl, wabsolute());      break;
 	case 0x1E: opm(asl, wabsolutexnchk()); break;
 
 	// LSR
-	case 0x4A: lsr(&a);                    break;
+	case 0x4A: a = lsr(a);                 break;
 	case 0x46: opm(lsr, wzeropage());      break;
 	case 0x56: opm(lsr, wzeropagex());     break;
 	case 0x4E: opm(lsr, wabsolute());      break;
 	case 0x5E: opm(lsr, wabsolutexnchk()); break;
 
 	// ROL
-	case 0x2A: rol(&a);                    break;
+	case 0x2A: a = rol(a);                 break;
 	case 0x26: opm(rol, wzeropage());      break;
 	case 0x36: opm(rol, wzeropagex());     break;
 	case 0x2E: opm(rol, wabsolute());      break;
 	case 0x3E: opm(rol, wabsolutexnchk()); break;
 
 	// ROR
-	case 0x6A: ror(&a);                    break;
+	case 0x6A: a = ror(a);                 break;
 	case 0x66: opm(ror, wzeropage());      break;
 	case 0x76: opm(ror, wzeropagex());     break;
 	case 0x6E: opm(ror, wabsolute());      break;
@@ -576,10 +578,10 @@ int_fast16_t stepcpu(void)
 	case 0xB8: flags.v = false;                             break; // CLV
 	case 0xD8: flags.d = false;                             break; // CLD
 	case 0xF8: flags.d = true;                              break; // SED
-	case 0xCA: dec(&x);                                     break; // DEX
-	case 0x88: dec(&y);                                     break; // DEY
-	case 0xE8: inc(&x);                                     break; // INX
-	case 0xC8: inc(&y);                                     break; // INY
+	case 0xCA: x = dec(x);                                  break; // DEX
+	case 0x88: y = dec(y);                                  break; // DEY
+	case 0xE8: x = inc(x);                                  break; // INX
+	case 0xC8: y = inc(y);                                  break; // INY
 	case 0x08: spush(getflags()|FLAG_B);                    break; // PHP
 	case 0x28: setflags(spop());                            break; // PLP
 	case 0x48: spush(a);                                    break; // PHA

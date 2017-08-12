@@ -361,7 +361,7 @@ uint_fast8_t ppuread(const uint_fast16_t addr)
 	case 2: return read_ppustatus(); break;
 	case 4: return read_oamdata();   break;
 	case 7: return read_ppudata();   break;
+	default: return ppuopenbus;      break;
 	}
-	return ppuopenbus;
 }
 
