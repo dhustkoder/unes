@@ -15,7 +15,7 @@ enum MapperType {
 	MMC1
 };
 
-enum NTMirroring {
+enum NTMirroringMode {
 	NTMIRRORING_HORIZONTAL,
 	NTMIRRORING_VERTICAL,
 	NTMIRRORING_ONE_SCREEN_LOW,
@@ -28,9 +28,6 @@ extern void freerom(void);
 
 extern uint_fast8_t romread(uint_fast16_t addr);
 extern void romwrite(uint_fast8_t value, uint_fast16_t addr);
-extern uint_fast8_t romchrread(uint_fast16_t addr);
-extern void romchrwrite(uint_fast8_t value, uint_fast16_t addr);
-extern enum NTMirroring get_ntmirroring_mode(void);
 
 
 #endif

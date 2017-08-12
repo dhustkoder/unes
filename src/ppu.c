@@ -6,7 +6,12 @@
 #include "rom.h"
 #include "ppu.h"
 
+// managed by cartridge
+enum NTMirroringMode ppu_ntmirroring_mode;
+uint8_t* ppu_patterntable_upper;
+uint8_t* ppu_patterntable_lower;
 
+// managed by PPU / CPU
 static uint8_t ppuopenbus;
 static uint8_t ppuctrl;     // $2000
 static uint8_t ppumask;     // $2001
@@ -26,7 +31,7 @@ static struct {
 	bool write_toggle    : 1;
 } states;
 
-uint8_t ppu_oam[0x100];
+uint8_t ppu_oam[0x100];          // dma is done in cpu.c
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1C];
 static uint32_t screen[240][256];
@@ -45,10 +50,8 @@ static const uint32_t nes_rgb[0x40] = {
 
 static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 {
-	assert(addr >= 0x2000 && addr <= 0x3EFF);
-
 	int_fast16_t offset = 0;
-	switch (get_ntmirroring_mode()) {
+	switch (ppu_ntmirroring_mode) {
 	case NTMIRRORING_HORIZONTAL:
 		offset = ((addr>>1)&0x400) + (addr&0x3FF);
 		break;
@@ -103,13 +106,15 @@ static void draw_bg_scanline(void)
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
 	const uint16_t nt_addrs[] = {
-		0x2000, 0x2400, 0x2800, 0x2C00
+		0x00, 0x400, 0x800, 0xC00
 	};
 
 	const uint8_t* const nt = &nametables[eval_nt_offset(nt_addrs[ppuctrl&0x03])];
 	const uint8_t* const at = nt + 0x3C0;
 	const uint8_t greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
-	const int bgpattern = (ppuctrl&0x10) ? 0x1000 : 0x0000;
+	const uint8_t* const pattern = (ppuctrl&0x10) 
+		                       ? ppu_patterntable_upper
+				       : ppu_patterntable_lower;
 	const int spritey = scanline&0x07;
 	const int ysprite = scanline / 8;
 	uint32_t* const pixels = &screen[scanline][0];
@@ -122,8 +127,8 @@ static void draw_bg_scanline(void)
 		palrow *= 4;
 
 		const int spridx = nt[ysprite * 32 + i] * 16;
-		uint8_t b0 = romchrread(bgpattern + spridx + spritey);
-		uint8_t b1 = romchrread(bgpattern + spridx + spritey + 8);
+		uint8_t b0 = pattern[spridx + spritey];
+		uint8_t b1 = pattern[spridx + spritey + 8];
 		for (int p = 0; p < 8; ++p) {
 			const int paladdr = palrow + (((b1>>6)&0x02)|(b0>>7));
 			const uint_fast8_t pal = get_palette(paladdr);
@@ -140,6 +145,8 @@ static void draw_sprite_scanline(void)
 
 	uint32_t* const pixels = &screen[scanline][0];
 	const int sprh = (ppuctrl&0x20) ? 16 : 8;
+	const uint8_t* const pupper = ppu_patterntable_upper;
+	const uint8_t* const plower = ppu_patterntable_lower;
 	for (int i = 0xFC, drawn = 0; i >= 0 && drawn < 8; i -= 4) {
 		const struct {
 			uint8_t y;
@@ -157,19 +164,19 @@ static void draw_sprite_scanline(void)
 		                 ? (scanline - (spr->y + 1))
 		                 : -((scanline - (spr->y + 1)) - (sprh - 1)); // flip vertically
 		int tileidx;
-		int pattern;
+		const uint8_t* pattern;
 		if (sprh == 8) {
 			tileidx = spr->tile * 16;
-			pattern = (ppuctrl&0x08)<<9;
+			pattern = (ppuctrl&0x08) ? pupper : plower;
 		} else {
 			tileidx = (spr->tile>>1) * 32;
-			pattern = (spr->tile&0x01)<<12;
+			pattern = (spr->tile&0x01) ? pupper : plower;
 			if (spry > 7)
 				tileidx += 8;
 		}
 
-		uint8_t b0 = romchrread(pattern + tileidx + spry);
-		uint8_t b1 = romchrread(pattern + tileidx + spry + 8);
+		uint8_t b0 = pattern[tileidx + spry];
+		uint8_t b1 = pattern[tileidx + spry + 8];
 		if ((spr->attr&0x40) != 0) {
 			// flip horizontally
 			uint8_t tmp0 = 0;
@@ -293,8 +300,10 @@ static void ppuaddr_inc(void)
 static uint_fast8_t read_ppudata(void)
 {
 	uint_fast8_t r = 0;
-	if (ppuaddr < 0x2000)
-		r = romchrread(ppuaddr);
+	if (ppuaddr < 0x1000)
+		r = ppu_patterntable_lower[ppuaddr];
+	else if (ppuaddr < 0x2000)
+		r = ppu_patterntable_upper[ppuaddr&0xFFF];
 	else if (ppuaddr < 0x3F00)
 		r = nametables[eval_nt_offset(ppuaddr)];
 	else
@@ -306,8 +315,10 @@ static uint_fast8_t read_ppudata(void)
 
 static void write_ppudata(const uint_fast8_t val)
 {
-	if (ppuaddr < 0x2000)
-		romchrwrite(val, ppuaddr);
+	if (ppuaddr < 0x1000)
+		ppu_patterntable_lower[ppuaddr] = val;
+	else if (ppuaddr < 0x2000)
+		ppu_patterntable_upper[ppuaddr&0xFFF] = val;
 	else if (ppuaddr < 0x3F00)
 		nametables[eval_nt_offset(ppuaddr)] = val;
 	else 

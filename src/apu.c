@@ -7,7 +7,7 @@
 
 
 #define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
-#define APU_SAMPLE_BUFFER_SIZE (CPU_FREQ / 44100)
+#define APU_SAMPLES_CNT_LIMIT  (CPU_FREQ / 44100)
 #define SOUND_BUFFER_SIZE      (2048)
 
 
@@ -18,12 +18,9 @@ static uint8_t frame_counter_mode;       // $4017
 static bool irq_inhibit;                 // $4017
 static bool oddtick;
 
-
 static int16_t sound_buffer[SOUND_BUFFER_SIZE];
 static int16_t sound_buffer_idx;
-static int16_t apu_samples[APU_SAMPLE_BUFFER_SIZE];
-static int8_t apu_samples_idx;
-
+static int8_t apu_samples_cnt;
 
 // Pulse channels
 static struct Pulse {
@@ -274,17 +271,11 @@ static void update_channels_output(void)
 
 static void mixaudio(void)
 {
-	update_channels_output();
-	apu_samples[apu_samples_idx] = 0;
-	mixsample(&apu_samples[apu_samples_idx], pulse[0].out * 8, AUDIO_MAX_VOLUME);
-	mixsample(&apu_samples[apu_samples_idx], pulse[1].out * 8, AUDIO_MAX_VOLUME);
-
-	if (++apu_samples_idx >= APU_SAMPLE_BUFFER_SIZE) {
-		apu_samples_idx = 0;
-		sound_buffer[sound_buffer_idx] = 0;
-		for (int i = 0; i < APU_SAMPLE_BUFFER_SIZE; ++i)
-			mixsample(&sound_buffer[sound_buffer_idx], apu_samples[i], AUDIO_MAX_VOLUME);
-
+	if (++apu_samples_cnt == APU_SAMPLES_CNT_LIMIT) {
+		apu_samples_cnt = 0;
+		update_channels_output();
+		const unsigned sample = pulse[0].out + pulse[1].out; 
+		sound_buffer[sound_buffer_idx] = sample * 256;
 		if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
 			sound_buffer_idx = 0;
 			queue_sound_buffer((void*)sound_buffer, sizeof sound_buffer);
@@ -305,7 +296,7 @@ void resetapu(void)
 
 	// sound buffer, apu sample buffer
 	sound_buffer_idx = 0;
-	apu_samples_idx = 0;
+	apu_samples_cnt = 0;
 
 	// Pulse
 	memset(pulse, 0, sizeof pulse);

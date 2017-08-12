@@ -8,6 +8,9 @@
 #include "ppu.h"
 #include "rom.h"
 
+extern enum NTMirroringMode ppu_ntmirroring_mode;
+uint8_t* ppu_patterntable_upper;
+uint8_t* ppu_patterntable_lower;
 
 static int32_t prgrom_size;
 static int32_t chr_size; // chrrom or chrram size
@@ -124,11 +127,19 @@ bool loadrom(const char* const path)
 	memset(&mapper, 0, sizeof mapper);
 	switch (mappertype) {
 	case NROM:
-		mapper.nrom.prg_addr_mask =
-		 ines.prgrom_nbanks > 1 ? 0x7FFF : 0x3FFF;
+		mapper.nrom.prg_addr_mask = ines.prgrom_nbanks > 1
+			                    ? 0x7FFF
+					    : 0x3FFF;
+		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
+		                ? NTMIRRORING_VERTICAL
+		                : NTMIRRORING_HORIZONTAL;
+		ppu_patterntable_lower = &cartdata[prgrom_size];
+		ppu_patterntable_upper = &ppu_patterntable_lower[0x1000];
 		break;
 	case MMC1:
 		mapper.mmc1.reg[0] = 0x0C;
+		ppu_patterntable_lower = &cartdata[prgrom_size];
+		ppu_patterntable_upper = &ppu_patterntable_lower[0x1000];
 		break;
 	}
 
@@ -156,18 +167,6 @@ static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
 	((void)value);
 	((void)addr);
 }
-
-static uint_fast8_t nrom_chrread(const uint_fast16_t addr)
-{
-	return cartdata[prgrom_size + addr];
-}
-
-static void nrom_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
-{
-	if (ines.chrrom_nbanks == 0)
-		cartdata[prgrom_size + addr] = value;
-}
-
 
 // MMC1
 /*
@@ -237,33 +236,34 @@ static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
 		mapper.mmc1.tmp = (mapper.mmc1.tmp>>1)|((value&0x01)<<4);
 		if (++mapper.mmc1.shiftcnt == 5) {
 			mapper.mmc1.shiftcnt = 0;
-			mapper.mmc1.reg[(addr&0x6000)>>13] = mapper.mmc1.tmp;
+			const unsigned regidx = (addr&0x6000)>>13;
+			mapper.mmc1.reg[regidx] = mapper.mmc1.tmp;
+			if (regidx != 3) {
+				const uint8_t modes[] = {
+					NTMIRRORING_ONE_SCREEN_LOW,
+					NTMIRRORING_ONE_SCREEN_UPPER,
+					NTMIRRORING_VERTICAL,
+					NTMIRRORING_HORIZONTAL
+				};
+				ppu_ntmirroring_mode = modes[mapper.mmc1.reg[0]&0x03];
+				const uint8_t* const reg = mapper.mmc1.reg;
+				uint8_t* const chr = &cartdata[prgrom_size];
+				if ((reg[0]&0x10) == 0) { // switch 8kb banks at $0000 - $1FFF
+					ppu_patterntable_lower = &chr[(reg[1]&0x1E) * 8192];
+					ppu_patterntable_upper = &ppu_patterntable_lower[0x1000];
+				} else {
+					// switch 4kb banks at $0000 - $0FFF
+					ppu_patterntable_lower = &chr[reg[1] * 4096];
+			                // switch 4kb banks at $1000 - $1FFF
+					ppu_patterntable_upper = &chr[reg[2] * 4096];
+				}
+			}
 		}
 	} else {
 		mapper.mmc1.shiftcnt = 0;
 		mapper.mmc1.reg[0] |= 0x0C;
 	}
 }
-
-static uint_fast8_t mmc1_chrread(const uint_fast16_t addr)
-{
-	const uint8_t* const reg = mapper.mmc1.reg;
-	const uint8_t* const chr = &cartdata[prgrom_size];
-	if ((reg[0]&0x10) == 0) // switch 8kb banks at $0000 - $1FFF
-		return chr[(reg[1]&0x1E) * 8192 + addr];
-	else if (addr < 0x1000) // switch 4kb banks at $0000 - $0FFF
-		return chr[reg[1] * 4096 + addr];
-	else                    // switch 4kb banks at $1000 - $1FFF
-		return chr[reg[2] * 4096 + (addr - 0x1000)];
-}
-
-static void mmc1_chrwrite(const uint_fast8_t value, const uint_fast16_t addr)
-{
-	if (ines.chrrom_nbanks == 0)
-		cartdata[prgrom_size + addr] = value;
-}
-
-
 
 uint_fast8_t romread(const uint_fast16_t addr)
 {
@@ -286,42 +286,6 @@ void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
 		}
 	} else {
 		cartdata[prgrom_size + chr_size + addr - ADDR_SRAM] = value;
-	}
-}
-
-uint_fast8_t romchrread(const uint_fast16_t addr)
-{
-	assert(addr < 0x2000);
-	switch (mappertype) {
-	case NROM: return nrom_chrread(addr); break;
-	default:/*MMC1*/ return mmc1_chrread(addr); break;
-	}
-}
-
-void romchrwrite(const uint_fast8_t value, const uint_fast16_t addr)
-{
-	assert(addr < 0x2000);
-	switch (mappertype) {
-	case NROM: nrom_chrwrite(value, addr); break;
-	case MMC1: mmc1_chrwrite(value, addr); break;
-	}
-}
-
-enum NTMirroring get_ntmirroring_mode(void)
-{
-	switch (mappertype) {
-	case NROM:
-		return (ines.ctrl1&0x01) ? NTMIRRORING_VERTICAL
-		                         : NTMIRRORING_HORIZONTAL;
-	default:/*MMC1*/ {
-		const uint8_t opts[] = {
-			NTMIRRORING_ONE_SCREEN_LOW,
-			NTMIRRORING_ONE_SCREEN_UPPER,
-			NTMIRRORING_VERTICAL,
-			NTMIRRORING_HORIZONTAL
-		};
-		return opts[mapper.mmc1.reg[0]&0x03];
-	}
 	}
 }
 
