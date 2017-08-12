@@ -43,4 +43,3 @@ uint_fast8_t joyread(const uint_fast16_t addr)
 	++keyshift[pad];
 	return k;
 }
-

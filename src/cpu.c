@@ -13,6 +13,13 @@
 #include "cpu.h"
 
 
+// managed by rom.c
+const uint8_t* cpu_prgrom_lower;
+const uint8_t* cpu_prgrom_upper;
+uint8_t* cpu_sram;
+
+
+// cpu.c
 #define FLAG_C (0x01)
 #define FLAG_Z (0x02)
 #define FLAG_I (0x04)
@@ -42,7 +49,6 @@ static const int8_t clock_table[0x100] = {
 /*E*/	2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
 /*F*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7
 };
-
 
 
 bool cpu_nmi;
@@ -103,12 +109,18 @@ static uint_fast8_t read(const uint_fast16_t addr)
 {
 	assert(addr <= 0xFFFF);
 
-	if (addr < ADDR_IOREGS1)
+	if (addr < ADDR_IOREGS1) {
 		return ram[addr&0x7FF];
-	else if (addr >= ADDR_SRAM)
-		return romread(addr);
-	else if (addr < ADDR_EXPROM)
+	} else if (addr >= ADDR_SRAM) {
+		if (addr < ADDR_PRGROM)
+			return cpu_sram[addr&0x1FFF];
+		else if (addr < ADDR_PRGROM_UPPER)
+			return cpu_prgrom_lower[addr&0x3FFF];
+		else
+			return cpu_prgrom_upper[addr&0x3FFF];
+	} else if (addr < ADDR_EXPROM) {
 		return ioread(addr);
+	}
 	return 0;
 }
 
@@ -120,8 +132,10 @@ static void write(const uint_fast8_t val, const uint_fast16_t addr)
 		ram[addr&0x7FF] = val;
 	else if (addr < ADDR_EXPROM)
 		iowrite(val, addr);
-	else if (addr >= ADDR_SRAM)
+	else if (addr >= ADDR_PRGROM)
 		romwrite(val, addr);
+	else if (addr >= ADDR_SRAM)
+		cpu_sram[addr&0x1FFF] = val;
 }
 
 static void oam_dma(const uint_fast8_t n)
@@ -606,4 +620,3 @@ int_fast16_t stepcpu(void)
 
 	return step_cycles;
 }
-

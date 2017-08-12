@@ -6,12 +6,12 @@
 #include "rom.h"
 #include "ppu.h"
 
-// managed by cartridge
+// managed by rom.c
 enum NTMirroringMode ppu_ntmirroring_mode;
 uint8_t* ppu_patterntable_upper;
 uint8_t* ppu_patterntable_lower;
 
-// managed by PPU / CPU
+// ppu.c
 static uint8_t ppuopenbus;
 static uint8_t ppuctrl;     // $2000
 static uint8_t ppumask;     // $2001
@@ -31,7 +31,7 @@ static struct {
 	bool write_toggle    : 1;
 } states;
 
-uint8_t ppu_oam[0x100];          // dma is done in cpu.c
+uint8_t ppu_oam[0x100];  // dma is done in cpu.c
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1C];
 static uint32_t screen[240][256];
@@ -50,7 +50,7 @@ static const uint32_t nes_rgb[0x40] = {
 
 static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 {
-	int_fast16_t offset = 0;
+	int_fast16_t offset;
 	switch (ppu_ntmirroring_mode) {
 	case NTMIRRORING_HORIZONTAL:
 		offset = ((addr>>1)&0x400) + (addr&0x3FF);
@@ -61,7 +61,7 @@ static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 	case NTMIRRORING_ONE_SCREEN_LOW:
 		offset = addr&0x3FF;
 		break;
-	case NTMIRRORING_ONE_SCREEN_UPPER:
+	default:/*NTMIRRORING_ONE_SCREEN_UPPER*/
 		offset = 0x400 + (addr&0x3FF);
 		break;
 	}
@@ -115,24 +115,23 @@ static void draw_bg_scanline(void)
 	const uint8_t* const pattern = (ppuctrl&0x10) 
 		                       ? ppu_patterntable_upper
 				       : ppu_patterntable_lower;
-	const int spritey = scanline&0x07;
-	const int ysprite = scanline / 8;
+	const unsigned spritey = scanline&0x07;
+	const unsigned ysprite = scanline>>3;
 	uint32_t* const pixels = &screen[scanline][0];
-
-	for (int i = 0; i < 32; ++i) {
-		unsigned palrow = at[(((ysprite / 4) * 8) + (i / 4))&0x3F];
+	for (unsigned i = 0; i < 32; ++i) {
+		unsigned palrow = at[((ysprite>>2)<<3) + (i>>2)];
 		palrow >>= ((i&0x03) > 1) ? 2 : 0;
 		palrow >>= ((ysprite&0x03) > 1) ? 4 : 0;
 		palrow &= 0x03;
-		palrow *= 4;
+		palrow <<= 2;
 
-		const int spridx = nt[ysprite * 32 + i] * 16;
-		uint8_t b0 = pattern[spridx + spritey];
-		uint8_t b1 = pattern[spridx + spritey + 8];
-		for (int p = 0; p < 8; ++p) {
-			const int paladdr = palrow + (((b1>>6)&0x02)|(b0>>7));
-			const uint_fast8_t pal = get_palette(paladdr);
-			pixels[i * 8 + p] = nes_rgb[pal&greymsk];
+		const unsigned spridx = nt[(ysprite<<5) + i]<<4;
+		unsigned b0 = pattern[spridx + spritey];
+		unsigned b1 = pattern[spridx + spritey + 8];
+		for (unsigned p = 0; p < 8; ++p) {
+			const unsigned paladdr = palrow|((b1>>6)&0x02)|((b0>>7)&0x01);
+			const unsigned pal = get_palette(paladdr);
+			pixels[(i<<3) + p] = nes_rgb[pal&greymsk];
 			b0 <<= 1;
 			b1 <<= 1;
 		}
@@ -143,45 +142,46 @@ static void draw_sprite_scanline(void)
 {
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
-	uint32_t* const pixels = &screen[scanline][0];
-	const int sprh = (ppuctrl&0x20) ? 16 : 8;
+	const unsigned ypos = scanline;
+	const unsigned sprh = (ppuctrl&0x20) ? 16 : 8;
 	const uint8_t* const pupper = ppu_patterntable_upper;
 	const uint8_t* const plower = ppu_patterntable_lower;
-	for (int i = 0xFC, drawn = 0; i >= 0 && drawn < 8; i -= 4) {
-		const struct {
-			uint8_t y;
-			uint8_t tile;
-			uint8_t attr;
-			uint8_t x;
-		} *const spr = (void*) &ppu_oam[i];
-
-		if ((spr->y + 1) > scanline ||
-		   (scanline >= ((spr->y + 1) + sprh)))
+	const uint8_t* poam = ppu_oam + 0xFC;
+	struct {
+		uint8_t y;
+		uint8_t tile;
+		uint8_t attr;
+		uint8_t x;
+	} spr;
+	for (unsigned drawn = 0; poam >= ppu_oam && drawn < 8; poam -= 4) {
+		memcpy(&spr, poam, sizeof spr);
+		++spr.y;
+		if (spr.y > ypos || (ypos >= (spr.y + sprh)))
 			continue;
 
 		++drawn;
-		const int spry = (spr->attr&0x80) == 0
-		                 ? (scanline - (spr->y + 1))
-		                 : -((scanline - (spr->y + 1)) - (sprh - 1)); // flip vertically
-		int tileidx;
+		const unsigned tiley = (spr.attr&0x80) == 0
+		                 ? (ypos - spr.y)
+		                 : (unsigned) -(signed)((ypos - spr.y) - (sprh - 1)); // flip vertically
+		unsigned tileidx;
 		const uint8_t* pattern;
 		if (sprh == 8) {
-			tileidx = spr->tile * 16;
+			tileidx = spr.tile<<4;
 			pattern = (ppuctrl&0x08) ? pupper : plower;
 		} else {
-			tileidx = (spr->tile>>1) * 32;
-			pattern = (spr->tile&0x01) ? pupper : plower;
-			if (spry > 7)
+			tileidx = (spr.tile>>1)<<5;
+			pattern = (spr.tile&0x01) ? pupper : plower;
+			if (tiley > 7)
 				tileidx += 8;
 		}
 
-		uint8_t b0 = pattern[tileidx + spry];
-		uint8_t b1 = pattern[tileidx + spry + 8];
-		if ((spr->attr&0x40) != 0) {
+		uint8_t b0 = pattern[tileidx + tiley];
+		uint8_t b1 = pattern[tileidx + tiley + 8];
+		if ((spr.attr&0x40) != 0) {
 			// flip horizontally
-			uint8_t tmp0 = 0;
-			uint8_t tmp1 = 0;
-			for (int j = 0; j < 8; ++j) {
+			unsigned tmp0 = 0;
+			unsigned tmp1 = 0;
+			for (unsigned j = 0; j < 8; ++j) {
 				tmp0 |= ((b0>>j)&0x01)<<(7 - j);
 				tmp1 |= ((b1>>j)&0x01)<<(7 - j);
 			}
@@ -189,14 +189,14 @@ static void draw_sprite_scanline(void)
 			b1 = tmp1;
 		}
 
-		for (int p = 0; p < 8 && (spr->x + p) < 256; ++p) {
-			const int c = ((b1>>6)&0x02)|(b0>>7);
+		for (unsigned p = 0; p < 8 && (spr.x + p) < 256; ++p) {
+			const unsigned c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
 			if (c == 0)
 				continue;
-			const int paladdr = 0x10 + (spr->attr&0x03) * 4 + c;
-		 	pixels[spr->x + p] = nes_rgb[get_palette(paladdr)];
+			const unsigned paladdr = 0x10|((spr.attr&0x03)<<2)|c;
+		 	screen[ypos][spr.x + p] = nes_rgb[get_palette(paladdr)];
 		}
 	}
 
@@ -299,7 +299,7 @@ static void ppuaddr_inc(void)
 
 static uint_fast8_t read_ppudata(void)
 {
-	uint_fast8_t r = 0;
+	uint_fast8_t r;
 	if (ppuaddr < 0x1000)
 		r = ppu_patterntable_lower[ppuaddr];
 	else if (ppuaddr < 0x2000)
@@ -375,4 +375,3 @@ uint_fast8_t ppuread(const uint_fast16_t addr)
 	default: return ppuopenbus;      break;
 	}
 }
-

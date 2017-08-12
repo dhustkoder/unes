@@ -6,8 +6,8 @@
 
 static inline void render(const uint32_t* const pixels, const uint_fast32_t len)
 {
-	extern SDL_Texture* const texture;
-	extern SDL_Renderer* const renderer;
+	extern SDL_Texture* texture;
+	extern SDL_Renderer* renderer;
 
 	int pitch;
 	void* dest;

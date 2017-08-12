@@ -362,4 +362,3 @@ uint_fast8_t apuread(const uint_fast16_t addr)
 
 	return 0;
 }
-

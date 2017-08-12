@@ -12,8 +12,8 @@
 
 #define TEXTURE_WIDTH  (256)
 #define TEXTURE_HEIGHT (240)
-#define WIN_WIDTH  (TEXTURE_WIDTH  * 2)
-#define WIN_HEIGHT (TEXTURE_HEIGHT * 2)
+#define WIN_WIDTH      TEXTURE_WIDTH
+#define WIN_HEIGHT     TEXTURE_HEIGHT
 
 
 SDL_AudioDeviceID audio_device;
@@ -101,7 +101,7 @@ static bool initsdl(void)
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
-	           SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	           SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == NULL) {
 		fprintf(stderr, "Failed to create SDL_Renderer: %s\n",
 		        SDL_GetError());

@@ -8,19 +8,26 @@
 #include "ppu.h"
 #include "rom.h"
 
-extern enum NTMirroringMode ppu_ntmirroring_mode;
-uint8_t* ppu_patterntable_upper;
-uint8_t* ppu_patterntable_lower;
 
+// ppu.c controls
+extern enum NTMirroringMode ppu_ntmirroring_mode;
+extern uint8_t* ppu_patterntable_upper;
+extern uint8_t* ppu_patterntable_lower;
+
+// cpu.c controls
+extern const uint8_t* cpu_prgrom_lower;
+extern const uint8_t* cpu_prgrom_upper;
+extern uint8_t* cpu_sram;
+
+// rom.c
 static int32_t prgrom_size;
-static int32_t chr_size; // chrrom or chrram size
+static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
 static uint8_t mappertype;
 static const char* rompath;
-static uint8_t* cartdata; // prgrom, chrrom or chrram, sram
+static uint8_t* cartdata;  // prgrom, chrrom or chrram, sram
 
-
-// support only NROM and partially MMC1 for now
+// only NROM and MMC1 are supported for now
 static struct {
 	uint8_t match[4];
 	uint8_t prgrom_nbanks;  // number of 16 kib prg-rom banks.
@@ -32,11 +39,7 @@ static struct {
 	// uint8_t trainer[];   // not supported yet
 } ines;
 
-
 static union {
-	struct {
-		uint16_t prg_addr_mask;
-	} nrom;
 	struct {
 		uint_fast8_t reg[4];
 		uint_fast8_t tmp;
@@ -45,6 +48,116 @@ static union {
 } mapper;
 
 
+
+// MMC1
+static void mmc1_update(void)
+{
+	// nametable mirroring mode
+	const uint8_t modes[] = {
+		NTMIRRORING_ONE_SCREEN_LOW,
+		NTMIRRORING_ONE_SCREEN_UPPER,
+		NTMIRRORING_VERTICAL,
+		NTMIRRORING_HORIZONTAL
+	};
+	ppu_ntmirroring_mode = modes[mapper.mmc1.reg[0]&0x03];
+
+	// CHR bank
+	const uint8_t* const reg = mapper.mmc1.reg;
+	uint8_t* const chr = &cartdata[prgrom_size];
+	if ((reg[0]&0x10) == 0) {
+		// switch 8kb banks at $0000 - $1FFF
+		ppu_patterntable_lower = &chr[(reg[1]&0x1E) * 8192];
+		ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
+	} else {
+		// switch 4kb banks at $0000 - $0FFF
+		ppu_patterntable_lower = &chr[reg[1] * 4096];
+		// switch 4kb banks at $1000 - $1FFF
+		ppu_patterntable_upper = &chr[reg[2] * 4096];
+	}
+
+	// PRG bank
+	const uint_fast8_t reg3 = mapper.mmc1.reg[3]&0x0F;
+	unsigned bank;
+	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
+	case 0x00:
+		// switch 32kb at $8000
+		bank = PRGROM_BANK_SIZE * 2 * reg3;
+		cpu_prgrom_lower = &cartdata[bank];
+		cpu_prgrom_upper = cpu_prgrom_lower + 0x4000;
+		break;
+	case 0x01:
+		// switch 32kb at $8000 ignoring low bit of bank number
+		bank = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
+		cpu_prgrom_lower = &cartdata[bank];
+		cpu_prgrom_upper = cpu_prgrom_lower + 0x4000;
+		break;
+	case 0x02:
+		// fix first bank at $8000 and switch 16kb banks at $C000
+		cpu_prgrom_lower = cartdata;
+		bank = PRGROM_BANK_SIZE * reg3;
+		cpu_prgrom_upper = &cartdata[bank];
+		break;
+	default:
+		// fix last bank at $C000 and switch 16kb banks at $8000
+		bank = prgrom_size - PRGROM_BANK_SIZE;
+		cpu_prgrom_upper = &cartdata[bank];
+		bank = PRGROM_BANK_SIZE * reg3;
+		cpu_prgrom_lower = &cartdata[bank];
+		break;
+	}
+}
+
+static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	if ((value&0x80) == 0) {
+		mapper.mmc1.tmp = (mapper.mmc1.tmp>>1)|((value&0x01)<<4);
+		if (++mapper.mmc1.shiftcnt == 5) {
+			mapper.mmc1.shiftcnt = 0;
+			const unsigned regidx = (addr&0x6000)>>13;
+			mapper.mmc1.reg[regidx] = mapper.mmc1.tmp;
+			mmc1_update();
+		}
+	} else {
+		mapper.mmc1.shiftcnt = 0;
+		mapper.mmc1.reg[0] |= 0x0C;
+	}
+}
+
+static void initmapper(void)
+{
+	memset(&mapper, 0, sizeof mapper);
+	switch (mappertype) {
+	case NROM:
+		// cpu prg map
+		cpu_prgrom_lower = cartdata;
+		cpu_prgrom_upper = ines.prgrom_nbanks > 1
+			? cpu_prgrom_lower + 0x4000
+			: cpu_prgrom_lower;
+		// ppu map
+		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
+			? NTMIRRORING_VERTICAL
+			: NTMIRRORING_HORIZONTAL;
+		ppu_patterntable_lower = &cartdata[prgrom_size];
+		ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
+		break;
+	case MMC1:
+		mapper.mmc1.reg[0] = 0x0C;
+		mmc1_update();
+		break;
+	}
+
+	// cpu sram map (switching sram is not supported now) 
+	cpu_sram = &cartdata[prgrom_size + chr_size];
+}
+
+
+void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
+{
+	switch (mappertype) {
+	case NROM: break;
+	case MMC1: mmc1_write(value, addr); break;
+	}
+}
 
 bool loadrom(const char* const path)
 {
@@ -123,26 +236,8 @@ bool loadrom(const char* const path)
 	       (ines.ctrl1&0xF0)>>4, ines.ctrl2&0x0F,
 	       (ines.ctrl2&0xF0)>>4, mappertype);
 	
-	// init mapper
-	memset(&mapper, 0, sizeof mapper);
-	switch (mappertype) {
-	case NROM:
-		mapper.nrom.prg_addr_mask = ines.prgrom_nbanks > 1
-			                    ? 0x7FFF
-					    : 0x3FFF;
-		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
-		                ? NTMIRRORING_VERTICAL
-		                : NTMIRRORING_HORIZONTAL;
-		ppu_patterntable_lower = &cartdata[prgrom_size];
-		ppu_patterntable_upper = &ppu_patterntable_lower[0x1000];
-		break;
-	case MMC1:
-		mapper.mmc1.reg[0] = 0x0C;
-		ppu_patterntable_lower = &cartdata[prgrom_size];
-		ppu_patterntable_upper = &ppu_patterntable_lower[0x1000];
-		break;
-	}
 
+	initmapper();
 	ret = true;
 
 Lfclose:
@@ -154,138 +249,3 @@ void freerom(void)
 {
 	free(cartdata);
 }
-
-
-// NROM
-static uint_fast8_t nrom_read(const uint_fast16_t addr)
-{
-	return cartdata[addr&mapper.nrom.prg_addr_mask];
-}
-
-static void nrom_write(const uint_fast8_t value, const uint_fast16_t addr)
-{
-	((void)value);
-	((void)addr);
-}
-
-// MMC1
-/*
-static void mmc1_eval_prgbank(void)
-{
-	const uint_fast8_t reg3 = mapper.mmc1.reg[3]&0x0F;
-	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
-	case 0x00:
-		// switch 32kb at $8000
-		break;
-	case 0x01:
-		// switch 32kb at $8000 ignoring low bit of bank number
-		break;
-	case 0x02:
-		// fix first bank at $8000 and switch 16kb banks at $C000
-		break;
-	default:
-		// fix last bank at $C000 and switch 16kb banks at $8000
-		break;
-	}
-}
-*/
-static uint_fast8_t mmc1_read(const uint_fast16_t addr)
-{
-	const uint_fast8_t reg3 = mapper.mmc1.reg[3]&0x0F;
-
-	unsigned bank;
-	uint_fast8_t data;
-	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
-	case 0x00:
-		// switch 32kb at $8000
-		bank = PRGROM_BANK_SIZE * 2 * reg3;
-		data = cartdata[bank + addr - ADDR_PRGROM];
-		break;
-	case 0x01:
-		// switch 32kb at $8000 ignoring low bit of bank number
-		bank = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
-		data = cartdata[bank + addr - ADDR_PRGROM];
-		break;
-	case 0x02:
-		// fix first bank at $8000 and switch 16kb banks at $C000
-		if (addr < ADDR_PRGROM_UPPER) {
-			data = cartdata[addr - ADDR_PRGROM];
-			break;
-		}
-		bank = PRGROM_BANK_SIZE * reg3;
-		data = cartdata[bank + addr - ADDR_PRGROM_UPPER];
-		break;
-	default:
-		// fix last bank at $C000 and switch 16kb banks at $8000
-		if (addr >= ADDR_PRGROM_UPPER) {
-			bank = prgrom_size - PRGROM_BANK_SIZE;
-			data = cartdata[bank + addr - ADDR_PRGROM_UPPER];
-			break;
-		}
-		bank = PRGROM_BANK_SIZE * reg3;
-		data = cartdata[bank + addr - ADDR_PRGROM];
-		break;
-	}
-
-	return data;
-}
-
-static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
-{
-	if ((value&0x80) == 0) {
-		mapper.mmc1.tmp = (mapper.mmc1.tmp>>1)|((value&0x01)<<4);
-		if (++mapper.mmc1.shiftcnt == 5) {
-			mapper.mmc1.shiftcnt = 0;
-			const unsigned regidx = (addr&0x6000)>>13;
-			mapper.mmc1.reg[regidx] = mapper.mmc1.tmp;
-			if (regidx != 3) {
-				const uint8_t modes[] = {
-					NTMIRRORING_ONE_SCREEN_LOW,
-					NTMIRRORING_ONE_SCREEN_UPPER,
-					NTMIRRORING_VERTICAL,
-					NTMIRRORING_HORIZONTAL
-				};
-				ppu_ntmirroring_mode = modes[mapper.mmc1.reg[0]&0x03];
-				const uint8_t* const reg = mapper.mmc1.reg;
-				uint8_t* const chr = &cartdata[prgrom_size];
-				if ((reg[0]&0x10) == 0) { // switch 8kb banks at $0000 - $1FFF
-					ppu_patterntable_lower = &chr[(reg[1]&0x1E) * 8192];
-					ppu_patterntable_upper = &ppu_patterntable_lower[0x1000];
-				} else {
-					// switch 4kb banks at $0000 - $0FFF
-					ppu_patterntable_lower = &chr[reg[1] * 4096];
-			                // switch 4kb banks at $1000 - $1FFF
-					ppu_patterntable_upper = &chr[reg[2] * 4096];
-				}
-			}
-		}
-	} else {
-		mapper.mmc1.shiftcnt = 0;
-		mapper.mmc1.reg[0] |= 0x0C;
-	}
-}
-
-uint_fast8_t romread(const uint_fast16_t addr)
-{
-	if (addr >= ADDR_PRGROM) {
-		switch (mappertype) {
-		case NROM: return nrom_read(addr);       break;
-		default:/*MMC1*/ return mmc1_read(addr); break;
-		}
-	} else {
-		return cartdata[prgrom_size + chr_size + addr - ADDR_SRAM];
-	}
-}
-
-void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
-{
-	if (addr >= ADDR_PRGROM) {
-		switch (mappertype) {
-		case NROM: nrom_write(value, addr); break;
-		case MMC1: mmc1_write(value, addr); break;
-		}
-	} else {
-		cartdata[prgrom_size + chr_size + addr - ADDR_SRAM] = value;
-	}
-}
-
