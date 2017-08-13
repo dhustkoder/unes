@@ -28,6 +28,30 @@ enum IrqSource {
 	IRQ_SRC_SIZE
 };
 
+enum Joypad {
+	JOYPAD_ONE,
+	JOYPAD_TWO,
+	JOYPAD_NJOYPADS
+};
+
+enum KeyState {
+	KEYSTATE_UP,
+	KEYSTATE_DOWN,
+	KEYSTATE_NKEYSTATES
+};
+
+enum Key {
+	KEY_A,
+	KEY_B,
+	KEY_SELECT,
+	KEY_START,
+	KEY_UP,
+	KEY_DOWN,
+	KEY_LEFT,
+	KEY_RIGHT,
+	KEY_NKEYS
+};
+
 
 extern void resetcpu(void);
 extern void request_nmi(void);

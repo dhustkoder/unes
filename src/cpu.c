@@ -9,7 +9,6 @@
 #include "rom.h"
 #include "ppu.h"
 #include "apu.h"
-#include "joypad.h"
 #include "cpu.h"
 
 
@@ -58,6 +57,9 @@ static bool irq_pass;
 static uint16_t pc;
 static uint8_t a, x, y, s;
 static struct { bool c : 1, z : 1, i : 1, d : 1, v : 1, n : 1; } flags;
+static uint8_t keys[JOYPAD_NJOYPADS];
+static int8_t keyshift[JOYPAD_NJOYPADS];
+static bool keystrobe;
 static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
@@ -80,6 +82,42 @@ static void setflags(const uint_fast8_t val)
 
 // cpu memory bus
 static void oam_dma(uint_fast8_t n);
+
+static void joywrite(const uint_fast8_t val)
+{
+	const bool oldstrobe = keystrobe;
+	keystrobe = (val&0x01) != 0;
+	if (oldstrobe && !keystrobe) {
+		for (unsigned i = JOYPAD_ONE; i < JOYPAD_NJOYPADS; ++i) {
+			keyshift[i] = 0;
+			keys[i] = getkeystate(i, KEY_RIGHT)<<7  |
+				  getkeystate(i, KEY_LEFT)<<6   |
+				  getkeystate(i, KEY_DOWN)<<5   |
+				  getkeystate(i, KEY_UP)<<4     |
+				  getkeystate(i, KEY_START)<<3  |
+				  getkeystate(i, KEY_SELECT)<<2 |
+				  getkeystate(i, KEY_B)<<1      |
+				  getkeystate(i, KEY_A);
+		}
+	}
+}
+
+static uint_fast8_t joyread(const uint_fast16_t addr)
+{
+	assert(addr == 0x4016 || addr == 0x4017);
+
+	const unsigned pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
+
+	if (keystrobe)
+		return getkeystate(pad, KEY_A);
+	else if (keyshift[pad] >= 8)
+		return 0x01;
+	
+	const uint_fast8_t k = keys[pad]&0x01;
+	keys[pad] >>= 1;
+	++keyshift[pad];
+	return k;
+}
 
 static uint_fast8_t ioread(const uint_fast16_t addr)
 {
@@ -141,9 +179,9 @@ static void write(const uint_fast8_t val, const uint_fast16_t addr)
 static void oam_dma(const uint_fast8_t n)
 {
 	extern uint8_t ppu_oam[0x100];
-	const uint_fast16_t offset = 0x100 * n;
+	const unsigned offset = 0x100 * n;
 	if ((offset&0x7FF) <= 0x700) {
-		memcpy(ppu_oam, &ram[offset&0x7FF], sizeof(*ram) * 0x100);
+		memcpy(ppu_oam, &ram[offset&0x7FF], 0x100);
 	} else {
 		for (int i = 0; i < 0x100; ++i)
 			ppu_oam[i] = read(offset + i);
@@ -190,7 +228,7 @@ static uint_fast16_t spop16(void)
 
 
 // instructions
-static inline void ld(uint8_t* const reg, const uint_fast8_t val)
+static inline void ld(uint8_t* restrict const reg, const uint_fast8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
@@ -363,6 +401,9 @@ void resetcpu(void)
 
 	memset(&flags, 0, sizeof flags);
 	flags.i = true;
+	memset(&keys, 0, sizeof keys);
+	memset(&keyshift, 0, sizeof keyshift);
+	keystrobe = false;
 }
 
 int_fast16_t stepcpu(void)

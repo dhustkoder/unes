@@ -1,7 +1,7 @@
 #ifndef UNES_INPUT_H_
 #define UNES_INPUT_H_
 #include <assert.h>
-#include "joypad.h"
+#include "cpu.h"
 
 
 static inline enum KeyState getkeystate(const enum Joypad pad, const enum Key key)

@@ -156,7 +156,7 @@ static void draw_sprite_scanline(void)
 	for (unsigned drawn = 0; poam >= ppu_oam && drawn < 8; poam -= 4) {
 		memcpy(&spr, poam, sizeof spr);
 		++spr.y;
-		if (spr.y > ypos || (ypos >= (spr.y + sprh)))
+		if (spr.y == 0 || spr.y > ypos || (ypos >= (spr.y + sprh)))
 			continue;
 
 		++drawn;
@@ -259,7 +259,6 @@ void stepppu(const int_fast32_t pputicks)
 }
 
 
-// Registers read/write for CPU
 static uint_fast8_t read_ppustatus(void)
 {
 	const uint_fast8_t b7 = states.nmi_occurred<<7;
