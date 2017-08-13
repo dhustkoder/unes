@@ -105,16 +105,12 @@ static void draw_bg_scanline(void)
 {
 	assert(scanline >= 0 && scanline <= 239); // visible lines
 
-	const uint16_t nt_addrs[] = {
-		0x00, 0x400, 0x800, 0xC00
-	};
-
-	const uint8_t* const nt = &nametables[eval_nt_offset(nt_addrs[ppuctrl&0x03])];
+	const uint8_t* const nt = &nametables[eval_nt_offset((ppuctrl&0x03)<<10)];
 	const uint8_t* const at = nt + 0x3C0;
-	const uint8_t greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
 	const uint8_t* const pattern = (ppuctrl&0x10) 
 		                       ? ppu_patterntable_upper
 				       : ppu_patterntable_lower;
+	const unsigned greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
 	const unsigned spritey = scanline&0x07;
 	const unsigned ysprite = scanline>>3;
 	uint32_t* const pixels = &screen[scanline][0];

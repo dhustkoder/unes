@@ -19,6 +19,4 @@ static inline void render(const uint32_t* const pixels, const uint_fast32_t len)
 }
 
 
-
-
 #endif

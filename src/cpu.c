@@ -57,9 +57,9 @@ static bool irq_pass;
 static uint16_t pc;
 static uint8_t a, x, y, s;
 static struct { bool c : 1, z : 1, i : 1, d : 1, v : 1, n : 1; } flags;
-static uint8_t keys[JOYPAD_NJOYPADS];
-static int8_t keyshift[JOYPAD_NJOYPADS];
-static bool keystrobe;
+static uint8_t padstate[JOYPAD_NJOYPADS];
+static int8_t padshifts[JOYPAD_NJOYPADS];
+static bool padstrobe;
 static uint8_t ram[0x800]; // zeropage,stack,ram
 
 
@@ -85,18 +85,18 @@ static void oam_dma(uint_fast8_t n);
 
 static void joywrite(const uint_fast8_t val)
 {
-	const bool oldstrobe = keystrobe;
-	keystrobe = (val&0x01) != 0;
-	if (oldstrobe && !keystrobe) {
+	const bool oldstrobe = padstrobe;
+	padstrobe = (val&0x01) != 0;
+	if (oldstrobe && !padstrobe) {
 		for (unsigned i = JOYPAD_ONE; i < JOYPAD_NJOYPADS; ++i) {
-			keyshift[i] = 0;
-			keys[i] = getkeystate(i, KEY_RIGHT)<<7  |
-				  getkeystate(i, KEY_LEFT)<<6   |
-				  getkeystate(i, KEY_DOWN)<<5   |
-				  getkeystate(i, KEY_UP)<<4     |
-				  getkeystate(i, KEY_START)<<3  |
-				  getkeystate(i, KEY_SELECT)<<2 |
-				  getkeystate(i, KEY_B)<<1      |
+			padshifts[i] = 0;
+			padstate[i] = getkeystate(i, KEY_RIGHT)<<7 |
+				  getkeystate(i, KEY_LEFT)<<6      |
+				  getkeystate(i, KEY_DOWN)<<5      |
+				  getkeystate(i, KEY_UP)<<4        |
+				  getkeystate(i, KEY_START)<<3     |
+				  getkeystate(i, KEY_SELECT)<<2    |
+				  getkeystate(i, KEY_B)<<1         |
 				  getkeystate(i, KEY_A);
 		}
 	}
@@ -108,14 +108,14 @@ static uint_fast8_t joyread(const uint_fast16_t addr)
 
 	const unsigned pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
 
-	if (keystrobe)
+	if (padstrobe)
 		return getkeystate(pad, KEY_A);
-	else if (keyshift[pad] >= 8)
+	else if (padshifts[pad] >= 8)
 		return 0x01;
 	
-	const uint_fast8_t k = keys[pad]&0x01;
-	keys[pad] >>= 1;
-	++keyshift[pad];
+	const uint_fast8_t k = padstate[pad]&0x01;
+	padstate[pad] >>= 1;
+	++padshifts[pad];
 	return k;
 }
 
@@ -123,11 +123,10 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 {
 	if (addr >= 0x4016)
 		return joyread(addr);
-	else if (addr >= 0x4000 && addr != 0x4014)
+	else if (addr >= 0x4000)
 		return apuread(addr);
-	else if (addr < 0x4000)
+	else
 		return ppuread(addr);
-	return 0;
 }
 
 static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
@@ -147,17 +146,17 @@ static uint_fast8_t read(const uint_fast16_t addr)
 {
 	assert(addr <= 0xFFFF);
 
-	if (addr < ADDR_IOREGS1) {
-		return ram[addr&0x7FF];
-	} else if (addr >= ADDR_SRAM) {
-		if (addr < ADDR_PRGROM)
-			return cpu_sram[addr&0x1FFF];
-		else if (addr < ADDR_PRGROM_UPPER)
+	if (addr >= ADDR_PRGROM) {
+		if (addr < ADDR_PRGROM_UPPER)
 			return cpu_prgrom_lower[addr&0x3FFF];
 		else
 			return cpu_prgrom_upper[addr&0x3FFF];
+	} else if (addr < ADDR_IOREGS1) {
+		return ram[addr&0x7FF];
 	} else if (addr < ADDR_EXPROM) {
 		return ioread(addr);
+	} else if (addr >= ADDR_SRAM) {
+		return cpu_sram[addr&0x1FFF];
 	}
 	return 0;
 }
@@ -183,7 +182,7 @@ static void oam_dma(const uint_fast8_t n)
 	if ((offset&0x7FF) <= 0x700) {
 		memcpy(ppu_oam, &ram[offset&0x7FF], 0x100);
 	} else {
-		for (int i = 0; i < 0x100; ++i)
+		for (unsigned i = 0; i < 0x100; ++i)
 			ppu_oam[i] = read(offset + i);
 	}
 	step_cycles += 513;
@@ -205,7 +204,7 @@ static uint_fast16_t read16msk(const uint_fast16_t addr)
 // stack
 static void spush(const uint_fast8_t val)
 {
-	write(val, 0x100|s--);
+	ram[0x100|s--] = val;
 }
 
 static void spush16(const uint_fast16_t val)
@@ -216,7 +215,7 @@ static void spush16(const uint_fast16_t val)
 
 static uint_fast8_t spop(void)
 {
-	return read(0x100|++s);
+	return ram[0x100|++s];
 }
 
 static uint_fast16_t spop16(void)
@@ -228,7 +227,7 @@ static uint_fast16_t spop16(void)
 
 
 // instructions
-static inline void ld(uint8_t* restrict const reg, const uint_fast8_t val)
+static inline void ld(uint8_t* const reg, const uint_fast8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
@@ -296,6 +295,11 @@ static uint_fast8_t asl(uint_fast8_t val)
 static inline void opm(uint_fast8_t(*const op)(uint_fast8_t), const uint_fast16_t addr)
 {
 	write(op(read(addr)), addr);
+}
+
+static inline void opzp(uint_fast8_t(*const op)(uint_fast8_t), const uint_fast8_t addr)
+{
+	ram[addr] = op(ram[addr]);
 }
 
 static void and(const uint_fast8_t val)
@@ -401,15 +405,16 @@ void resetcpu(void)
 
 	memset(&flags, 0, sizeof flags);
 	flags.i = true;
-	memset(&keys, 0, sizeof keys);
-	memset(&keyshift, 0, sizeof keyshift);
-	keystrobe = false;
+	memset(&padstate, 0, sizeof padstate);
+	memset(&padshifts, 0, sizeof padshifts);
+	padstrobe = false;
 }
 
 int_fast16_t stepcpu(void)
 {
-	#define fetch8()  (read(pc++))
-	#define fetch16() (pc += 2, read16(pc - 2))
+	#define fetch8()            (read(pc++))
+	#define fetch16()           (pc += 2, read16(pc - 2))
+	#define writezp(data, addr) (ram[addr] = data)
 
 	#define immediate()      (fetch8())
 	#define wzeropage()      (fetch8())
@@ -499,29 +504,29 @@ int_fast16_t stepcpu(void)
 
 	// ASL
 	case 0x0A: a = asl(a);                 break;
-	case 0x06: opm(asl, wzeropage());      break;
-	case 0x16: opm(asl, wzeropagex());     break;
+	case 0x06: opzp(asl, wzeropage());     break;
+	case 0x16: opzp(asl, wzeropagex());    break;
 	case 0x0E: opm(asl, wabsolute());      break;
 	case 0x1E: opm(asl, wabsolutexnchk()); break;
 
 	// LSR
 	case 0x4A: a = lsr(a);                 break;
-	case 0x46: opm(lsr, wzeropage());      break;
-	case 0x56: opm(lsr, wzeropagex());     break;
+	case 0x46: opzp(lsr, wzeropage());     break;
+	case 0x56: opzp(lsr, wzeropagex());    break;
 	case 0x4E: opm(lsr, wabsolute());      break;
 	case 0x5E: opm(lsr, wabsolutexnchk()); break;
 
 	// ROL
 	case 0x2A: a = rol(a);                 break;
-	case 0x26: opm(rol, wzeropage());      break;
-	case 0x36: opm(rol, wzeropagex());     break;
+	case 0x26: opzp(rol, wzeropage());     break;
+	case 0x36: opzp(rol, wzeropagex());    break;
 	case 0x2E: opm(rol, wabsolute());      break;
 	case 0x3E: opm(rol, wabsolutexnchk()); break;
 
 	// ROR
 	case 0x6A: a = ror(a);                 break;
-	case 0x66: opm(ror, wzeropage());      break;
-	case 0x76: opm(ror, wzeropagex());     break;
+	case 0x66: opzp(ror, wzeropage());     break;
+	case 0x76: opzp(ror, wzeropagex());    break;
 	case 0x6E: opm(ror, wabsolute());      break;
 	case 0x7E: opm(ror, wabsolutexnchk()); break;
 
@@ -530,14 +535,14 @@ int_fast16_t stepcpu(void)
 	case 0x2C: bit(rabsolute()); break;
 
 	// INC
-	case 0xE6: opm(inc, wzeropage());      break;
-	case 0xF6: opm(inc, wzeropagex());     break;
+	case 0xE6: opzp(inc, wzeropage());     break;
+	case 0xF6: opzp(inc, wzeropagex());    break;
 	case 0xEE: opm(inc, wabsolute());      break;
 	case 0xFE: opm(inc, wabsolutexnchk()); break;
 
 	// DEC
-	case 0xC6: opm(dec, wzeropage());      break; 
-	case 0xD6: opm(dec, wzeropagex());     break;
+	case 0xC6: opzp(dec, wzeropage());     break; 
+	case 0xD6: opzp(dec, wzeropagex());    break;
 	case 0xCE: opm(dec, wabsolute());      break;
 	case 0xDE: opm(dec, wabsolutexnchk()); break;
 
@@ -576,8 +581,8 @@ int_fast16_t stepcpu(void)
 	case 0xBC: ld(&y, rabsolutex()); break;
 
 	// STA
-	case 0x85: write(a, wzeropage());      break;
-	case 0x95: write(a, wzeropagex());     break;
+	case 0x85: writezp(a, wzeropage());    break;
+	case 0x95: writezp(a, wzeropagex());   break;
 	case 0x8D: write(a, wabsolute());      break;
 	case 0x9D: write(a, wabsolutexnchk()); break;
 	case 0x99: write(a, wabsoluteynchk()); break;
@@ -585,14 +590,14 @@ int_fast16_t stepcpu(void)
 	case 0x91: write(a, windirectynchk()); break;
 
 	// STX
-	case 0x86: write(x, wzeropage());  break;
-	case 0x96: write(x, wzeropagey()); break;
-	case 0x8E: write(x, wabsolute());  break;
+	case 0x86: writezp(x, wzeropage());  break;
+	case 0x96: writezp(x, wzeropagey()); break;
+	case 0x8E: write(x, wabsolute());    break;
 
 	// STY
-	case 0x84: write(y, wzeropage());  break;
-	case 0x94: write(y, wzeropagex()); break;
-	case 0x8C: write(y, wabsolute());  break;
+	case 0x84: writezp(y, wzeropage());  break;
+	case 0x94: writezp(y, wzeropagex()); break;
+	case 0x8C: write(y, wabsolute());    break;
 
 	// CMP
 	case 0xC9: cmp(a, immediate());  break;
@@ -621,7 +626,7 @@ int_fast16_t stepcpu(void)
 		break;
 
 	// JMP
-	case 0x4C: pc = wabsolute(); break;
+	case 0x4C: pc = wabsolute();          break;
 	case 0x6C: pc = read16msk(fetch16()); break;
 
 	// implieds
