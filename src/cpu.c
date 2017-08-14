@@ -29,7 +29,7 @@ uint8_t* cpu_sram;
 #define FLAG_N (0x80)
 
 
-static const int8_t clock_table[0x100] = {
+static const uint8_t clock_table[0x100] = {
       /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
 /*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
 /*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
@@ -52,7 +52,7 @@ static const int8_t clock_table[0x100] = {
 
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
-static int16_t step_cycles;
+static uint16_t step_cycles;
 static bool irq_pass;
 static uint16_t pc;
 static uint8_t a, x, y, s;
@@ -123,8 +123,8 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 {
 	if (addr >= 0x4016)
 		return joyread(addr);
-	else if (addr >= 0x4000)
-		return apuread(addr);
+	else if (addr == 0x4015)
+		return apuread_status();
 	else
 		return ppuread(addr);
 }
@@ -339,7 +339,7 @@ static void cmp(const uint_fast8_t reg, const uint_fast8_t val)
 
 static void adc(const int_fast16_t val)
 {
-	const int_fast16_t tmp = a + val + flags.c;
+	const unsigned tmp = a + val + flags.c;
 	flags.v = (((~(a ^ val) & (a ^ tmp)))&0x80)>>7;
 	flags.c = tmp>>8;
 	a = tmp&0xFF;
@@ -374,7 +374,7 @@ static void branch(const bool cond)
 
 static bool check_irq_sources(void)
 {
-	for (int i = 0; i < IRQ_SRC_SIZE; ++i)
+	for (unsigned i = 0; i < IRQ_SRC_SIZE; ++i)
 		if (cpu_irq_sources[i])
 			return true;
 	return false;
@@ -410,7 +410,7 @@ void resetcpu(void)
 	padstrobe = false;
 }
 
-int_fast16_t stepcpu(void)
+unsigned stepcpu(void)
 {
 	#define fetch8()            (read(pc++))
 	#define fetch16()           (pc += 2, read16(pc - 2))

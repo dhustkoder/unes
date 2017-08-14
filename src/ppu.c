@@ -215,9 +215,9 @@ void resetppu(void)
 	memset(&states, 0, sizeof states);
 }
 
-void stepppu(const int_fast32_t pputicks)
+void stepppu(const unsigned pputicks)
 {
-	for (int_fast32_t i = 0; i < pputicks; ++i) {
+	for (unsigned i = 0; i < pputicks; ++i) {
 		++ppuclk;
 
 		if (scanline < 240 && ppuclk == 256) {

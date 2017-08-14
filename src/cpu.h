@@ -55,7 +55,7 @@ enum Key {
 
 extern void resetcpu(void);
 extern void request_nmi(void);
-extern int_fast16_t stepcpu(void);
+extern unsigned stepcpu(void);
 
 
 static inline void set_irq_source(const enum IrqSource src, const bool value)

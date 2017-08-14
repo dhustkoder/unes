@@ -128,8 +128,8 @@ static bool initsdl(void)
 		goto Lfreetexture;
 	}
 
-	for (int pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad)
-		for (int key = KEY_A; key < KEY_NKEYS; ++key)
+	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad)
+		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key)
 			keys_state[pad][key] = KEYSTATE_UP;
 
 	SDL_RenderClear(renderer);
@@ -182,8 +182,8 @@ int main(const int argc, const char* const* const argv)
 
 	while (update_events()) {
 		do {
-			const int_fast16_t ticks = stepcpu();
-			stepppu(ticks * 3);
+			const unsigned ticks = stepcpu();
+			stepppu((ticks<<1) + ticks);
 			stepapu(ticks);
 			clk += ticks;
 		} while (clk < frameticks);
