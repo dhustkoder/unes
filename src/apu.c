@@ -250,18 +250,13 @@ static void write_frame_counter(const uint_fast8_t val)
 
 static void update_channels_output(void)
 {
-	const uint8_t duty_tbl[4][8] = {
-		{ 0, 1, 0, 0, 0, 0, 0, 0 },
-		{ 0, 1, 1, 0, 0, 0, 0, 0 },
-		{ 0, 1, 1, 1, 1, 0, 0, 0 },
-		{ 1, 0, 0, 1, 1, 1, 1, 1 }
-	};
+	const uint8_t duty_tbl[4] = { 0x40, 0x60, 0x78, 0x9F };
 
 	for (unsigned i = 0; i < 2; ++i) {
 		struct Pulse* const p = &pulse[i];
 		if (!p->enabled || p->len_cnt == 0 || p->timer < 8 || (p->timer&0xF800) ||
 		    (!p->sweep_negate && (p->sweep_target&0xF800) != 0) ||
-		    duty_tbl[p->duty_mode][p->duty_pos] == 0)
+		    !((duty_tbl[p->duty_mode]<<p->duty_pos)&0x80))
 			p->out = 0;
 		else
 			p->out = p->const_vol ? p->vol : p->env_vol;
