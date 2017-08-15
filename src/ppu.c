@@ -50,23 +50,16 @@ static const uint32_t nes_rgb[0x40] = {
 
 static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 {
-	int_fast16_t offset;
 	switch (ppu_ntmirroring_mode) {
 	case NTMIRRORING_HORIZONTAL:
-		offset = ((addr>>1)&0x400) + (addr&0x3FF);
-		break;
+		return ((addr>>1)&0x400) + (addr&0x3FF);
 	case NTMIRRORING_VERTICAL:
-		offset = addr&0x7FF;
-		break;
+		return addr&0x7FF;
 	case NTMIRRORING_ONE_SCREEN_LOW:
-		offset = addr&0x3FF;
-		break;
+		return addr&0x3FF;
 	default:/*NTMIRRORING_ONE_SCREEN_UPPER*/
-		offset = 0x400 + (addr&0x3FF);
-		break;
+		return 0x400 + (addr&0x3FF);
 	}
-
-	return offset;
 }
 
 static uint_fast8_t eval_pal_rw_offset(const uint_fast16_t addr)
@@ -113,11 +106,12 @@ static void draw_bg_scanline(void)
 	const unsigned greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
 	const unsigned spritey = scanline&0x07;
 	const unsigned ysprite = scanline>>3;
+	const unsigned palrowshift = (ysprite&0x03) > 1 ? 4 : 0;
 	uint32_t* const pixels = &screen[scanline][0];
 	for (unsigned i = 0; i < 32; ++i) {
 		unsigned palrow = at[((ysprite>>2)<<3) + (i>>2)];
 		palrow >>= ((i&0x03) > 1) ? 2 : 0;
-		palrow >>= ((ysprite&0x03) > 1) ? 4 : 0;
+		palrow >>= palrowshift;
 		palrow &= 0x03;
 		palrow <<= 2;
 

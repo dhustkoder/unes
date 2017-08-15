@@ -50,8 +50,8 @@ uint8_t keys_state[JOYPAD_NJOYPADS][KEY_NKEYS];
 
 static void update_key(const uint32_t code, const enum KeyState state)
 {
-	for (int pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
-		for (int key = KEY_A; key < KEY_NKEYS; ++key) {
+	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
+		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key) {
 			if (keys_id[pad][key] == code) {
 				keys_state[pad][key] = state;
 				break;
