@@ -2,17 +2,22 @@
 #define UNES_VIDEO_H_
 #include <stdint.h>
 #include "SDL.h"
+#include "SDL_opengl.h"
 
 
-static inline void render(const uint32_t* const pixels, const uint_fast32_t len)
+static void render(const uint8_t* restrict const screen)
 {
-	extern SDL_Texture* texture;
 	extern SDL_Renderer* renderer;
+	extern SDL_Texture* texture;
+	extern const Uint32 nes_rgb[0x40];
 
 	int pitch;
-	void* dest;
-	SDL_LockTexture(texture, NULL, &dest, &pitch);
-	memcpy(dest, pixels, len);
+	Uint32* pixels;
+	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
+
+	for (unsigned i = 0; i < 240 * 256; ++i)
+		pixels[i] = nes_rgb[screen[i]];
+
 	SDL_UnlockTexture(texture);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);

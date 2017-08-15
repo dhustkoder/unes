@@ -35,7 +35,7 @@ ifeq ($(PLATFORM),)
 endif
 
 ifeq ($(PLATFORM),SDL2)
-	CFLAGS += $(shell sdl2-config --cflags) -DPLATFORM_SDL2 -I$(PLATFORM_SRC_DIR)/
+	CFLAGS += $(shell sdl2-config --cflags) -DPLATFORM_$(PLATFORM) -I$(PLATFORM_SRC_DIR)/
 	LDFLAGS += $(shell sdl2-config --libs)
 endif
 

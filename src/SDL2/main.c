@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <assert.h>
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_audio.h"
 #include "rom.h"
@@ -16,10 +17,20 @@
 
 
 SDL_AudioDeviceID audio_device;
-SDL_Texture* texture;
-SDL_Renderer* renderer;
 static SDL_Window* window;
+SDL_Renderer* renderer;
+SDL_Texture* texture;
 
+const Uint32 nes_rgb[0x40] = {
+	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
+	0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
+	0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
+	0xAC7C00, 0x00B800, 0x00A800, 0x00A844, 0x008888, 0x000000, 0x000000, 0x000000,
+	0xF8F8F8, 0x3CBCFC, 0x6888FC, 0x9878F8, 0xF878F8, 0xF85898, 0xF87858, 0xFCA044,
+	0xF8B800, 0xB8F818, 0x58D854, 0x58F898, 0x00E8D8, 0x787878, 0x000000, 0x000000,
+	0xFCFCFC, 0xA4E4FC, 0xB8B8F8, 0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8,
+	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
+};
 
 static const uint8_t keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
 	[JOYPAD_ONE] = {
@@ -81,7 +92,7 @@ static bool update_events(void)
 	return true;
 }
 
-static bool initsdl(void)
+static bool initialize_platform(void)
 {
 	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
 		fprintf(stderr, "Couldn't initialize SDL: %s\n",
@@ -89,10 +100,11 @@ static bool initsdl(void)
 		return false;
 	}
 
+	// video
 	window = SDL_CreateWindow("µnes", SDL_WINDOWPOS_CENTERED,
 				  SDL_WINDOWPOS_CENTERED,
 				  WIN_WIDTH, WIN_HEIGHT,
-				  SDL_WINDOW_RESIZABLE);
+				  SDL_WINDOW_SHOWN);
 	if (window == NULL) {
 		fprintf(stderr, "Failed to create SDL_Window: %s\n",
 		        SDL_GetError());
@@ -100,37 +112,41 @@ static bool initsdl(void)
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
-	           SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
+		   SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == NULL) {
 		fprintf(stderr, "Failed to create SDL_Renderer: %s\n",
 		        SDL_GetError());
 		goto Lfreewindow;
 	}
 
-	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-		                    SDL_TEXTUREACCESS_STREAMING,
-		                    TEXTURE_WIDTH, TEXTURE_HEIGHT);
+	SDL_RendererInfo info;
+	SDL_GetRendererInfo(renderer, &info);
+	texture = SDL_CreateTexture(renderer, info.texture_formats[0],
+	                            SDL_TEXTUREACCESS_STREAMING,
+				    TEXTURE_WIDTH, TEXTURE_HEIGHT);
 	if (texture == NULL) {
 		fprintf(stderr, "Failed to create SDL_Texture: %s\n",
 		        SDL_GetError());
 		goto Lfreerenderer;
 	}
 
+	// audio
 	SDL_AudioSpec want;
 	SDL_zero(want);
 	want.freq = 44100;
 	want.format = AUDIO_S16SYS;
 	want.channels = 1;
 	want.samples = 2048;
-
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
 		fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
 	}
 
+	// input
 	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad)
 		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key)
 			keys_state[pad][key] = KEYSTATE_UP;
+
 
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);
@@ -148,7 +164,7 @@ Lquitsdl:
 	return false;
 }
 
-static void termsdl(void)
+static void terminate_platform(void)
 {
 	SDL_CloseAudioDevice(audio_device);
 	SDL_DestroyTexture(texture);
@@ -170,15 +186,15 @@ int main(const int argc, const char* const* const argv)
 
 	int exitcode = EXIT_FAILURE;
 
-	if (!initsdl())
+	if (!initialize_platform())
 		goto Lfreerom;
 
 	resetcpu();
 	resetapu();
 	resetppu();
 
-	const int_fast32_t frameticks = CPU_FREQ / 60;
-	int_fast32_t clk = 0;
+	const unsigned frameticks = CPU_FREQ / 60;
+	unsigned clk = 0;
 
 	while (update_events()) {
 		do {
@@ -191,11 +207,8 @@ int main(const int argc, const char* const* const argv)
 	}
 
 	exitcode = EXIT_SUCCESS;
-
-//Ltermsdl:
-	termsdl();
+	terminate_platform();
 Lfreerom:
 	freerom();
 	return exitcode;
 }
-
