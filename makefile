@@ -3,7 +3,7 @@ CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
 CFLAGS_RELEASE=-Werror -O3 -march=native -ffast-math -fstrict-aliasing \
 	       -ffunction-sections -fdata-sections -fno-unwind-tables  \
 	       -fno-asynchronous-unwind-tables -DNDEBUG
-CFLAGS_PERF=$(CFLAGS_RELEASE) -g -fno-omit-frame-pointer
+CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer
 
 LDFLAGS=
 LDFLAGS_DEBUG=

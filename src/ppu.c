@@ -232,7 +232,7 @@ void stepppu(const unsigned pputicks)
 	}
 
 	if (!states.nmi_for_frame && states.nmi_occurred &&
-			states.nmi_output) {
+	    states.nmi_output) {
 		trigger_nmi();
 		states.nmi_for_frame = true;
 	}
