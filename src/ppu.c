@@ -6,6 +6,10 @@
 #include "rom.h"
 #include "ppu.h"
 
+
+#define PPU_FRAME_TICKS (341)
+
+
 // managed by rom.c
 enum NTMirroringMode ppu_ntmirroring_mode;
 uint8_t* ppu_patterntable_upper;
@@ -24,6 +28,7 @@ static int16_t ppuclk;      // 0 - 341
 static int16_t scanline;    // 0 - 262
 
 static struct {
+	bool draw_scanline   : 1;
 	bool nmi_occurred    : 1;
 	bool nmi_output      : 1;
 	bool oddframe        : 1;
@@ -192,7 +197,6 @@ void resetppu(void)
 	oamaddr = 0x00;
 	ppuscroll = 0x0000;
 	ppuaddr = 0x0000;
-
 	ppuclk = 0;
 	scanline = 240;
 	memset(&states, 0, sizeof states);
@@ -200,40 +204,37 @@ void resetppu(void)
 
 void stepppu(const unsigned pputicks)
 {
-	for (unsigned i = 0; i < pputicks; ++i) {
-		++ppuclk;
+	ppuclk -= pputicks;
 
-		if (scanline < 240 && ppuclk == 256) {
-			if ((ppumask&0x08) != 0)
-				draw_bg_scanline();
-			if ((ppumask&0x10) != 0)
-				draw_sprite_scanline();
-		} else if (ppuclk == 341) {
-			ppuclk = 0;
-			if (++scanline == 262) {
-				scanline = 0;
-				render((void*)screen);
-				if ((ppumask&0x18) && states.oddframe)
-					++ppuclk;
-				states.oddframe = !states.oddframe;
-			}
-		}
-
-		if (scanline == 241) {
-			if (ppuclk == 1) {
-				states.nmi_occurred = true;
-				states.nmi_for_frame = false;
-			}
+	if (scanline < 240 && ppuclk <= (PPU_FRAME_TICKS - 256) &&
+	    states.draw_scanline) {
+		if ((ppumask&0x08) != 0)
+			draw_bg_scanline();
+		if ((ppumask&0x10) != 0)
+			draw_sprite_scanline();
+		states.draw_scanline = false;
+	} else if (ppuclk <= 0) {
+		ppuclk += PPU_FRAME_TICKS;
+		states.draw_scanline = true;
+		++scanline;
+		if (scanline == 262) {
+			scanline = 0;
+			render((void*)screen);
+			if ((ppumask&0x18) && states.oddframe)
+				++ppuclk;
+			states.oddframe = !states.oddframe;
+		} else if (scanline == 241) {
+			states.nmi_occurred = true;
+			states.nmi_for_frame = false;
 		} else if (scanline == 261) {
-			if (ppuclk == 1)
-				states.nmi_occurred = false;
+			states.nmi_occurred = false;
 		}
+	}
 
-		if (!states.nmi_for_frame && states.nmi_occurred &&
-		    states.nmi_output) {
-			trigger_nmi();
-			states.nmi_for_frame = true;
-		}
+	if (!states.nmi_for_frame && states.nmi_occurred &&
+			states.nmi_output) {
+		trigger_nmi();
+		states.nmi_for_frame = true;
 	}
 }
 

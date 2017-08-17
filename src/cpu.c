@@ -12,13 +12,6 @@
 #include "cpu.h"
 
 
-// managed by rom.c
-const uint8_t* cpu_prgrom_lower;
-const uint8_t* cpu_prgrom_upper;
-uint8_t* cpu_sram;
-
-
-// cpu.c
 #define FLAG_C (0x01)
 #define FLAG_Z (0x02)
 #define FLAG_I (0x04)
@@ -29,6 +22,13 @@ uint8_t* cpu_sram;
 #define FLAG_N (0x80)
 
 
+// managed by rom.c
+const uint8_t* cpu_prgrom_lower;
+const uint8_t* cpu_prgrom_upper;
+uint8_t* cpu_sram;
+
+
+// cpu.c
 static const uint8_t clock_table[0x100] = {
       /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
 /*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
