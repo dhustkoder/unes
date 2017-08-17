@@ -10,7 +10,8 @@ static void render(const uint8_t* restrict const screen)
 	extern SDL_Renderer* renderer;
 	extern SDL_Texture* texture;
 	extern const Uint32 nes_rgb[0x40];
-
+	extern Uint32 timer;
+	static unsigned fps = 0;
 	int pitch;
 	Uint32* pixels;
 	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
@@ -21,6 +22,12 @@ static void render(const uint8_t* restrict const screen)
 	SDL_UnlockTexture(texture);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+	++fps;
+	if ((SDL_GetTicks() - timer) >= 1000) {
+		printf("%u\n", fps);
+		fps = 0;
+		timer = SDL_GetTicks();
+	}
 }
 
 

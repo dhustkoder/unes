@@ -20,6 +20,7 @@ SDL_AudioDeviceID audio_device;
 static SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_Texture* texture;
+Uint32 timer;
 
 const Uint32 nes_rgb[0x40] = {
 	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
@@ -112,7 +113,7 @@ static bool initialize_platform(void)
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
-		   SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
+		   SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL) {
 		fprintf(stderr, "Failed to create SDL_Renderer: %s\n",
 		        SDL_GetError());
@@ -195,7 +196,7 @@ int main(const int argc, const char* const* const argv)
 
 	const unsigned frameticks = CPU_FREQ / 60;
 	unsigned clk = 0;
-
+	timer = SDL_GetTicks();
 	while (update_events()) {
 		do {
 			const unsigned ticks = stepcpu();
