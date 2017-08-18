@@ -13,11 +13,9 @@
 extern enum NTMirroringMode ppu_ntmirroring_mode;
 extern uint8_t* ppu_patterntable_upper;
 extern uint8_t* ppu_patterntable_lower;
-
 // cpu.c controls
-extern const uint8_t* cpu_prgrom_lower;
-extern const uint8_t* cpu_prgrom_upper;
-extern uint8_t* cpu_sram;
+extern uint8_t cpu_prgrom[0x8000];
+extern uint8_t cpu_sram[0x2000];
 
 // rom.c
 static int32_t prgrom_size;
@@ -25,7 +23,7 @@ static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
 static uint8_t mappertype;
 static const char* rompath;
-static uint8_t* cartdata;  // prgrom, chrrom or chrram, sram
+static uint8_t* cartdata;  // prgrom, chrrom or chrram
 
 // only NROM and MMC1 are supported for now
 static struct {
@@ -82,27 +80,25 @@ static void mmc1_update(void)
 	case 0x00:
 		// switch 32kb at $8000
 		bank = PRGROM_BANK_SIZE * 2 * reg3;
-		cpu_prgrom_lower = &cartdata[bank];
-		cpu_prgrom_upper = cpu_prgrom_lower + 0x4000;
+		memcpy(cpu_prgrom, &cartdata[bank], 0x8000);
 		break;
 	case 0x01:
 		// switch 32kb at $8000 ignoring low bit of bank number
 		bank = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
-		cpu_prgrom_lower = &cartdata[bank];
-		cpu_prgrom_upper = cpu_prgrom_lower + 0x4000;
+		memcpy(cpu_prgrom, &cartdata[bank], 0x8000);
 		break;
 	case 0x02:
 		// fix first bank at $8000 and switch 16kb banks at $C000
-		cpu_prgrom_lower = cartdata;
 		bank = PRGROM_BANK_SIZE * reg3;
-		cpu_prgrom_upper = &cartdata[bank];
+		memcpy(cpu_prgrom, cartdata, 0x4000);
+		memcpy(&cpu_prgrom[0x4000], &cartdata[bank], 0x4000);
 		break;
 	default:
 		// fix last bank at $C000 and switch 16kb banks at $8000
 		bank = prgrom_size - PRGROM_BANK_SIZE;
-		cpu_prgrom_upper = &cartdata[bank];
+		memcpy(&cpu_prgrom[0x4000], &cartdata[bank], 0x4000);
 		bank = PRGROM_BANK_SIZE * reg3;
-		cpu_prgrom_lower = &cartdata[bank];
+		memcpy(cpu_prgrom, &cartdata[bank], 0x4000);
 		break;
 	}
 }
@@ -129,10 +125,12 @@ static void initmapper(void)
 	switch (mappertype) {
 	case NROM:
 		// cpu prg map
-		cpu_prgrom_lower = cartdata;
-		cpu_prgrom_upper = ines.prgrom_nbanks > 1
-			? cpu_prgrom_lower + 0x4000
-			: cpu_prgrom_lower;
+		if (ines.prgrom_nbanks > 1) {
+			memcpy(cpu_prgrom, cartdata, 0x8000);
+		} else {
+			memcpy(cpu_prgrom, cartdata, 0x4000);
+			memcpy(&cpu_prgrom[0x4000], cartdata, 0x4000);
+		}
 		// ppu map
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
 			? NTMIRRORING_VERTICAL
@@ -145,9 +143,6 @@ static void initmapper(void)
 		mmc1_update();
 		break;
 	}
-
-	// cpu sram map (switching sram is not supported now) 
-	cpu_sram = &cartdata[prgrom_size + chr_size];
 }
 
 
@@ -203,7 +198,7 @@ bool loadrom(const char* const path)
 	            : SRAM_BANK_SIZE;
 
 	const uint32_t read_size = prgrom_size + chrrom_size;
-	cartdata = malloc(read_size + chrram_size + sram_size);
+	cartdata = malloc(read_size + chrram_size);
 	fseek(file, 0x10, SEEK_SET);
 	if (fread(cartdata, 1, read_size, file) < read_size) {
 		fprintf(stderr, "Couldn't read \'%s\' properly\n", rompath);

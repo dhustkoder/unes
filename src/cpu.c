@@ -22,12 +22,6 @@
 #define FLAG_N (0x80)
 
 
-// managed by rom.c
-const uint8_t* cpu_prgrom_lower;
-const uint8_t* cpu_prgrom_upper;
-uint8_t* cpu_sram;
-
-
 // cpu.c
 static const uint8_t clock_table[0x100] = {
       /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
@@ -60,7 +54,9 @@ static struct { bool c : 1, z : 1, i : 1, d : 1, v : 1, n : 1; } flags;
 static uint8_t padstate[JOYPAD_NJOYPADS];
 static int8_t padshifts[JOYPAD_NJOYPADS];
 static bool padstrobe;
-static uint8_t ram[0x800]; // zeropage,stack,ram
+static uint8_t ram[0x800];  // zeropage,stack,ram
+uint8_t cpu_prgrom[0x8000]; // writen by rom.c
+uint8_t cpu_sram[0x2000];   // only this bank is supported for sram now
 
 
 static uint_fast8_t getflags(void)
@@ -146,18 +142,14 @@ static uint_fast8_t read(const uint_fast16_t addr)
 {
 	assert(addr <= 0xFFFF);
 
-	if (addr >= ADDR_PRGROM) {
-		if (addr < ADDR_PRGROM_UPPER)
-			return cpu_prgrom_lower[addr&0x3FFF];
-		else
-			return cpu_prgrom_upper[addr&0x3FFF];
-	} else if (addr < ADDR_IOREGS1) {
+	if (addr >= ADDR_PRGROM)
+		return cpu_prgrom[addr&0x7FFF];
+	else if (addr < ADDR_IOREGS1)
 		return ram[addr&0x7FF];
-	} else if (addr < ADDR_EXPROM) {
+	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-	} else if (addr >= ADDR_SRAM) {
+	else if (addr >= ADDR_SRAM)
 		return cpu_sram[addr&0x1FFF];
-	}
 	return 0;
 }
 
