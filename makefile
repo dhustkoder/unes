@@ -26,6 +26,7 @@ ASM=$(patsubst $(SRC_DIR)/%.c, $(ASM_DIR)/%.asm, $(wildcard $(SRC_DIR)/*.c))
 PLATFORM_OBJS=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_OBJS_DIR)/%.o, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 PLATFORM_ASM=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_ASM_DIR)/%.asm, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 
+
 ifeq ($(CC),)
 	CC:=gcc
 endif
@@ -34,10 +35,15 @@ ifeq ($(PLATFORM),)
 	PLATFORM:=SDL2
 endif
 
+ifeq ($(BUILD_TYPE),)
+	BUILD_TYPE=Debug
+endif
+
 ifeq ($(PLATFORM),SDL2)
 	CFLAGS += $(shell sdl2-config --cflags) -DPLATFORM_$(PLATFORM) -I$(PLATFORM_SRC_DIR)/
 	LDFLAGS += $(shell sdl2-config --libs)
 endif
+
 
 ifeq ($(BUILD_TYPE),Release)
 	CFLAGS += $(CFLAGS_RELEASE)
@@ -45,9 +51,11 @@ ifeq ($(BUILD_TYPE),Release)
 else ifeq ($(BUILD_TYPE),Perf)
 	CFLAGS += $(CFLAGS_PERF)
 	LDFLAGS += $(LDFLAGS_PERF)
-else
+else ifeq ($(BUILD_TYPE),Debug)
 	CFLAGS += $(CFLAGS_DEBUG)
 	LDFLAGS += $(LDFLAGS_DEBUG)
+else
+	$(error)
 endif
 
 ifeq ($(ENABLE_LTO),ON)
