@@ -263,19 +263,6 @@ static void update_channels_output(void)
 	}
 }
 
-static void mixaudio(void)
-{
-	if (++apu_samples_cnt == APU_SAMPLES_CNT_LIMIT) {
-		apu_samples_cnt = 0;
-		update_channels_output();
-		const unsigned sample = pulse[0].out + pulse[1].out; 
-		sound_buffer[sound_buffer_idx] = sample * 256;
-		if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
-			sound_buffer_idx = 0;
-			queue_sound_buffer((void*)sound_buffer, sizeof sound_buffer);
-		}
-	}
-}
 
 void resetapu(void)
 {
@@ -301,7 +288,17 @@ void stepapu(const unsigned aputicks)
 	for (unsigned i = 0; i < aputicks; ++i) {
 		tick_frame_counter();
 		tick_timer();
-		mixaudio();
+		if (++apu_samples_cnt == APU_SAMPLES_CNT_LIMIT) {
+			apu_samples_cnt = 0;
+			update_channels_output();
+			const unsigned sample = pulse[0].out + pulse[1].out; 
+			sound_buffer[sound_buffer_idx] = sample * 256;
+			if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
+				sound_buffer_idx = 0;
+				queue_sound_buffer((void*)sound_buffer,
+				                   sizeof sound_buffer);
+			}
+		}
 		oddtick = !oddtick;
 	}
 }
