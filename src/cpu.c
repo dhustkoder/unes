@@ -22,7 +22,6 @@
 #define FLAG_N (0x80)
 
 
-// cpu.c
 static const uint8_t clock_table[0x100] = {
       /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
 /*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
@@ -44,8 +43,13 @@ static const uint8_t clock_table[0x100] = {
 };
 
 
+// globals
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
+uint8_t cpu_prgrom[0x8000]; // writen by rom.c
+uint8_t cpu_sram[0x2000];   // only this bank is supported for sram now
+
+// cpu.c
 static uint16_t step_cycles;
 static bool irq_pass;
 static uint16_t pc;
@@ -55,8 +59,6 @@ static uint8_t padstate[JOYPAD_NJOYPADS];
 static int8_t padshifts[JOYPAD_NJOYPADS];
 static bool padstrobe;
 static uint8_t ram[0x800];  // zeropage,stack,ram
-uint8_t cpu_prgrom[0x8000]; // writen by rom.c
-uint8_t cpu_sram[0x2000];   // only this bank is supported for sram now
 
 
 static uint_fast8_t getflags(void)
@@ -174,12 +176,9 @@ static void oam_dma(const uint_fast8_t n)
 	const unsigned offset = 0x100 * n;
 	if ((offset&0x7FF) <= 0x700) {
 		const uint8_t* const pram = &ram[offset&0x7FF];
-		for (unsigned i = 0; i < 0x100; ++i) {
-			if (pram[i] != ppu_oam[i]) {
-				memcpy(&ppu_oam[i], &pram[i], 0x100 - i);
-				ppu_need_screen_update = true;
-				break;
-			}
+		if (memcmp(ppu_oam, pram, 0x100) != 0) {
+			memcpy(ppu_oam, pram, 0x100);
+			ppu_need_screen_update = true;
 		}
 	} else {
 		for (unsigned i = 0; i < 0x100; ++i)

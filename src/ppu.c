@@ -9,11 +9,12 @@
 
 #define PPU_FRAME_TICKS (341)
 
-
-// managed by rom.c
+// globals
 enum NTMirroringMode ppu_ntmirroring_mode;
 uint8_t* ppu_patterntable_upper;
 uint8_t* ppu_patterntable_lower;
+bool ppu_need_screen_update;
+uint8_t ppu_oam[0x100];
 
 // ppu.c
 static uint8_t ppuopenbus;
@@ -36,8 +37,6 @@ static struct {
 	bool write_toggle    : 1;
 } states;
 
-bool ppu_need_screen_update;
-uint8_t ppu_oam[0x100];  // dma is done in cpu.c
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1C];
 static uint8_t screen[240][256];

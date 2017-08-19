@@ -13,6 +13,7 @@
 extern enum NTMirroringMode ppu_ntmirroring_mode;
 extern uint8_t* ppu_patterntable_upper;
 extern uint8_t* ppu_patterntable_lower;
+extern bool ppu_need_screen_update;
 // cpu.c controls
 extern uint8_t cpu_prgrom[0x8000];
 extern uint8_t cpu_sram[0x2000];
@@ -74,6 +75,8 @@ static void mmc1_update(const unsigned modified_reg_index)
 			// switch 4kb banks at $1000 - $1FFF
 			ppu_patterntable_upper = &chr[reg[2] * 4096];
 		}
+
+		ppu_need_screen_update = true;
 	}
 
 	// PRG bank
