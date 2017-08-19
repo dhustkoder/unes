@@ -3,8 +3,6 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
-#include <signal.h>
-#include <inttypes.h>
 #include "input.h"
 #include "rom.h"
 #include "ppu.h"
@@ -173,8 +171,9 @@ static void oam_dma(const uint_fast8_t n)
 {
 	extern uint8_t ppu_oam[0x100];
 	extern bool ppu_need_screen_update;
+	
 	const unsigned offset = 0x100 * n;
-	if ((offset&0x7FF) <= 0x700) {
+	if (offset < 0x2000 && (offset&0x1FFF) <= 0x1F00) {
 		const uint8_t* const pram = &ram[offset&0x7FF];
 		if (memcmp(ppu_oam, pram, 0x100) != 0) {
 			memcpy(ppu_oam, pram, 0x100);

@@ -113,7 +113,7 @@ static bool initialize_platform(void)
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
-		   SDL_RENDERER_ACCELERATED);
+		   SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == NULL) {
 		fprintf(stderr, "Failed to create SDL_Renderer: %s\n",
 		        SDL_GetError());

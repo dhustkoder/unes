@@ -199,7 +199,10 @@ void resetppu(void)
 	ppuaddr = 0x0000;
 	ppuclk = 0;
 	scanline = 240;
+	ppu_need_screen_update = true;
+	states.draw_scanline = true;
 	memset(&states, 0, sizeof states);
+	memset(screen, 0x0D, sizeof screen);
 }
 
 void stepppu(const unsigned pputicks)
