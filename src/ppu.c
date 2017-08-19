@@ -36,6 +36,7 @@ static struct {
 	bool write_toggle    : 1;
 } states;
 
+bool ppu_need_screen_update;
 uint8_t ppu_oam[0x100];  // dma is done in cpu.c
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1C];
@@ -206,8 +207,8 @@ void stepppu(const unsigned pputicks)
 {
 	ppuclk -= pputicks;
 
-	if (scanline < 240 && ppuclk <= (PPU_FRAME_TICKS - 256) &&
-	    states.draw_scanline) {
+	if (ppu_need_screen_update && scanline < 240 &&
+	    ppuclk <= (PPU_FRAME_TICKS - 256) && states.draw_scanline) {
 		if ((ppumask&0x08) != 0)
 			draw_bg_scanline();
 		if ((ppumask&0x10) != 0)
@@ -233,8 +234,9 @@ void stepppu(const unsigned pputicks)
 
 	if (!states.nmi_for_frame && states.nmi_occurred &&
 	    states.nmi_output) {
-		trigger_nmi();
 		states.nmi_for_frame = true;
+		ppu_need_screen_update = false;
+		trigger_nmi();
 	}
 }
 
@@ -265,7 +267,11 @@ static uint_fast8_t read_oamdata(void)
 
 static void write_oamdata(const uint_fast8_t data)
 {
-	ppu_oam[oamaddr++] = data;
+	if (ppu_oam[oamaddr] != data) {
+	       ppu_oam[oamaddr]	= data;
+	       ppu_need_screen_update = true;
+	}
+	++oamaddr;
 	oamaddr &= 0xFF;
 }
 
@@ -294,15 +300,20 @@ static uint_fast8_t read_ppudata(void)
 
 static void write_ppudata(const uint_fast8_t val)
 {
+	uint8_t* dest;
 	if (ppuaddr < 0x1000)
-		ppu_patterntable_lower[ppuaddr] = val;
+		dest = &ppu_patterntable_lower[ppuaddr];
 	else if (ppuaddr < 0x2000)
-		ppu_patterntable_upper[ppuaddr&0xFFF] = val;
+		dest = &ppu_patterntable_upper[ppuaddr&0xFFF];
 	else if (ppuaddr < 0x3F00)
-		nametables[eval_nt_offset(ppuaddr)] = val;
+		dest = &nametables[eval_nt_offset(ppuaddr)];
 	else 
-		palettes[eval_pal_rw_offset(ppuaddr)] = val;
+		dest = &palettes[eval_pal_rw_offset(ppuaddr)];
 
+	if (*dest != val) {
+		*dest = val;
+		ppu_need_screen_update = true;
+	}
 	ppuaddr_inc();
 }
 

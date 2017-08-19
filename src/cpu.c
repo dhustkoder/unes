@@ -170,12 +170,21 @@ static void write(const uint_fast8_t val, const uint_fast16_t addr)
 static void oam_dma(const uint_fast8_t n)
 {
 	extern uint8_t ppu_oam[0x100];
+	extern bool ppu_need_screen_update;
 	const unsigned offset = 0x100 * n;
 	if ((offset&0x7FF) <= 0x700) {
-		memcpy(ppu_oam, &ram[offset&0x7FF], 0x100);
+		const uint8_t* const pram = &ram[offset&0x7FF];
+		for (unsigned i = 0; i < 0x100; ++i) {
+			if (pram[i] != ppu_oam[i]) {
+				memcpy(&ppu_oam[i], &pram[i], 0x100 - i);
+				ppu_need_screen_update = true;
+				break;
+			}
+		}
 	} else {
 		for (unsigned i = 0; i < 0x100; ++i)
 			ppu_oam[i] = read(offset + i);
+		ppu_need_screen_update = true;
 	}
 	step_cycles += 513;
 }
