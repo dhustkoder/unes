@@ -5,12 +5,17 @@
 #include "SDL_opengl.h"
 
 
+#define FPS_LIMIT (59)
+
+
 static void render(const uint8_t* restrict const screen)
 {
 	extern SDL_Renderer* renderer;
 	extern SDL_Texture* texture;
 	extern Uint32 nes_rgb[0x40];
-	extern Uint32 timer;
+
+	static Uint32 frametimer = 0;
+	static Uint32 fpstimer = 0;
 
 	int pitch;
 	Uint32* pixels;
@@ -25,11 +30,16 @@ static void render(const uint8_t* restrict const screen)
 
 	static unsigned fps = 0;
 	++fps;
-	if ((SDL_GetTicks() - timer) >= 1000) {
+	if ((SDL_GetTicks() - fpstimer) >= 1000) {
 		printf("%u\n", fps);
 		fps = 0;
-		timer = SDL_GetTicks();
+		fpstimer = SDL_GetTicks();
 	}
+	
+	const Uint32 timediff = SDL_GetTicks() - frametimer;
+	if (timediff < (1000 / FPS_LIMIT))
+		SDL_Delay((1000 / FPS_LIMIT) - timediff);
+	frametimer = SDL_GetTicks();
 }
 
 

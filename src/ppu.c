@@ -209,7 +209,9 @@ void stepppu(const unsigned pputicks)
 {
 	ppuclk -= pputicks;
 
-	if (ppu_need_screen_update && scanline < 240 &&
+	const bool update_frame = FPS_LIMIT <= 30 ? states.oddframe : true;
+
+	if (update_frame && ppu_need_screen_update && scanline < 240 &&
 	    ppuclk <= (PPU_FRAME_TICKS - 256) && states.draw_scanline) {
 		if ((ppumask&0x08) != 0)
 			draw_bg_scanline();
@@ -222,7 +224,8 @@ void stepppu(const unsigned pputicks)
 		++scanline;
 		if (scanline == 262) {
 			scanline = 0;
-			render((void*)screen);
+			if (update_frame)
+				render((void*)screen);
 			if ((ppumask&0x18) && states.oddframe)
 				++ppuclk;
 			states.oddframe = !states.oddframe;
