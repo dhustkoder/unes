@@ -5,7 +5,7 @@
 #include "SDL_opengl.h"
 
 
-#define FPS_LIMIT (59)
+#define FPS_LIMIT (60)
 
 
 static void render(const uint8_t* restrict const screen)
@@ -15,31 +15,22 @@ static void render(const uint8_t* restrict const screen)
 	extern Uint32 nes_rgb[0x40];
 
 	static Uint32 frametimer = 0;
-	static Uint32 fpstimer = 0;
 
-	int pitch;
-	Uint32* pixels;
-	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
+	const Uint32 now = SDL_GetTicks();
+	const Uint32 timediff = now - frametimer;
+	if (timediff >= (1000 / FPS_LIMIT)) {
+		int pitch;
+		Uint32* pixels;
+		SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
 
-	for (unsigned i = 0u; i < 240u * 256u; ++i)
-		pixels[i] = nes_rgb[screen[i]];
+		for (unsigned i = 0; i < 240 * 256; ++i)
+			pixels[i] = nes_rgb[screen[i]];
 
-	SDL_UnlockTexture(texture);
-	SDL_RenderCopy(renderer, texture, NULL, NULL);
-	SDL_RenderPresent(renderer);
-
-	static unsigned fps = 0;
-	++fps;
-	if ((SDL_GetTicks() - fpstimer) >= 1000) {
-		printf("%u\n", fps);
-		fps = 0;
-		fpstimer = SDL_GetTicks();
+		SDL_UnlockTexture(texture);
+		SDL_RenderCopy(renderer, texture, NULL, NULL);
+		SDL_RenderPresent(renderer);
+		frametimer = now;
 	}
-	
-	const Uint32 timediff = SDL_GetTicks() - frametimer;
-	if (timediff < (1000 / FPS_LIMIT))
-		SDL_Delay((1000 / FPS_LIMIT) - timediff);
-	frametimer = SDL_GetTicks();
 }
 
 
