@@ -84,16 +84,9 @@ static void joywrite(const uint_fast8_t val)
 	const bool oldstrobe = padstrobe;
 	padstrobe = (val&0x01) != 0;
 	if (oldstrobe && !padstrobe) {
-		for (unsigned i = JOYPAD_ONE; i < JOYPAD_NJOYPADS; ++i) {
-			padshifts[i] = 0;
-			padstate[i] = getkeystate(i, KEY_RIGHT)<<7 |
-				  getkeystate(i, KEY_LEFT)<<6      |
-				  getkeystate(i, KEY_DOWN)<<5      |
-				  getkeystate(i, KEY_UP)<<4        |
-				  getkeystate(i, KEY_START)<<3     |
-				  getkeystate(i, KEY_SELECT)<<2    |
-				  getkeystate(i, KEY_B)<<1         |
-				  getkeystate(i, KEY_A);
+		for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
+			padshifts[pad] = 0;
+			padstate[pad] = getpadstate(pad);
 		}
 	}
 }
@@ -105,7 +98,7 @@ static uint_fast8_t joyread(const uint_fast16_t addr)
 	const unsigned pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
 
 	if (padstrobe)
-		return getkeystate(pad, KEY_A);
+		return getpadstate(pad)&0x01;
 	else if (padshifts[pad] >= 8)
 		return 0x01;
 	

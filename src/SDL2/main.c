@@ -16,11 +16,6 @@
 #define WIN_HEIGHT     TEXTURE_HEIGHT
 
 
-SDL_AudioDeviceID audio_device;
-SDL_Renderer* renderer;
-SDL_Texture* texture;
-static SDL_Window* window;
-
 const Uint32 nes_rgb[0x40] = {
 	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
 	0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
@@ -31,6 +26,17 @@ const Uint32 nes_rgb[0x40] = {
 	0xFCFCFC, 0xA4E4FC, 0xB8B8F8, 0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8,
 	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
 };
+
+
+uint8_t sdl2_padstate[JOYPAD_NJOYPADS] = { 
+	[JOYPAD_ONE] = KEYSTATE_UP,
+	[JOYPAD_TWO] = KEYSTATE_UP 
+};
+
+SDL_AudioDeviceID audio_device;
+SDL_Renderer* renderer;
+SDL_Texture* texture;
+static SDL_Window* window;
 
 static const uint8_t keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
 	[JOYPAD_ONE] = {
@@ -56,15 +62,14 @@ static const uint8_t keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
 	}
 };
 
-uint8_t keys_state[JOYPAD_NJOYPADS][KEY_NKEYS];
-
 
 static void update_key(const uint32_t code, const enum KeyState state)
 {
 	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
 		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key) {
 			if (keys_id[pad][key] == code) {
-				keys_state[pad][key] = state;
+				sdl2_padstate[pad] &= ~(0x01<<key);
+				sdl2_padstate[pad] |= state<<key;
 				break;
 			}
 		}
@@ -104,7 +109,7 @@ static bool initialize_platform(void)
 	window = SDL_CreateWindow("µnes", SDL_WINDOWPOS_CENTERED,
 				  SDL_WINDOWPOS_CENTERED,
 				  WIN_WIDTH, WIN_HEIGHT,
-				  SDL_WINDOW_SHOWN);
+				  SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
 	if (window == NULL) {
 		fprintf(stderr, "Failed to create SDL_Window: %s\n",
 		        SDL_GetError());
@@ -141,12 +146,6 @@ static bool initialize_platform(void)
 		fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
 	}
-
-	// input
-	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad)
-		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key)
-			keys_state[pad][key] = KEYSTATE_UP;
-
 
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);

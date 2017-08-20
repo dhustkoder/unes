@@ -4,10 +4,10 @@
 #include "cpu.h"
 
 
-static inline enum KeyState getkeystate(const enum Joypad pad, const enum Key key)
+static enum KeyState getpadstate(const enum Joypad pad)
 {
-	extern uint8_t keys_state[JOYPAD_NJOYPADS][KEY_NKEYS];
-	return keys_state[pad][key];
+	extern uint8_t sdl2_padstate[JOYPAD_NJOYPADS];
+	return sdl2_padstate[pad];
 }
 
 
