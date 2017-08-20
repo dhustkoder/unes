@@ -2,10 +2,6 @@
 #define UNES_VIDEO_H_
 #include <stdint.h>
 #include "SDL.h"
-#include "SDL_opengl.h"
-
-
-#define FPS_LIMIT (60)
 
 
 static void render(const uint8_t* restrict const screen)
@@ -20,7 +16,7 @@ static void render(const uint8_t* restrict const screen)
 
 	const Uint32 now = SDL_GetTicks();
 	const Uint32 timediff = now - frametimer;
-	if (timediff >= (1000 / FPS_LIMIT)) {
+	if (timediff >= (1000 / 30)) {
 		int pitch;
 		Uint32* pixels;
 		SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
@@ -32,15 +28,14 @@ static void render(const uint8_t* restrict const screen)
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
 		SDL_RenderPresent(renderer);
 		frametimer = now;
-	}
 
-	++fps;
-	if ((now - fpstimer) >= 1000) {
-		printf("%d\n", fps);
-		fps = 0;
-		fpstimer = now;
+		++fps;
+		if ((now - fpstimer) >= 1000) {
+			printf("%d\n", fps);
+			fps = 0;
+			fpstimer = now;
+		}
 	}
-
 }
 
 

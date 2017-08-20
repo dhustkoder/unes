@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_audio.h"
+#include "SDL.h"
+#include "SDL_audio.h"
 #include "rom.h"
 #include "cpu.h"
 #include "apu.h"
@@ -28,7 +28,7 @@ const Uint32 nes_rgb[0x40] = {
 };
 
 
-uint8_t sdl2_padstate[JOYPAD_NJOYPADS] = { 
+Uint8 sdl2_padstate[JOYPAD_NJOYPADS] = { 
 	[JOYPAD_ONE] = KEYSTATE_UP,
 	[JOYPAD_TWO] = KEYSTATE_UP 
 };
@@ -38,7 +38,7 @@ SDL_Renderer* renderer;
 SDL_Texture* texture;
 static SDL_Window* window;
 
-static const uint8_t keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
+static const Uint8 keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
 	[JOYPAD_ONE] = {
 		[KEY_A]      = SDL_SCANCODE_Z,
 		[KEY_B]      = SDL_SCANCODE_X,
@@ -63,7 +63,7 @@ static const uint8_t keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
 };
 
 
-static void update_key(const uint32_t code, const enum KeyState state)
+static void update_key(const Uint32 code, const enum KeyState state)
 {
 	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
 		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key) {
@@ -192,8 +192,8 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
-	const unsigned frameticks = CPU_FREQ / 60;
-	unsigned clk = 0;
+	const int_fast32_t frameticks = CPU_FREQ / 30;
+	int_fast32_t clk = 0;
 	while (update_events()) {
 		do {
 			const unsigned ticks = stepcpu();
