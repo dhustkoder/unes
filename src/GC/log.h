@@ -2,9 +2,9 @@
 #define UNES_LOG_H_
 
 
-#define loginfo(...)  (void)
-#define logerror(...) (void)
-#define logdebug(...) (void)
+#define loginfo(...)  ((void)0)
+#define logerror(...) ((void)0)
+#define logdebug(...) ((void)0)
 
 
 #endif

@@ -6,7 +6,7 @@
 #include <gccore.h>
 
 
-static void* Initialize(void)
+static void initialize_platform(void)
 {
 	VIDEO_Init();
 	PAD_Init();
@@ -27,15 +27,12 @@ static void* Initialize(void)
 
 	if (rmode->viTVMode&VI_NON_INTERLACE)
 		VIDEO_WaitVSync();
-
-	return xfb;
-
 }
 
 
 __attribute__((noreturn)) void main(void)
 {
-	Initialize();
+	initialize_platform();
 	for (;;) {
 		VIDEO_WaitVSync();
 		PAD_ScanPads();
@@ -47,4 +44,3 @@ __attribute__((noreturn)) void main(void)
 		}
 	}
 }
-

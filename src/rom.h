@@ -23,7 +23,7 @@ enum NTMirroringMode {
 };
 
 
-extern bool loadrom(const char* path);
+extern bool loadrom(const uint8_t* restrict data);
 extern void freerom(void);
 extern void romwrite(uint_fast8_t value, uint_fast16_t addr);
 

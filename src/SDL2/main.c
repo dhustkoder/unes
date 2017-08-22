@@ -177,9 +177,37 @@ int main(const int argc, const char* const* const argv)
 		return EXIT_FAILURE;
 	}
 
-	if (!loadrom(argv[1]))
-		return EXIT_FAILURE;
+	{
+		// send rom data to unes
+		FILE* const file = fopen(argv[1], "r");
+		if (file == NULL) {
+			logerror("Couldn't open \'%s\'\n", argv[1]);
+			return EXIT_FAILURE;
+		}
 
+		fseek(file, 0, SEEK_END);
+		const size_t size = ftell(file);
+		fseek(file, 0, SEEK_SET);
+
+		uint8_t* const data = malloc(size);
+		if (fread(data, 1, size, file) < size) {
+			logerror("Couldn't read \'%s\'\n", argv[1]);
+			free(data);
+			fclose(file);
+			return EXIT_FAILURE;
+		}
+
+		fclose(file);
+
+		if (!loadrom(data)) {
+			free(data);	
+			return EXIT_FAILURE;
+		}
+
+		free(data);
+	}
+
+	// initialize SDL2 and run game
 	int exitcode = EXIT_FAILURE;
 
 	if (!initialize_platform())

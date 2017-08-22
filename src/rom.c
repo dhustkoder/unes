@@ -24,7 +24,6 @@ static int32_t prgrom_size;
 static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
 static uint8_t mappertype;
-static const char* rompath;
 static uint8_t* cartdata;  // prgrom, chrrom or chrram
 
 // only NROM and MMC1 are supported for now
@@ -41,8 +40,8 @@ static struct {
 
 static union {
 	struct {
-		uint_fast8_t reg[4];
-		uint_fast8_t reglast[4];
+		uint8_t reg[4];
+		uint8_t reglast[4];
 		uint_fast8_t tmp;
 		int_fast8_t shiftcnt;
 	} mmc1;
@@ -169,39 +168,29 @@ void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
 	}
 }
 
-bool loadrom(const char* const path)
+bool loadrom(const uint8_t* restrict const data)
 {
-	bool ret = false;
-
-	rompath = path;
-	FILE* const file = fopen(rompath, "r");
-	if (file == NULL) {
-		logerror("Couldn't open file \'%s\': %s\n",
-		         rompath, strerror(errno));
-		return false;
-	}
-
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
-	if (fread(&ines, 1, 9, file) < 9 ||
-	    memcmp(ines.match, match, sizeof match) != 0) {
-		logerror("\'%s\' is not an ines file.\n", rompath);
-		goto Lfclose;
+	memcpy(&ines, data, sizeof ines);
+	if (memcmp(ines.match, match, sizeof match) != 0) {
+		logerror("file is not an ines file.\n");
+		return false;
 	}
 	
 	// check cartridge compatibility
 	mappertype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 	if (mappertype > MMC1) {
 		logerror("mapper %d not supported.\n", mappertype);
-		goto Lfclose;
+		return false;
 	} else if ((ines.ctrl1&0x08) != 0) {
 		logerror("four screen mirroring not supported.\n");
-		goto Lfclose;
+		return false;
 	} else if ((ines.ctrl1&0x04) != 0) {
 		logerror("trainer is not supported.\n");
-		goto Lfclose;
+		return false;
 	} else if (ines.sram_nbanks > 1) {
 		logerror("sram bank switching not supported.\n");
-		goto Lfclose;
+		return false;
 	}
 
 	const uint32_t chrrom_size = ines.chrrom_nbanks * CHR_BANK_SIZE;
@@ -214,12 +203,7 @@ bool loadrom(const char* const path)
 
 	const uint32_t read_size = prgrom_size + chrrom_size;
 	cartdata = malloc(read_size + chrram_size);
-	fseek(file, 0x10, SEEK_SET);
-	if (fread(cartdata, 1, read_size, file) < read_size) {
-		logerror("Couldn't read \'%s\' properly\n", rompath);
-		freerom();
-		goto Lfclose;
-	}
+	memcpy(cartdata, &data[0x10], read_size);
 
 	loginfo("PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
 	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
@@ -248,11 +232,7 @@ bool loadrom(const char* const path)
 	
 
 	initmapper();
-	ret = true;
-
-Lfclose:
-	fclose(file);
-	return ret;
+	return true;
 }
 
 void freerom(void)
