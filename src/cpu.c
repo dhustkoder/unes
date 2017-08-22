@@ -1,8 +1,8 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
+#include "log.h"
 #include "input.h"
 #include "rom.h"
 #include "ppu.h"
@@ -652,7 +652,7 @@ unsigned stepcpu(void)
 	case 0x9A: s = x;                                       break; // TXS
 	case 0x98: ld(&a, y);                                   break; // TYA
 	default:
-		fprintf(stderr, "UNKOWN OPCODE: %.2x\n", opcode);
+		logerror("UNKOWN OPCODE: %.2x\n", opcode);
 		break;
 	}
 

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "SDL.h"
 #include "SDL_audio.h"
+#include "log.h"
 #include "rom.h"
 #include "cpu.h"
 #include "apu.h"
@@ -100,8 +101,7 @@ static bool update_events(void)
 static bool initialize_platform(void)
 {
 	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
-		fprintf(stderr, "Couldn't initialize SDL: %s\n",
-		        SDL_GetError());
+		logerror("Couldn't initialize SDL: %s\n", SDL_GetError());
 		return false;
 	}
 
@@ -111,16 +111,14 @@ static bool initialize_platform(void)
 				  WIN_WIDTH, WIN_HEIGHT,
 				  SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
 	if (window == NULL) {
-		fprintf(stderr, "Failed to create SDL_Window: %s\n",
-		        SDL_GetError());
+		logerror("Failed to create SDL_Window: %s\n", SDL_GetError());
 		goto Lquitsdl;
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
 		   SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL) {
-		fprintf(stderr, "Failed to create SDL_Renderer: %s\n",
-		        SDL_GetError());
+		logerror("Failed to create SDL_Renderer: %s\n", SDL_GetError());
 		goto Lfreewindow;
 	}
 
@@ -130,8 +128,7 @@ static bool initialize_platform(void)
 	                            SDL_TEXTUREACCESS_STREAMING,
 				    TEXTURE_WIDTH, TEXTURE_HEIGHT);
 	if (texture == NULL) {
-		fprintf(stderr, "Failed to create SDL_Texture: %s\n",
-		        SDL_GetError());
+		logerror("Failed to create SDL_Texture: %s\n", SDL_GetError());
 		goto Lfreerenderer;
 	}
 
@@ -143,7 +140,7 @@ static bool initialize_platform(void)
 	want.channels = 1;
 	want.samples = 2048;
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
-		fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
+		logerror("Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
 	}
 
@@ -176,7 +173,7 @@ static void terminate_platform(void)
 int main(const int argc, const char* const* const argv)
 {
 	if (argc < 2) {
-		fprintf(stderr, "Usage: %s [rom]\n", argv[0]);
+		logerror("Usage: %s [rom]\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 

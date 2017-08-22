@@ -1,10 +1,10 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include "log.h"
 #include "cpu.h"
 #include "ppu.h"
 #include "rom.h"
@@ -176,31 +176,31 @@ bool loadrom(const char* const path)
 	rompath = path;
 	FILE* const file = fopen(rompath, "r");
 	if (file == NULL) {
-		fprintf(stderr, "Couldn't open file \'%s\': %s\n",
-			rompath, strerror(errno));
+		logerror("Couldn't open file \'%s\': %s\n",
+		         rompath, strerror(errno));
 		return false;
 	}
 
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
 	if (fread(&ines, 1, 9, file) < 9 ||
 	    memcmp(ines.match, match, sizeof match) != 0) {
-		fprintf(stderr, "\'%s\' is not an ines file.\n", rompath);
+		logerror("\'%s\' is not an ines file.\n", rompath);
 		goto Lfclose;
 	}
 	
 	// check cartridge compatibility
 	mappertype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 	if (mappertype > MMC1) {
-		fprintf(stderr, "mapper %d not supported.\n", mappertype);
+		logerror("mapper %d not supported.\n", mappertype);
 		goto Lfclose;
 	} else if ((ines.ctrl1&0x08) != 0) {
-		fprintf(stderr, "four screen mirroring not supported.\n");
+		logerror("four screen mirroring not supported.\n");
 		goto Lfclose;
 	} else if ((ines.ctrl1&0x04) != 0) {
-		fprintf(stderr, "trainer is not supported.\n");
+		logerror("trainer is not supported.\n");
 		goto Lfclose;
 	} else if (ines.sram_nbanks > 1) {
-		fprintf(stderr, "sram bank switching not supported.\n");
+		logerror("sram bank switching not supported.\n");
 		goto Lfclose;
 	}
 
@@ -216,12 +216,12 @@ bool loadrom(const char* const path)
 	cartdata = malloc(read_size + chrram_size);
 	fseek(file, 0x10, SEEK_SET);
 	if (fread(cartdata, 1, read_size, file) < read_size) {
-		fprintf(stderr, "Couldn't read \'%s\' properly\n", rompath);
+		logerror("Couldn't read \'%s\' properly\n", rompath);
 		freerom();
 		goto Lfclose;
 	}
 
-	printf("PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
+	loginfo("PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
 	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "SRAM BANKS:    %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
