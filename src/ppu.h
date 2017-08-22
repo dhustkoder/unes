@@ -4,7 +4,7 @@
 
 extern void resetppu(void);
 extern void stepppu(unsigned pputicks);
-extern void ppuwrite(uint_fast8_t val, uint_fast16_t addr);
-extern uint_fast8_t ppuread(uint_fast16_t addr);
+extern void ppuwrite(uint8_t val, uint16_t addr);
+extern uint8_t ppuread(uint16_t addr);
 
 #endif

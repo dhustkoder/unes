@@ -42,7 +42,7 @@ static uint8_t palettes[0x1C];
 static uint8_t screen[240][256];
 
 
-static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
+static int16_t eval_nt_offset(const uint16_t addr)
 {
 	switch (ppu_ntmirroring_mode) {
 	case NTMIRRORING_HORIZONTAL:
@@ -56,7 +56,7 @@ static int_fast16_t eval_nt_offset(const uint_fast16_t addr)
 	}
 }
 
-static uint_fast8_t eval_pal_rw_offset(const uint_fast16_t addr)
+static uint8_t eval_pal_rw_offset(const uint16_t addr)
 {
 	const uint8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
@@ -72,7 +72,7 @@ static uint_fast8_t eval_pal_rw_offset(const uint_fast16_t addr)
 	return mirrors[addr&0x001F];
 }
 
-static uint_fast8_t get_palette(const uint_fast16_t addr)
+static uint8_t get_palette(const uint16_t addr)
 {
 	const uint8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
@@ -243,31 +243,31 @@ void stepppu(const unsigned pputicks)
 }
 
 
-static uint_fast8_t read_ppustatus(void)
+static uint8_t read_ppustatus(void)
 {
-	const uint_fast8_t b7 = states.nmi_occurred<<7;
+	const uint8_t b7 = states.nmi_occurred<<7;
 	states.nmi_occurred = false;
 	return b7|(ppuopenbus&0x1F);
 }
 
-static void write_ppuctrl(const uint_fast8_t val)
+static void write_ppuctrl(const uint8_t val)
 {
 	ppuctrl = val;
 	states.nmi_output = (val&0x80) == 0x80;
 }
 
-static void write_ppumask(const uint_fast8_t val)
+static void write_ppumask(const uint8_t val)
 {
 	ppumask = val;
 }
 
 
-static uint_fast8_t read_oamdata(void)
+static uint8_t read_oamdata(void)
 {
 	return ppu_oam[oamaddr];
 }
 
-static void write_oamdata(const uint_fast8_t data)
+static void write_oamdata(const uint8_t data)
 {
 	if (ppu_oam[oamaddr] != data) {
 	       ppu_oam[oamaddr]	= data;
@@ -284,9 +284,9 @@ static void ppuaddr_inc(void)
 	ppuaddr &= 0x3FFF;
 }
 
-static uint_fast8_t read_ppudata(void)
+static uint8_t read_ppudata(void)
 {
-	uint_fast8_t r;
+	uint8_t r;
 	if (ppuaddr < 0x1000)
 		r = ppu_patterntable_lower[ppuaddr];
 	else if (ppuaddr < 0x2000)
@@ -300,7 +300,7 @@ static uint_fast8_t read_ppudata(void)
 	return r;
 }
 
-static void write_ppudata(const uint_fast8_t val)
+static void write_ppudata(const uint8_t val)
 {
 	uint8_t* dest;
 	if (ppuaddr < 0x1000)
@@ -319,7 +319,7 @@ static void write_ppudata(const uint_fast8_t val)
 	ppuaddr_inc();
 }
 
-static void write_ppuaddr(const uint_fast8_t val)
+static void write_ppuaddr(const uint8_t val)
 {
 	if (states.write_toggle) {
 		ppuaddr = (ppuaddr&0xFF00)|val;
@@ -331,7 +331,7 @@ static void write_ppuaddr(const uint_fast8_t val)
 	states.write_toggle = !states.write_toggle;
 }
 
-static void write_ppuscroll(const uint_fast8_t val)
+static void write_ppuscroll(const uint8_t val)
 {
 	if (states.write_toggle) {
 		ppuscroll |= val;
@@ -344,7 +344,7 @@ static void write_ppuscroll(const uint_fast8_t val)
 }
 
 
-void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
+void ppuwrite(const uint8_t val, const uint16_t addr)
 {
 	switch (addr&0x0007) {
 	case 0: write_ppuctrl(val);   break;
@@ -358,7 +358,7 @@ void ppuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 	ppuopenbus = val;
 }
 
-uint_fast8_t ppuread(const uint_fast16_t addr)
+uint8_t ppuread(const uint16_t addr)
 {
 	switch (addr&0x0007) {	
 	case 2: return read_ppustatus(); break;

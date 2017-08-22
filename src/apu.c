@@ -61,7 +61,7 @@ static void eval_sweep_target(struct Pulse* const p)
 	}
 }
 
-static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
+static void write_pulse_reg0(const uint8_t val, struct Pulse* const p)
 {
 	p->duty_mode = val>>6;
 	p->len_enabled = (val&0x20) == 0;
@@ -70,7 +70,7 @@ static void write_pulse_reg0(const uint_fast8_t val, struct Pulse* const p)
 	p->env_start = true;
 }
 
-static void write_pulse_reg1(const uint_fast8_t val, struct Pulse* const p)
+static void write_pulse_reg1(const uint8_t val, struct Pulse* const p)
 {
 	p->sweep_period = (val>>4)&0x07;
 	p->sweep_negate = (val&0x08) != 0;
@@ -79,13 +79,13 @@ static void write_pulse_reg1(const uint_fast8_t val, struct Pulse* const p)
 	p->sweep_reload = true;
 }
 
-static void write_pulse_reg2(const uint_fast8_t val, struct Pulse* const p)
+static void write_pulse_reg2(const uint8_t val, struct Pulse* const p)
 {
 	p->timer = (p->timer&0x0700)|val;
 	eval_sweep_target(p);
 }
 
-static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
+static void write_pulse_reg3(const uint8_t val, struct Pulse* const p)
 {
 	const uint8_t length_tbl[0x20] = {
 		10, 254, 20, 2, 40, 4, 80, 6,
@@ -103,7 +103,7 @@ static void write_pulse_reg3(const uint_fast8_t val, struct Pulse* const p)
 }
 
 
-static void write_dmc_reg0(const uint_fast8_t val)
+static void write_dmc_reg0(const uint8_t val)
 {
 	set_irq_source(IRQ_SRC_APU_DMC_TIMER, (val&0x80) != 0);
 }
@@ -230,7 +230,7 @@ static void tick_frame_counter(void)
 	}
 }
 
-static void write_frame_counter(const uint_fast8_t val)
+static void write_frame_counter(const uint8_t val)
 {
 	frame_counter_mode = val>>7;
 	irq_inhibit = (val&0x40) != 0;
@@ -304,7 +304,7 @@ void stepapu(const unsigned aputicks)
 }
 
 
-static void write_apu_status(const uint_fast8_t val)
+static void write_apu_status(const uint8_t val)
 {
 	for (unsigned i = 0; i < 2; ++i) {
 		pulse[i].enabled = (val&(1<<i)) != 0;
@@ -317,7 +317,7 @@ static void write_apu_status(const uint_fast8_t val)
 
 
 
-void apuwrite(const uint_fast8_t val, const uint_fast16_t addr)
+void apuwrite(const uint8_t val, const uint16_t addr)
 {
 	switch (addr) {
 	case 0x4000: write_pulse_reg0(val, &pulse[0]); break;
@@ -334,7 +334,7 @@ void apuwrite(const uint_fast8_t val, const uint_fast16_t addr)
 	}
 }
 
-uint_fast8_t apuread_status(void)
+uint8_t apuread_status(void)
 {
 	const bool frame_irq = get_irq_source(IRQ_SRC_APU_FRAME_COUNTER);
 	const bool dmc_irq = get_irq_source(IRQ_SRC_APU_DMC_TIMER);

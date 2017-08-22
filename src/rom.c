@@ -42,8 +42,8 @@ static union {
 	struct {
 		uint8_t reg[4];
 		uint8_t reglast[4];
-		uint_fast8_t tmp;
-		int_fast8_t shiftcnt;
+		uint8_t tmp;
+		int8_t shiftcnt;
 	} mmc1;
 } mapper;
 
@@ -80,7 +80,7 @@ static void mmc1_update(const unsigned modified_reg_index)
 	}
 
 	// PRG bank
-	const uint_fast8_t reg3 = mapper.mmc1.reg[3]&0x0F;
+	const uint8_t reg3 = mapper.mmc1.reg[3]&0x0F;
 	unsigned bank;
 	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
 	case 0x00:
@@ -109,7 +109,7 @@ static void mmc1_update(const unsigned modified_reg_index)
 	}
 }
 
-static void mmc1_write(const uint_fast8_t value, const uint_fast16_t addr)
+static void mmc1_write(const uint8_t value, const uint16_t addr)
 {
 	if ((value&0x80) == 0) {
 		mapper.mmc1.tmp = (mapper.mmc1.tmp>>1)|((value&0x01)<<4);
@@ -160,7 +160,7 @@ static void initmapper(void)
 }
 
 
-void romwrite(const uint_fast8_t value, const uint_fast16_t addr)
+void romwrite(const uint8_t value, const uint16_t addr)
 {
 	switch (mappertype) {
 	case NROM: break;

@@ -2,7 +2,7 @@
 #define UNES_VIDEO_H_
 #include <stdint.h>
 #include "SDL.h"
-
+#include "log.h"
 
 static void render(const uint8_t* restrict const screen)
 {
@@ -10,7 +10,9 @@ static void render(const uint8_t* restrict const screen)
 	extern SDL_Texture* texture;
 	extern Uint32 nes_rgb[0x40];
 
+	static Uint32 fpstimer = 0;
 	static Uint32 frametimer = 0;
+	static int fps = 0;
 
 	const Uint32 now = SDL_GetTicks();
 	const Uint32 timediff = now - frametimer;
@@ -26,6 +28,13 @@ static void render(const uint8_t* restrict const screen)
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
 		SDL_RenderPresent(renderer);
 		frametimer = now;
+	}
+
+	++fps;
+	if ((now - fpstimer) >= 1000) {
+		loginfo("%d\n", fps);
+		fps = 0;
+		fpstimer = now;
 	}
 }
 

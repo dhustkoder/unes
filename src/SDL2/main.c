@@ -217,8 +217,8 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
-	const int_fast32_t frameticks = CPU_FREQ / 30;
-	int_fast32_t clk = 0;
+	const int32_t frameticks = CPU_FREQ / 30;
+	int32_t clk = 0;
 	while (update_events()) {
 		do {
 			const unsigned ticks = stepcpu();

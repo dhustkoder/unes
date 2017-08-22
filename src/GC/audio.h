@@ -6,7 +6,7 @@
 #define AUDIO_MAX_VOLUME (0)
 
 
-static void queue_sound_buffer(const uint8_t* const buffer, const uint_fast32_t len)
+static void queue_sound_buffer(const uint8_t* const buffer, const uint32_t len)
 {
 	((void)buffer);
 	((void)len);

@@ -59,13 +59,13 @@ static bool padstrobe;
 static uint8_t ram[0x800];  // zeropage,stack,ram
 
 
-static uint_fast8_t getflags(void)
+static uint8_t getflags(void)
 {
 	return (flags.n<<7)|(flags.v<<6)|FLAG_R|(flags.d<<3)|
 	       (flags.i<<2)|(flags.z<<1)|(flags.c);
 }
 
-static void setflags(const uint_fast8_t val)
+static void setflags(const uint8_t val)
 {
 	flags.n = (val>>7)&0x01;
 	flags.v = (val>>6)&0x01;
@@ -77,9 +77,9 @@ static void setflags(const uint_fast8_t val)
 
 
 // cpu memory bus
-static void oam_dma(uint_fast8_t n);
+static void oam_dma(uint8_t n);
 
-static void joywrite(const uint_fast8_t val)
+static void joywrite(const uint8_t val)
 {
 	const bool oldstrobe = padstrobe;
 	padstrobe = (val&0x01) != 0;
@@ -91,7 +91,7 @@ static void joywrite(const uint_fast8_t val)
 	}
 }
 
-static uint_fast8_t joyread(const uint_fast16_t addr)
+static uint8_t joyread(const uint16_t addr)
 {
 	assert(addr == 0x4016 || addr == 0x4017);
 
@@ -102,13 +102,13 @@ static uint_fast8_t joyread(const uint_fast16_t addr)
 	else if (padshifts[pad] >= 8)
 		return 0x01;
 	
-	const uint_fast8_t k = padstate[pad]&0x01;
+	const uint8_t k = padstate[pad]&0x01;
 	padstate[pad] >>= 1;
 	++padshifts[pad];
 	return k;
 }
 
-static uint_fast8_t ioread(const uint_fast16_t addr)
+static uint8_t ioread(const uint16_t addr)
 {
 	if (addr >= 0x4016)
 		return joyread(addr);
@@ -118,7 +118,7 @@ static uint_fast8_t ioread(const uint_fast16_t addr)
 		return ppuread(addr);
 }
 
-static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
+static void iowrite(const uint8_t val, const uint16_t addr)
 {
 	if (addr >= 0x4000) {
 		switch (addr) {
@@ -131,10 +131,8 @@ static void iowrite(const uint_fast8_t val, const uint_fast16_t addr)
 	}
 }
 
-static uint_fast8_t read(const uint_fast16_t addr)
+static uint8_t read(const uint16_t addr)
 {
-	assert(addr <= 0xFFFF);
-
 	if (addr >= ADDR_PRGROM)
 		return cpu_prgrom[addr&0x7FFF];
 	else if (addr < ADDR_IOREGS1)
@@ -146,10 +144,8 @@ static uint_fast8_t read(const uint_fast16_t addr)
 	return 0;
 }
 
-static void write(const uint_fast8_t val, const uint_fast16_t addr)
+static void write(const uint8_t val, const uint16_t addr)
 {
-	assert(addr <= 0xFFFF);
-
 	if (addr < ADDR_IOREGS1)
 		ram[addr&0x7FF] = val;
 	else if (addr < ADDR_EXPROM)
@@ -160,7 +156,7 @@ static void write(const uint_fast8_t val, const uint_fast16_t addr)
 		cpu_sram[addr&0x1FFF] = val;
 }
 
-static void oam_dma(const uint_fast8_t n)
+static void oam_dma(const uint8_t n)
 {
 	extern uint8_t ppu_oam[0x100];
 	extern bool ppu_need_screen_update;
@@ -180,12 +176,12 @@ static void oam_dma(const uint_fast8_t n)
 	step_cycles += 513;
 }
 
-static uint_fast16_t read16(const uint_fast16_t addr)
+static uint16_t read16(const uint16_t addr)
 {
 	return (read(addr + 1)<<8)|read(addr);
 }
 
-static uint_fast16_t read16msk(const uint_fast16_t addr)
+static uint16_t read16msk(const uint16_t addr)
 {
 	if ((addr&0x00FF) == 0xFF)
 		return (read(addr&0xFF00)<<8)|read(addr);
@@ -194,39 +190,39 @@ static uint_fast16_t read16msk(const uint_fast16_t addr)
 
 
 // stack
-static void spush(const uint_fast8_t val)
+static void spush(const uint8_t val)
 {
 	ram[0x100|s--] = val;
 }
 
-static void spush16(const uint_fast16_t val)
+static void spush16(const uint16_t val)
 {
 	spush((val&0xFF00)>>8);
 	spush(val&0xFF);
 }
 
-static uint_fast8_t spop(void)
+static uint8_t spop(void)
 {
 	return ram[0x100|++s];
 }
 
-static uint_fast16_t spop16(void)
+static uint16_t spop16(void)
 {
-	const uint_fast8_t lsb = spop();
-	const uint_fast16_t msb = spop();
+	const uint8_t lsb = spop();
+	const uint16_t msb = spop();
 	return (msb<<8)|lsb;
 }
 
 
 // instructions
-static inline void ld(uint8_t* const reg, const uint_fast8_t val)
+static inline void ld(uint8_t* const reg, const uint8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
 	flags.n = (*reg)>>7;
 }
 
-static uint_fast8_t inc(uint_fast8_t val)
+static uint8_t inc(uint8_t val)
 {
 	++val;
 	val &= 0xFF;
@@ -235,7 +231,7 @@ static uint_fast8_t inc(uint_fast8_t val)
 	return val;
 }
 
-static uint_fast8_t dec(uint_fast8_t val)
+static uint8_t dec(uint8_t val)
 {
 	--val;
 	val &= 0xFF;
@@ -244,7 +240,7 @@ static uint_fast8_t dec(uint_fast8_t val)
 	return val;
 }
 
-static uint_fast8_t lsr(uint_fast8_t val)
+static uint8_t lsr(uint8_t val)
 {
 	flags.c = val&0x01;
 	val >>= 1;
@@ -253,9 +249,9 @@ static uint_fast8_t lsr(uint_fast8_t val)
 	return val;
 }
 
-static uint_fast8_t rol(uint_fast8_t val)
+static uint8_t rol(uint8_t val)
 {
-	const uint_fast8_t oldc = flags.c;
+	const uint8_t oldc = flags.c;
 	flags.c = val>>7;
 	val = (val<<1)|oldc;
 	val &= 0xFF;
@@ -264,9 +260,9 @@ static uint_fast8_t rol(uint_fast8_t val)
 	return val;
 }
 
-static uint_fast8_t ror(uint_fast8_t val)
+static uint8_t ror(uint8_t val)
 {
-	const uint_fast8_t oldc = flags.c;
+	const uint8_t oldc = flags.c;
 	flags.c = val&0x01;
 	val = (val>>1)|(oldc<<7);
 	flags.z = val == 0x00;
@@ -274,7 +270,7 @@ static uint_fast8_t ror(uint_fast8_t val)
 	return val;
 }
 
-static uint_fast8_t asl(uint_fast8_t val)
+static uint8_t asl(uint8_t val)
 {
 	flags.c = val>>7;
 	val <<= 1;
@@ -284,52 +280,52 @@ static uint_fast8_t asl(uint_fast8_t val)
 	return val;
 }
 
-static inline void opm(uint_fast8_t(*const op)(uint_fast8_t), const uint_fast16_t addr)
+static inline void opm(uint8_t(*const op)(uint8_t), const uint16_t addr)
 {
 	write(op(read(addr)), addr);
 }
 
-static inline void opzp(uint_fast8_t(*const op)(uint_fast8_t), const uint_fast8_t addr)
+static inline void opzp(uint8_t(*const op)(uint8_t), const uint8_t addr)
 {
 	ram[addr] = op(ram[addr]);
 }
 
-static void and(const uint_fast8_t val)
+static void and(const uint8_t val)
 {
 	a &= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
 }
 
-static void ora(const uint_fast8_t val)
+static void ora(const uint8_t val)
 {
 	a |= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
 }
 
-static void eor(const uint_fast8_t val)
+static void eor(const uint8_t val)
 {
 	a ^= val;
 	flags.z = a == 0x00;
 	flags.n = a>>7;
 }
 
-static void bit(const uint_fast8_t val)
+static void bit(const uint8_t val)
 {
 	flags.z = (a&val) == 0x00;
 	flags.v = (val&0x40)>>6;
 	flags.n = val>>7;
 }
 
-static void cmp(const uint_fast8_t reg, const uint_fast8_t val)
+static void cmp(const uint8_t reg, const uint8_t val)
 {
 	flags.c = reg >= val;
 	flags.z = reg == val;
 	flags.n = ((reg - val)&0x80)>>7;
 }
 
-static void adc(const int_fast16_t val)
+static void adc(const int16_t val)
 {
 	const unsigned tmp = a + val + flags.c;
 	flags.v = (((~(a ^ val) & (a ^ tmp)))&0x80)>>7;
@@ -339,12 +335,12 @@ static void adc(const int_fast16_t val)
 	flags.n = a>>7;
 }
 
-static void sbc(const uint_fast8_t val)
+static void sbc(const uint8_t val)
 {
 	adc(val ^ 0xFF);
 }
 
-static uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t val)
+static uint16_t chkpagecross(const uint16_t addr, const int16_t val)
 {
 	// check for page cross in adding value to addr
 	// add 1 to step_cycles if it does cross a page
@@ -356,7 +352,7 @@ static uint_fast16_t chkpagecross(const uint_fast16_t addr, const int_fast16_t v
 static void branch(const bool cond)
 {
 	if (cond) {
-		const int_fast8_t val = read(pc++);
+		const int8_t val = read(pc++);
 		++step_cycles;
 		pc = chkpagecross(pc, val);
 	} else {
@@ -372,7 +368,7 @@ static bool check_irq_sources(void)
 	return false;
 }
 
-static void dointerrupt(const uint_fast16_t vector, const bool brk)
+static void dointerrupt(const uint16_t vector, const bool brk)
 {
 	spush16(brk ? pc + 1 : pc);
 	spush(getflags()|(brk ? FLAG_B : 0x00));
@@ -440,7 +436,7 @@ unsigned stepcpu(void)
 	}
 
 	irq_pass = flags.i == 0;
-	const uint_fast8_t opcode = fetch8();
+	const uint8_t opcode = fetch8();
 	step_cycles += clock_table[opcode];
 
 	switch (opcode) {
@@ -652,7 +648,8 @@ unsigned stepcpu(void)
 	case 0x9A: s = x;                                       break; // TXS
 	case 0x98: ld(&a, y);                                   break; // TYA
 	default:
-		logerror("UNKOWN OPCODE: %.2x\n", opcode);
+		logerror("UNKOWN OPCODE: $%.2x\n PC: $%.2x\n", opcode, pc);
+		assert(false);
 		break;
 	}
 
