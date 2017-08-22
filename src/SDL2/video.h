@@ -4,6 +4,7 @@
 #include "SDL.h"
 #include "log.h"
 
+
 static void render(const uint8_t* restrict const screen)
 {
 	extern SDL_Renderer* renderer;

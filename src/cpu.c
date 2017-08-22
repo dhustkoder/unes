@@ -225,7 +225,6 @@ static inline void ld(uint8_t* const reg, const uint8_t val)
 static uint8_t inc(uint8_t val)
 {
 	++val;
-	val &= 0xFF;
 	flags.z = val == 0x00;
 	flags.n = val>>7;
 	return val;
@@ -234,7 +233,6 @@ static uint8_t inc(uint8_t val)
 static uint8_t dec(uint8_t val)
 {
 	--val;
-	val &= 0xFF;
 	flags.z = val == 0x00;
 	flags.n = val>>7;
 	return val;
@@ -254,7 +252,6 @@ static uint8_t rol(uint8_t val)
 	const uint8_t oldc = flags.c;
 	flags.c = val>>7;
 	val = (val<<1)|oldc;
-	val &= 0xFF;
 	flags.z = val == 0x00;
 	flags.n = val>>7;
 	return val;
@@ -274,7 +271,6 @@ static uint8_t asl(uint8_t val)
 {
 	flags.c = val>>7;
 	val <<= 1;
-	val &= 0xFF;
 	flags.z = val == 0x00;
 	flags.n = val>>7;
 	return val;
