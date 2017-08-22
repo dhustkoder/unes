@@ -11931,19 +11931,24 @@ static const unsigned char instrtest[] =
 
 
 const uint32_t gc_nes_rgb[0x40] = {
-	0x807C7C7C, 0x800000FC, 0x800000BC, 0x804428BC, 0x80940084, 0x80A80020, 0x80A81000, 0x80881400,
-	0x80503000, 0x80007800, 0x80006800, 0x80005800, 0x80004058, 0x80000000, 0x80000000, 0x80000000,
-	0x80BCBCBC, 0x800078F8, 0x800058F8, 0x806844FC, 0x80D800CC, 0x80E40058, 0x80F83800, 0x80E45C10,
-	0x80AC7C00, 0x8000B800, 0x8000A800, 0x8000A844, 0x80008888, 0x80000000, 0x80000000, 0x80000000,
-	0x80F8F8F8, 0x803CBCFC, 0x806888FC, 0x809878F8, 0x80F878F8, 0x80F85898, 0x80F87858, 0x80FCA044,
-	0x80F8B800, 0x80B8F818, 0x8058D854, 0x8058F898, 0x8000E8D8, 0x80787878, 0x80000000, 0x80000000,
-	0x80FCFCFC, 0x80A4E4FC, 0x80B8B8F8, 0x80D8B8F8, 0x80F8B8F8, 0x80F8A4C0, 0x80F0D0B0, 0x80FCE0A8,
-	0x80F8D878, 0x80D8F878, 0x80B8F8B8, 0x80B8F8D8, 0x8000FCFC, 0x80F8D8F8, 0x80000000, 0x80000000
+	COLOR_GRAY, COLOR_BLUE, COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_RED,
+	COLOR_RED, COLOR_MAROON, COLOR_GREEN, COLOR_GREEN, COLOR_GREEN, COLOR_BLUE,
+	COLOR_BLACK, COLOR_BLACK, COLOR_BLACK, COLOR_SILVER, COLOR_BLUE, COLOR_BLUE,
+	COLOR_PURPLE, COLOR_PURPLE, COLOR_RED, COLOR_RED, COLOR_YELLOW, COLOR_YELLOW,
+	COLOR_GREEN, COLOR_GREEN, COLOR_GREEN, COLOR_BLUE, COLOR_BLACK, COLOR_BLACK,
+	COLOR_BLACK, COLOR_WHITE, COLOR_BLUE, COLOR_PURPLE, COLOR_PURPLE, COLOR_PURPLE,
+	COLOR_RED, COLOR_YELLOW, COLOR_YELLOW, COLOR_YELLOW, COLOR_GREEN, COLOR_GREEN,
+	COLOR_GREEN, COLOR_BLUE, COLOR_GRAY, COLOR_BLACK, COLOR_BLACK, COLOR_WHITE,
+	COLOR_BLUE, COLOR_PURPLE, COLOR_PURPLE, COLOR_RED, COLOR_RED, COLOR_YELLOW,
+	COLOR_YELLOW, COLOR_YELLOW, COLOR_GREEN, COLOR_GREEN, COLOR_BLUE, COLOR_WHITE,
+	COLOR_BLACK, COLOR_BLACK
 };
 
+uint8_t gc_padstate[JOYPAD_NJOYPADS];
 
 GXRModeObj* gc_vmode;
 uint32_t* gc_fb;
+static void* console_fb;
 
 
 static void initialize_platform(void)
@@ -11955,8 +11960,11 @@ static void initialize_platform(void)
 	VIDEO_Configure(gc_vmode);
 
 	gc_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
+	console_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
 	
-	console_init(gc_fb, 20, 20, gc_vmode->fbWidth, gc_vmode->xfbHeight, gc_vmode->fbWidth * 2);
+	console_init(console_fb, 20, 20, gc_vmode->fbWidth, gc_vmode->xfbHeight,
+	             gc_vmode->fbWidth * 2);
+
 	VIDEO_ClearFrameBuffer(gc_vmode, gc_fb, COLOR_BLACK);
 	VIDEO_SetNextFramebuffer(gc_fb);
 	VIDEO_SetBlack(FALSE);
@@ -11987,9 +11995,36 @@ void main(void)
 	resetppu();
 	resetapu();
 
+	const uint32_t frameclks = CPU_FREQ / 30;
+	uint32_t clk = 0;
+
 	for (;;) {
-		const unsigned clk = stepcpu();
-		stepppu(clk * 3);
-		stepapu(clk);
+		do {
+			const unsigned stepclks = stepcpu();
+			stepppu(stepclks * 3);
+			stepapu(stepclks);
+			clk += stepclks;
+		} while (clk < frameclks);
+		clk -= frameclks;
+
+		PAD_ScanPads();
+		for (unsigned i = 0; i < JOYPAD_NJOYPADS; ++i) {
+			const int buttons = PAD_ButtonsHeld(i);
+
+			if (buttons&PAD_BUTTON_Y)
+				VIDEO_SetNextFramebuffer(console_fb);
+			if (buttons&PAD_BUTTON_X)
+				VIDEO_SetNextFramebuffer(gc_fb);
+
+			gc_padstate[i] =
+			  ((buttons&PAD_BUTTON_A) != 0)<<KEY_A          |
+			  ((buttons&PAD_BUTTON_B) != 0)<<KEY_B          |
+			  ((buttons&PAD_TRIGGER_Z) != 0)<<KEY_SELECT    |
+			  ((buttons&PAD_BUTTON_START) != 0)<<KEY_START  |
+			  ((buttons&PAD_BUTTON_LEFT) != 0)<<KEY_LEFT    |
+			  ((buttons&PAD_BUTTON_RIGHT) != 0)<<KEY_RIGHT  |
+			  ((buttons&PAD_BUTTON_UP) != 0)<<KEY_UP        |
+			  ((buttons&PAD_BUTTON_DOWN) != 0)<<KEY_DOWN;
+		}
 	}
 }
