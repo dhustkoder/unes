@@ -1,19 +1,22 @@
 .SUFFIXES:
-ifeq ($(strip $(DEVKITPPC)),)
-$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC")
-endif
 
+ifeq ($(DEVKITPPC),)
+$(error "Set DEVKITPPC and DEVKITPRO enviroment variables")
+endif
 include $(DEVKITPPC)/gamecube_rules
 
-CFLAGS= -Wall -Wextra -Wshadow -I $(SRC_DIR) -I $(SRC_DIR)/GC \
-       $(MACHDEP) $(INCLUDE)  -I$(DEVKITPPC)../libogc/include \
-       -DPLATFORM_GC
+LD=$(CC)
+
+CFLAGS=-Wall -Wextra -Wshadow -Wno-main -I $(SRC_DIR) -I $(SRC_DIR)/GC \
+       $(MACHDEP) $(INCLUDE)  -I$(LIBOGC_INC) -DPLATFORM_GC
+
 CFLAGS_DEBUG=-g -O0 -DDEBUG
-CFLAGS_RELEASE=-Werror -O3 -march=native -ffast-math -fstrict-aliasing \
+
+CFLAGS_RELEASE=-Werror -O3 -ffast-math -fstrict-aliasing \
 	       -ffunction-sections -fdata-sections -fno-unwind-tables  \
 	       -fno-asynchronous-unwind-tables -DNDEBUG
 
-LDFLAGS= $(MACHDEP) -Wl,-Map,$(notdir $@).map -L$(DEVKITPPC)../libogc/lib/cube -logc -lm
+LDFLAGS= $(MACHDEP) -L$(LIBOGC_LIB) -logc -lm
 LDFLAGS_DEBUG=-g
 LDFLAGS_RELEASE=-s -Wl,--gc-sections
 
@@ -33,10 +36,7 @@ ASM=$(patsubst $(SRC_DIR)/%.c, $(ASM_DIR)/%.asm, $(wildcard $(SRC_DIR)/*.c))
 PLATFORM_OBJS=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_OBJS_DIR)/%.o, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 PLATFORM_ASM=$(patsubst $(PLATFORM_SRC_DIR)/%.c, $(PLATFORM_ASM_DIR)/%.asm, $(wildcard $(PLATFORM_SRC_DIR)/*.c))
 
-
-ifeq ($(CC),)
-	CC:=gcc
-endif
+$(shell mkdir -p $(BUILD_DIR))
 
 ifeq ($(BUILD_TYPE),)
 	BUILD_TYPE :=Debug
@@ -52,7 +52,7 @@ else ifeq ($(BUILD_TYPE),Debug)
 	CFLAGS += $(CFLAGS_DEBUG)
 	LDFLAGS += $(LDFLAGS_DEBUG)
 else
-	$(error)
+	$(error "Unknown BUILD_TYPE")
 endif
 
 ifeq ($(ENABLE_LTO),ON)
@@ -63,13 +63,12 @@ endif
 .PHONY: all clean asm
 
 
-all: $(BUILD_DIR)/unes
-asm: $(ASM) ${PLATFORM_ASM}
+all: $(BUILD_DIR)/unes.dol
+asm: $(ASM) $(PLATFORM_ASM)
 
 
-$(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
+$(BUILD_DIR)/unes.dol: $(BUILD_DIR)/unes.elf
+$(BUILD_DIR)/unes.elf: $(OBJS) $(PLATFORM_OBJS)
 
 $(OBJS_DIR)/%.o: $(SRC)
 	@mkdir -p $(PLATFORM_OBJS_DIR)
@@ -81,7 +80,6 @@ $(ASM_DIR)/%.asm: $(SRC)
 
 
 -include $(shell ls $(OBJS_DIR)/*.d 2>/dev/null)
-
 
 clean:
 	rm -rf $(ASM_DIR)/

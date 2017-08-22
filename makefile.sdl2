@@ -62,7 +62,7 @@ endif
 
 
 all: $(BUILD_DIR)/unes
-asm: $(ASM) ${PLATFORM_ASM}
+asm: $(ASM) $(PLATFORM_ASM)
 
 
 $(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)

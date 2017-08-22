@@ -1,10 +1,12 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
 #include <ogcsys.h>
 #include <gccore.h>
-
+#include "rom.h"
+#include "cpu.h"
+#include "ppu.h"
+#include "apu.h"
 
 static void initialize_platform(void)
 {
@@ -42,5 +44,9 @@ __attribute__((noreturn)) void main(void)
 		if (buttonsDown&PAD_BUTTON_A) {
 			// button A pressed
 		}
+
+		const unsigned clk = stepcpu();
+		stepppu(clk * 3);
+		stepapu(clk);
 	}
 }
