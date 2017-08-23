@@ -35,6 +35,7 @@ static struct {
 	bool oddframe        : 1;
 	bool nmi_for_frame   : 1;
 	bool write_toggle    : 1;
+	bool need_render     : 1;
 } states;
 
 static uint8_t nametables[0x800];
@@ -216,13 +217,17 @@ void stepppu(const unsigned pputicks)
 		if ((ppumask&0x10) != 0)
 			draw_sprite_scanline();
 		states.draw_scanline = false;
+		states.need_render = true;
 	} else if (ppuclk <= 0) {
-		ppuclk += PPU_FRAME_TICKS;
 		states.draw_scanline = true;
+		ppuclk += PPU_FRAME_TICKS;
 		++scanline;
 		if (scanline == 262) {
 			scanline = 0;
-			render((void*)screen);
+			if (states.need_render) {
+				render((uint8_t*)screen);
+				states.need_render = false;
+			}
 			if ((ppumask&0x18) && states.oddframe)
 				++ppuclk;
 			states.oddframe = !states.oddframe;

@@ -217,8 +217,14 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
-	const int32_t frameticks = CPU_FREQ / 60;
-	int32_t clk = 0;
+	#ifdef FPS_BENCH
+	Uint32 fpstimer = SDL_GetTicks();
+	unsigned fps = 0;
+	#endif
+
+
+	const unsigned frameticks = CPU_FREQ / 60;
+	unsigned clk = 0;
 	while (update_events()) {
 		do {
 			const unsigned ticks = stepcpu();
@@ -227,6 +233,19 @@ int main(const int argc, const char* const* const argv)
 			clk += ticks;
 		} while (clk < frameticks);
 		clk -= frameticks;
+
+		#ifdef FPS_BENCH
+		++fps;
+		const Uint32 fpsnow = SDL_GetTicks();
+		if ((fpsnow - fpstimer) >= 1000) {
+			loginfo("%d\n", fps);
+			fps = 0;
+			fpstimer = fpsnow;
+		}
+		#endif
+
+		SDL_Delay(1000 / 60);
+
 	}
 
 	exitcode = EXIT_SUCCESS;
@@ -235,4 +254,3 @@ Lfreerom:
 	freerom();
 	return exitcode;
 }
-
