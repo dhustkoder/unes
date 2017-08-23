@@ -14,7 +14,7 @@ static void render(const uint8_t* restrict const screen)
 
 	for (unsigned i = 0; i < 240; ++i) {
 		for (unsigned j = 0; j < 256; ++j) {
-			gc_fb[i * gc_vmode->fbWidth + j] = 
+			gc_fb[i * gc_vmode->fbWidth + 28 + j] = 
 			    gc_nes_rgb[screen[i * 256 + j]];
 		}
 	}

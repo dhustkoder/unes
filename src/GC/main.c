@@ -3,16 +3,14 @@
 #include <malloc.h>
 #include <ogcsys.h>
 #include <gccore.h>
-#include "ninjaslapper_bin.h"
-#include "instrtest_bin.h"
 #include "log.h"
 #include "rom.h"
 #include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
-
-
-#define ROMDATA ninjaslapper
+#include "ninjaslapper_bin.h"
+#include "instrtest_bin.h"
+#include "dushlan_bin.h"
 
 const uint32_t gc_nes_rgb[0x40] = {
 	COLOR_GRAY, COLOR_BLUE, COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_RED,
@@ -45,7 +43,7 @@ static void initialize_platform(void)
 
 	gc_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
 	console_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
-	
+
 	console_init(console_fb, 20, 20, gc_vmode->fbWidth, gc_vmode->xfbHeight,
 	             gc_vmode->fbWidth * 2);
 
@@ -57,6 +55,11 @@ static void initialize_platform(void)
 
 	if (gc_vmode->viTVMode&VI_NON_INTERLACE)
 		VIDEO_WaitVSync();
+
+	loginfo("GC VMODE:\n"
+	        "fbWidth: %d\n"
+		"xfbHeight: %d\n",
+		gc_vmode->fbWidth, gc_vmode->xfbHeight);
 }
 
 static void quit(void)
@@ -70,7 +73,7 @@ void main(void)
 {
 	initialize_platform();
 
-	if (!loadrom(ROMDATA)) {
+	if (!loadrom(dushlan)) {
 		logerror("Couldn't load rom!\n");
 		quit();
 	}
