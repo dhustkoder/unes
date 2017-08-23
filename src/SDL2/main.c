@@ -169,6 +169,36 @@ static void terminate_platform(void)
 	SDL_Quit();
 }
 
+static uint8_t* readfile(const char* filepath)
+{
+	FILE* const file = fopen(filepath, "r");
+	if (file == NULL) {
+		logerror("Couldn't open \'%s\'\n", filepath);
+		return NULL;
+	}
+
+	fseek(file, 0, SEEK_END);
+	const size_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	uint8_t* data = malloc(size);
+	if (data == NULL) {
+		logerror("Couldn't allocate memory\n");
+		goto Lfclose;
+	}
+
+	if (fread(data, 1, size, file) < size) {
+		logerror("Couldn't read \'%s\'\n", filepath);
+		free(data);
+		data = NULL;
+		goto Lfclose;
+	}
+
+Lfclose:
+	fclose(file);
+	return data;
+}
+
 
 int main(const int argc, const char* const* const argv)
 {
@@ -177,34 +207,10 @@ int main(const int argc, const char* const* const argv)
 		return EXIT_FAILURE;
 	}
 
-	{
-		// send rom data to unes
-		FILE* const file = fopen(argv[1], "r");
-		if (file == NULL) {
-			logerror("Couldn't open \'%s\'\n", argv[1]);
-			return EXIT_FAILURE;
-		}
-
-		fseek(file, 0, SEEK_END);
-		const size_t size = ftell(file);
-		fseek(file, 0, SEEK_SET);
-
-		uint8_t* const data = malloc(size);
-		if (fread(data, 1, size, file) < size) {
-			logerror("Couldn't read \'%s\'\n", argv[1]);
-			free(data);
-			fclose(file);
-			return EXIT_FAILURE;
-		}
-
-		fclose(file);
-
-		if (!loadrom(data)) {
-			free(data);	
-			return EXIT_FAILURE;
-		}
-
-		free(data);
+	uint8_t* const data = readfile(argv[1]);
+	if (!loadrom(data)) {
+		free(data);	
+		return EXIT_FAILURE;
 	}
 
 	// initialize SDL2 and run game
@@ -223,8 +229,8 @@ int main(const int argc, const char* const* const argv)
 	#endif
 
 
-	const unsigned frameticks = CPU_FREQ / 60;
-	unsigned clk = 0;
+	const unsigned long frameticks = CPU_FREQ / 60;
+	unsigned long clk = 0;
 	while (update_events()) {
 		do {
 			const unsigned ticks = stepcpu();
@@ -244,13 +250,16 @@ int main(const int argc, const char* const* const argv)
 		}
 		#endif
 
-		SDL_Delay(1000 / 60);
-
+		//TODO: (Rafael Moura) fix this, make it sync
+		// to video 60 fps instead of sync to audio
+		while (SDL_GetQueuedAudioSize(audio_device) > 0)
+			SDL_Delay(1);
 	}
 
 	exitcode = EXIT_SUCCESS;
 	terminate_platform();
 Lfreerom:
 	freerom();
+	free(data);
 	return exitcode;
 }

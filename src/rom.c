@@ -19,12 +19,15 @@ extern bool ppu_need_screen_update;
 extern uint8_t cpu_prgrom[0x8000];
 extern uint8_t cpu_sram[0x2000];
 
+
 // rom.c
+bool rom_chr_is_ram;
 static int32_t prgrom_size;
 static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
 static uint8_t mappertype;
-static uint8_t* cartdata;  // prgrom, chrrom or chrram
+static const uint8_t* prgdata;
+static uint8_t* chrdata; 
 
 // only NROM and MMC1 are supported for now
 static struct {
@@ -64,7 +67,7 @@ static void mmc1_update(const unsigned modified_reg_index)
 
 		// CHR bank
 		const uint8_t* const reg = mapper.mmc1.reg;
-		uint8_t* const chr = &cartdata[prgrom_size];
+		uint8_t* const chr = chrdata;
 		if ((reg[0]&0x10) == 0) {
 			// switch 8kb banks at $0000 - $1FFF
 			ppu_patterntable_lower = &chr[(reg[1]&0x1E) * 8192];
@@ -86,25 +89,25 @@ static void mmc1_update(const unsigned modified_reg_index)
 	case 0x00:
 		// switch 32kb at $8000
 		bank = PRGROM_BANK_SIZE * 2 * reg3;
-		memcpy(cpu_prgrom, &cartdata[bank], 0x8000);
+		memcpy(cpu_prgrom, &prgdata[bank], 0x8000);
 		break;
 	case 0x01:
 		// switch 32kb at $8000 ignoring low bit of bank number
 		bank = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
-		memcpy(cpu_prgrom, &cartdata[bank], 0x8000);
+		memcpy(cpu_prgrom, &prgdata[bank], 0x8000);
 		break;
 	case 0x02:
 		// fix first bank at $8000 and switch 16kb banks at $C000
 		bank = PRGROM_BANK_SIZE * reg3;
-		memcpy(cpu_prgrom, cartdata, 0x4000);
-		memcpy(&cpu_prgrom[0x4000], &cartdata[bank], 0x4000);
+		memcpy(cpu_prgrom, prgdata, 0x4000);
+		memcpy(&cpu_prgrom[0x4000], &prgdata[bank], 0x4000);
 		break;
 	default:
 		// fix last bank at $C000 and switch 16kb banks at $8000
 		bank = prgrom_size - PRGROM_BANK_SIZE;
-		memcpy(&cpu_prgrom[0x4000], &cartdata[bank], 0x4000);
+		memcpy(&cpu_prgrom[0x4000], &prgdata[bank], 0x4000);
 		bank = PRGROM_BANK_SIZE * reg3;
-		memcpy(cpu_prgrom, &cartdata[bank], 0x4000);
+		memcpy(cpu_prgrom, &prgdata[bank], 0x4000);
 		break;
 	}
 }
@@ -139,16 +142,16 @@ static void initmapper(void)
 	case NROM:
 		// cpu prg map
 		if (ines.prgrom_nbanks > 1) {
-			memcpy(cpu_prgrom, cartdata, 0x8000);
+			memcpy(cpu_prgrom, prgdata, 0x8000);
 		} else {
-			memcpy(cpu_prgrom, cartdata, 0x4000);
-			memcpy(&cpu_prgrom[0x4000], cartdata, 0x4000);
+			memcpy(cpu_prgrom, prgdata, 0x4000);
+			memcpy(&cpu_prgrom[0x4000], prgdata, 0x4000);
 		}
 		// ppu map
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
 			? NTMIRRORING_VERTICAL
 			: NTMIRRORING_HORIZONTAL;
-		ppu_patterntable_lower = &cartdata[prgrom_size];
+		ppu_patterntable_lower = chrdata;
 		ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
 		break;
 	case MMC1:
@@ -168,7 +171,7 @@ void romwrite(const uint8_t value, const uint16_t addr)
 	}
 }
 
-bool loadrom(const uint8_t* restrict const data)
+bool loadrom(const uint8_t* const data)
 {
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
 	memcpy(&ines, data, sizeof ines);
@@ -201,9 +204,15 @@ bool loadrom(const uint8_t* restrict const data)
 	            ? ines.sram_nbanks * SRAM_BANK_SIZE
 	            : SRAM_BANK_SIZE;
 
-	const uint32_t read_size = prgrom_size + chrrom_size;
-	cartdata = malloc(read_size + chrram_size);
-	memcpy(cartdata, &data[0x10], read_size);
+	prgdata = &data[0x10];
+
+	if (ines.chrrom_nbanks == 0) {
+		chrdata = malloc(chrram_size);
+		rom_chr_is_ram = true;
+	} else {
+		chrdata = (uint8_t*) &data[0x10 + prgrom_size];
+		rom_chr_is_ram = false;
+	}
 
 	loginfo("INES HEADER:\n"
                "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
@@ -238,5 +247,6 @@ bool loadrom(const uint8_t* restrict const data)
 
 void freerom(void)
 {
-	free(cartdata);
+	if (rom_chr_is_ram)
+		free(chrdata);
 }

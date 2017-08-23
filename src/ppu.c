@@ -29,7 +29,7 @@ static int16_t ppuclk;      // 0 - 341
 static int16_t scanline;    // 0 - 262
 
 static struct {
-	bool draw_scanline   : 1;
+	bool scanline_drawn  : 1;
 	bool nmi_occurred    : 1;
 	bool nmi_output      : 1;
 	bool oddframe        : 1;
@@ -200,8 +200,8 @@ void resetppu(void)
 	ppuaddr = 0x0000;
 	ppuclk = 0;
 	scanline = 240;
-	ppu_need_screen_update = true;
-	states.draw_scanline = true;
+	ppu_need_screen_update = false;
+	states.scanline_drawn = false;
 	memset(&states, 0, sizeof states);
 	memset(screen, 0x0D, sizeof screen);
 }
@@ -211,16 +211,19 @@ void stepppu(const unsigned pputicks)
 	ppuclk -= pputicks;
 
 	if (ppu_need_screen_update && scanline < 240 &&
-	    ppuclk <= (PPU_FRAME_TICKS - 256) && states.draw_scanline) {
-		if ((ppumask&0x08) != 0)
+	    ppuclk <= (PPU_FRAME_TICKS - 256) && !states.scanline_drawn) {
+		states.scanline_drawn = true;
+		if ((ppumask&0x08) != 0) {
 			draw_bg_scanline();
-		if ((ppumask&0x10) != 0)
+			states.need_render = true;
+		}
+		if ((ppumask&0x10) != 0) {
 			draw_sprite_scanline();
-		states.draw_scanline = false;
-		states.need_render = true;
+			states.need_render = true;
+		}
 	} else if (ppuclk <= 0) {
-		states.draw_scanline = true;
 		ppuclk += PPU_FRAME_TICKS;
+		states.scanline_drawn = false;
 		++scanline;
 		if (scanline == 262) {
 			scanline = 0;
@@ -239,8 +242,7 @@ void stepppu(const unsigned pputicks)
 		}
 	}
 
-	if (!states.nmi_for_frame && states.nmi_occurred &&
-	    states.nmi_output) {
+	if (!states.nmi_for_frame && states.nmi_occurred && states.nmi_output) {
 		states.nmi_for_frame = true;
 		ppu_need_screen_update = false;
 		trigger_nmi();
@@ -307,20 +309,28 @@ static uint8_t read_ppudata(void)
 
 static void write_ppudata(const uint8_t val)
 {
+	extern bool rom_chr_is_ram;
+
 	uint8_t* dest;
-	if (ppuaddr < 0x1000)
-		dest = &ppu_patterntable_lower[ppuaddr];
-	else if (ppuaddr < 0x2000)
-		dest = &ppu_patterntable_upper[ppuaddr&0xFFF];
-	else if (ppuaddr < 0x3F00)
+	if (ppuaddr < 0x2000) {
+		if (!rom_chr_is_ram)
+			goto Lppuaddr_inc;
+		else if (ppuaddr < 0x1000)
+			dest = &ppu_patterntable_lower[ppuaddr];
+		else
+			dest = &ppu_patterntable_upper[ppuaddr&0xFFF];
+	} else if (ppuaddr < 0x3F00) {
 		dest = &nametables[eval_nt_offset(ppuaddr)];
-	else 
+	} else {
 		dest = &palettes[eval_pal_rw_offset(ppuaddr)];
+	}
 
 	if (*dest != val) {
 		*dest = val;
 		ppu_need_screen_update = true;
 	}
+
+Lppuaddr_inc:
 	ppuaddr_inc();
 }
 
