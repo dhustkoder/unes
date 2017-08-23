@@ -205,7 +205,8 @@ bool loadrom(const uint8_t* restrict const data)
 	cartdata = malloc(read_size + chrram_size);
 	memcpy(cartdata, &data[0x10], read_size);
 
-	loginfo("PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
+	loginfo("INES HEADER:\n"
+               "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
 	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "SRAM BANKS:    %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
@@ -218,7 +219,7 @@ bool loadrom(const uint8_t* restrict const data)
 	       "CTRL BYTE 2:\n"
 	       "\tBITS 0-3 RESERVED FOR FUTURE USE AND SHOULD ALL BE 0: $%.1x\n"
 	       "\tFOUR UPPER BITS OF MAPPER NUMBER: $%.1x\n"
-	       "MAPPER: %" PRIu8 "\n",
+	       "MAPPER: %" PRIu8 "\n\n",
 	       prgrom_size / PRGROM_BANK_SIZE, prgrom_size,
 	       chrrom_size / CHR_BANK_SIZE, chrrom_size,
 	       chrram_size / CHR_BANK_SIZE, chrram_size,

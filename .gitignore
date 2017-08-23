@@ -2,6 +2,9 @@ build/
 objs/
 asm/
 tests/blargg_cpu_tests/
+src/GC/megamanii_bin.h
+src/GC/donkeykong_bin.h
+src/GC/tetris_bin.h
 *.fns
 *.nes
 *.deb

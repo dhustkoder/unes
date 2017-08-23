@@ -1,8 +1,6 @@
-#include <stdlib.h>
-#include <string.h>
-#include <malloc.h>
 #include <ogcsys.h>
 #include <gccore.h>
+#include <inttypes.h>
 #include "log.h"
 #include "rom.h"
 #include "cpu.h"
@@ -11,6 +9,10 @@
 #include "ninjaslapper_bin.h"
 #include "instrtest_bin.h"
 #include "dushlan_bin.h"
+#include "megamanii_bin.h"
+#include "donkeykong_bin.h"
+#include "tetris_bin.h"
+
 
 const uint32_t gc_nes_rgb[0x40] = {
 	COLOR_GRAY, COLOR_BLUE, COLOR_BLUE, COLOR_PURPLE, COLOR_RED, COLOR_RED,
@@ -27,6 +29,7 @@ const uint32_t gc_nes_rgb[0x40] = {
 };
 
 uint8_t gc_padstate[JOYPAD_NJOYPADS];
+static int old_buttons[JOYPAD_NJOYPADS];
 
 GXRModeObj* gc_vmode;
 uint32_t* gc_fb;
@@ -44,7 +47,7 @@ static void initialize_platform(void)
 	gc_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
 	console_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
 
-	console_init(console_fb, 20, 20, gc_vmode->fbWidth, gc_vmode->xfbHeight,
+	console_init(console_fb, 0, 0, gc_vmode->fbWidth, gc_vmode->xfbHeight,
 	             gc_vmode->fbWidth * 2);
 
 	VIDEO_ClearFrameBuffer(gc_vmode, gc_fb, COLOR_BLACK);
@@ -56,10 +59,19 @@ static void initialize_platform(void)
 	if (gc_vmode->viTVMode&VI_NON_INTERLACE)
 		VIDEO_WaitVSync();
 
-	loginfo("GC VMODE:\n"
-	        "fbWidth: %d\n"
-		"xfbHeight: %d\n",
-		gc_vmode->fbWidth, gc_vmode->xfbHeight);
+	loginfo("GC VMODE INFO:\n"
+		"viTVMode: %" PRIu32 "\n"
+	        "fbWidth: %" PRIu16 "\n"
+		"efbHeight: %" PRIu16 "\n"
+		"xfbHeight: %" PRIu16 "\n"
+		"viXOrigin: %" PRIu16 "\n"
+		"viYOrigin: %" PRIu16 "\n"
+		"viWidth: %" PRIu16 "\n"
+		"viHeight: %" PRIu16 "\n"
+		"xfbMode: %" PRIu32 "\n\n",
+		gc_vmode->viTVMode, gc_vmode->fbWidth, gc_vmode->efbHeight,
+		gc_vmode->xfbHeight, gc_vmode->viXOrigin, gc_vmode->viYOrigin,
+		gc_vmode->viWidth, gc_vmode->viHeight, gc_vmode->xfbMode);
 }
 
 static void quit(void)
@@ -73,7 +85,7 @@ void main(void)
 {
 	initialize_platform();
 
-	if (!loadrom(dushlan)) {
+	if (!loadrom(tetris)) {
 		logerror("Couldn't load rom!\n");
 		quit();
 	}
@@ -95,23 +107,30 @@ void main(void)
 		clk -= frameclks;
 
 		PAD_ScanPads();
-		for (unsigned i = 0; i < JOYPAD_NJOYPADS; ++i) {
-			const int buttons = PAD_ButtonsHeld(i);
+		const int buttons[2] = { PAD_ButtonsHeld(0), PAD_ButtonsHeld(1) };
 
-			if (buttons&PAD_BUTTON_Y)
+		if (buttons[0] != old_buttons[0]) {
+			if (buttons[0]&PAD_TRIGGER_L)
 				VIDEO_SetNextFramebuffer(console_fb);
-			if (buttons&PAD_BUTTON_X)
+			if (buttons[0]&PAD_TRIGGER_R)
 				VIDEO_SetNextFramebuffer(gc_fb);
+		}
+
+		for (unsigned i = 0; i < JOYPAD_NJOYPADS; ++i) {
+			if (buttons[i] == old_buttons[i])
+				continue;
+
+			old_buttons[i] = buttons[i];
 
 			gc_padstate[i] =
-			  ((buttons&PAD_BUTTON_A) != 0)<<KEY_A          |
-			  ((buttons&PAD_BUTTON_B) != 0)<<KEY_B          |
-			  ((buttons&PAD_TRIGGER_Z) != 0)<<KEY_SELECT    |
-			  ((buttons&PAD_BUTTON_START) != 0)<<KEY_START  |
-			  ((buttons&PAD_BUTTON_LEFT) != 0)<<KEY_LEFT    |
-			  ((buttons&PAD_BUTTON_RIGHT) != 0)<<KEY_RIGHT  |
-			  ((buttons&PAD_BUTTON_UP) != 0)<<KEY_UP        |
-			  ((buttons&PAD_BUTTON_DOWN) != 0)<<KEY_DOWN;
+			  ((buttons[i]&PAD_BUTTON_A) != 0)<<KEY_A          |
+			  ((buttons[i]&PAD_BUTTON_B) != 0)<<KEY_B          |
+			  ((buttons[i]&PAD_TRIGGER_Z) != 0)<<KEY_SELECT    |
+			  ((buttons[i]&PAD_BUTTON_START) != 0)<<KEY_START  |
+			  ((buttons[i]&PAD_BUTTON_LEFT) != 0)<<KEY_LEFT    |
+			  ((buttons[i]&PAD_BUTTON_RIGHT) != 0)<<KEY_RIGHT  |
+			  ((buttons[i]&PAD_BUTTON_UP) != 0)<<KEY_UP        |
+			  ((buttons[i]&PAD_BUTTON_DOWN) != 0)<<KEY_DOWN;
 		}
 	}
 }
