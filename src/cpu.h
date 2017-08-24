@@ -4,22 +4,8 @@
 #include <stdbool.h>
 
 
-#define CPU_FREQ (1789773)
+#define NES_CPU_FREQ (1789773)
 
-#define ADDR_NMI_VECTOR   (0xFFFA)
-#define ADDR_RESET_VECTOR (0xFFFC)
-#define ADDR_IRQ_VECTOR   (0xFFFE)
-#define ADDR_PRGROM_UPPER (0xC000)
-#define ADDR_PRGROM       (0x8000)
-#define ADDR_SRAM         (0x6000)
-#define ADDR_EXPROM       (0x4020)
-#define ADDR_IOREGS2      (0x4000)
-#define ADDR_MIRRORS2     (0x2008)
-#define ADDR_IOREGS1      (0x2000)
-#define ADDR_MIRRORS1     (0x0800)
-#define ADDR_RAM          (0x0200)
-#define ADDR_STACK        (0x0100)
-#define ADDR_ZEROPAGE     (0x0000)
 
 enum IrqSource {
 	IRQ_SRC_APU_FRAME_COUNTER,

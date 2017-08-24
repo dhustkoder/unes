@@ -6,8 +6,8 @@
 #include "apu.h"
 
 
-#define FRAME_COUNTER_RATE     (CPU_FREQ / 240)
-#define APU_SAMPLES_CNT_LIMIT  (CPU_FREQ / 44100)
+#define FRAME_COUNTER_RATE     (NES_CPU_FREQ / 240)
+#define APU_SAMPLES_CNT_LIMIT  (NES_CPU_FREQ / 44100)
 #define SOUND_BUFFER_SIZE      (2048)
 
 

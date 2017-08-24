@@ -39,7 +39,7 @@ const uint32_t gc_nes_colors[0x40] = {
 	RGB(248,216,248), RGB(0,0,0), RGB(0,0,0)
 };
 
-uint8_t gc_padstate[JOYPAD_NJOYPADS];
+uint8_t gc_nes_padstate[JOYPAD_NJOYPADS];
 uint32_t* gc_fb;
 static void* console_fb;
 
@@ -88,12 +88,46 @@ static void quit(void)
 		VIDEO_WaitVSync();
 }
 
+static void update_pad_events(void)
+{
+	PAD_ScanPads();
+	static int old_buttons[2] = { 0, 0 };
+	const int buttons[2] = { PAD_ButtonsHeld(0), PAD_ButtonsHeld(1) };
 
-void main(void)
+	if (buttons[0] != old_buttons[0]) {
+		if (buttons[0]&PAD_TRIGGER_L) {
+			VIDEO_SetNextFramebuffer(console_fb);
+			VIDEO_Flush();
+		} else if (buttons[0]&PAD_TRIGGER_R) {
+			VIDEO_SetNextFramebuffer(gc_fb);
+			VIDEO_Flush();
+		}
+	}
+
+	for (unsigned i = 0; i < 2; ++i) {
+		if (buttons[i] == old_buttons[i])
+			continue;
+
+		old_buttons[i] = buttons[i];
+
+		gc_nes_padstate[i] =
+			((buttons[i]&PAD_BUTTON_A) != 0)<<KEY_A          |
+			((buttons[i]&PAD_BUTTON_B) != 0)<<KEY_B          |
+			((buttons[i]&PAD_TRIGGER_Z) != 0)<<KEY_SELECT    |
+			((buttons[i]&PAD_BUTTON_START) != 0)<<KEY_START  |
+			((buttons[i]&PAD_BUTTON_LEFT) != 0)<<KEY_LEFT    |
+			((buttons[i]&PAD_BUTTON_RIGHT) != 0)<<KEY_RIGHT  |
+			((buttons[i]&PAD_BUTTON_UP) != 0)<<KEY_UP        |
+			((buttons[i]&PAD_BUTTON_DOWN) != 0)<<KEY_DOWN;
+	}
+}
+
+
+__attribute__((noreturn)) void main(void)
 {
 	initialize_platform();
 
-	if (!loadrom(tetris)) {
+	if (!loadrom(megamanii)) {
 		logerror("Couldn't load rom!\n");
 		quit();
 	}
@@ -102,7 +136,7 @@ void main(void)
 	resetppu();
 	resetapu();
 
-	const uint32_t frameclks = CPU_FREQ / 60;
+	const uint32_t frameclks = NES_CPU_FREQ / 60;
 	uint32_t clk = 0;
 
 	for (;;) {
@@ -114,36 +148,7 @@ void main(void)
 		} while (clk < frameclks);
 		clk -= frameclks;
 
-		PAD_ScanPads();
-		static int old_buttons[2] = { 0, 0 };
-		const int buttons[2] = { PAD_ButtonsHeld(0), PAD_ButtonsHeld(1) };
-
-		if (buttons[0] != old_buttons[0]) {
-			if (buttons[0]&PAD_TRIGGER_L) {
-				VIDEO_SetNextFramebuffer(console_fb);
-				VIDEO_Flush();
-			} else if (buttons[0]&PAD_TRIGGER_R) {
-				VIDEO_SetNextFramebuffer(gc_fb);
-				VIDEO_Flush();
-			}
-		}
-
-		for (unsigned i = 0; i < JOYPAD_NJOYPADS; ++i) {
-			if (buttons[i] == old_buttons[i])
-				continue;
-
-			old_buttons[i] = buttons[i];
-
-			gc_padstate[i] =
-			  ((buttons[i]&PAD_BUTTON_A) != 0)<<KEY_A          |
-			  ((buttons[i]&PAD_BUTTON_B) != 0)<<KEY_B          |
-			  ((buttons[i]&PAD_TRIGGER_Z) != 0)<<KEY_SELECT    |
-			  ((buttons[i]&PAD_BUTTON_START) != 0)<<KEY_START  |
-			  ((buttons[i]&PAD_BUTTON_LEFT) != 0)<<KEY_LEFT    |
-			  ((buttons[i]&PAD_BUTTON_RIGHT) != 0)<<KEY_RIGHT  |
-			  ((buttons[i]&PAD_BUTTON_UP) != 0)<<KEY_UP        |
-			  ((buttons[i]&PAD_BUTTON_DOWN) != 0)<<KEY_DOWN;
-		}
+		update_pad_events();
 
 		static int fps = 0;
 		static time_t timer = 0;
@@ -158,4 +163,7 @@ void main(void)
 
 		VIDEO_WaitVSync();
 	}
+
+	freerom();
+	quit();
 }

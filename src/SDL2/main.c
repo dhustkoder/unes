@@ -229,7 +229,7 @@ int main(const int argc, const char* const* const argv)
 	#endif
 
 
-	const unsigned long frameticks = CPU_FREQ / 60;
+	const unsigned long frameticks = NES_CPU_FREQ / 60;
 	unsigned long clk = 0;
 	while (update_events()) {
 		do {
