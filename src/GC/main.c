@@ -16,10 +16,10 @@
 
 
 #define RGB_TO_Y1CBY2CR(r, g, b)                                                    \
-  (((299 * r + 587 * g + 114 * b) / 1000)<<24) |                                    \
+  ((((299 * r + 587 * g + 114 * b) / 1000)<<24) |                                   \
   (((((-16874 * r - 33126 * g + 50000 * b + 12800000) / 100000)<<1)>>1)<<16) |      \
   (((299 * r + 587 * g + 114 * b) / 1000)<<8) |                                     \
-  ((((50000 * r - 41869 * g - 8131 * b + 12800000) / 100000)<<1)>>1)
+  ((((50000 * r - 41869 * g - 8131 * b + 12800000) / 100000)<<1)>>1))
 
 #define RGB(r, g, b) RGB_TO_Y1CBY2CR(r, g, b)
 
@@ -159,7 +159,7 @@ __attribute__((noreturn)) void main(void)
 		++fps;
 		const time_t now = time(NULL);
 		if ((now - timer) >= 1) {
-			loginfo("FPS: %d\r", fps);
+			loginfo("FPS: %.4d\r", fps);
 			fps = 0;
 			timer = now;
 		}
