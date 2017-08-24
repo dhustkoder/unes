@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "SDL.h"
 #include "SDL_audio.h"
+#include "audio.h"
 #include "log.h"
 #include "rom.h"
 #include "cpu.h"
@@ -29,7 +30,7 @@ const Uint32 nes_rgb[0x40] = {
 };
 
 
-Uint8 sdl2_padstate[JOYPAD_NJOYPADS] = { 
+Uint8 sdl2_padstate[2] = { 
 	[JOYPAD_ONE] = KEYSTATE_UP,
 	[JOYPAD_TWO] = KEYSTATE_UP 
 };
@@ -39,7 +40,7 @@ SDL_Renderer* renderer;
 SDL_Texture* texture;
 static SDL_Window* window;
 
-static const Uint8 keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
+static const Uint8 keys_id[2][8] = {
 	[JOYPAD_ONE] = {
 		[KEY_A]      = SDL_SCANCODE_Z,
 		[KEY_B]      = SDL_SCANCODE_X,
@@ -66,8 +67,8 @@ static const Uint8 keys_id[JOYPAD_NJOYPADS][KEY_NKEYS] = {
 
 static void update_key(const Uint32 code, const enum KeyState state)
 {
-	for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
-		for (unsigned key = KEY_A; key < KEY_NKEYS; ++key) {
+	for (unsigned pad = 0; pad < 2; ++pad) {
+		for (unsigned key = 0; key < 8; ++key) {
 			if (keys_id[pad][key] == code) {
 				sdl2_padstate[pad] &= ~(0x01<<key);
 				sdl2_padstate[pad] |= state<<key;
@@ -135,10 +136,10 @@ static bool initialize_platform(void)
 	// audio
 	SDL_AudioSpec want;
 	SDL_zero(want);
-	want.freq = 44100;
+	want.freq = AUDIO_FREQUENCY;
 	want.format = AUDIO_S16SYS;
 	want.channels = 1;
-	want.samples = 2048;
+	want.samples = AUDIO_BUFFER_SIZE;
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
 		logerror("Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
@@ -208,6 +209,9 @@ int main(const int argc, const char* const* const argv)
 	}
 
 	uint8_t* const data = readfile(argv[1]);
+	if (data == NULL)
+		return EXIT_FAILURE;
+
 	if (!loadrom(data)) {
 		free(data);	
 		return EXIT_FAILURE;
@@ -223,12 +227,13 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
+	#define FPS_BENCH
 	#ifdef FPS_BENCH
 	Uint32 fpstimer = SDL_GetTicks();
 	unsigned fps = 0;
 	#endif
 
-
+	Uint32 frametimer = SDL_GetTicks();
 	const unsigned long frameticks = NES_CPU_FREQ / 60;
 	unsigned long clk = 0;
 	while (update_events()) {
@@ -250,10 +255,11 @@ int main(const int argc, const char* const* const argv)
 		}
 		#endif
 
-		//TODO: (Rafael Moura) fix this, make it sync
-		// to video 60 fps instead of sync to audio
-		while (SDL_GetQueuedAudioSize(audio_device) > 0)
-			SDL_Delay(1);
+		const Uint32 now = SDL_GetTicks();
+		const Uint32 timediff = now - frametimer;
+		if (timediff < (1000 / 60))
+			SDL_Delay((1000 / 60) - timediff);
+		frametimer = SDL_GetTicks();
 	}
 
 	exitcode = EXIT_SUCCESS;

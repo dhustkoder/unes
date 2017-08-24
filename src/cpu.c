@@ -68,8 +68,8 @@ static bool irq_pass;
 static uint16_t pc;
 static uint8_t a, x, y, s;
 static struct { bool c : 1, z : 1, i : 1, d : 1, v : 1, n : 1; } flags;
-static uint8_t padstate[JOYPAD_NJOYPADS];
-static int8_t padshifts[JOYPAD_NJOYPADS];
+static uint8_t padstate[2];
+static int8_t padshifts[2];
 static bool padstrobe;
 static uint8_t ram[0x800];  // zeropage,stack,ram
 
@@ -92,14 +92,14 @@ static void setflags(const uint8_t val)
 
 
 // cpu memory bus
-static void oam_dma(uint8_t n);
+static void oam_dma(uint8_t val);
 
 static void joywrite(const uint8_t val)
 {
 	const bool oldstrobe = padstrobe;
 	padstrobe = (val&0x01) != 0;
 	if (oldstrobe && !padstrobe) {
-		for (unsigned pad = JOYPAD_ONE; pad < JOYPAD_NJOYPADS; ++pad) {
+		for (unsigned pad = 0; pad < 2; ++pad) {
 			padshifts[pad] = 0;
 			padstate[pad] = getpadstate(pad);
 		}
@@ -171,12 +171,12 @@ static void write(const uint8_t val, const uint16_t addr)
 		cpu_sram[addr&0x1FFF] = val;
 }
 
-static void oam_dma(const uint8_t n)
+static void oam_dma(const uint8_t val)
 {
 	extern uint8_t ppu_oam[0x100];
 	extern bool ppu_need_screen_update;
 	
-	const unsigned offset = 0x100 * n;
+	const unsigned offset = 0x100 * val;
 	if (offset < 0x2000 && (offset&0x1FFF) <= 0x1F00) {
 		const uint8_t* const pram = &ram[offset&0x7FF];
 		if (memcmp(ppu_oam, pram, 0x100) != 0) {

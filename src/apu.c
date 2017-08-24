@@ -1,14 +1,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "log.h"
 #include "audio.h"
 #include "cpu.h"
 #include "apu.h"
 
 
 #define FRAME_COUNTER_RATE     (NES_CPU_FREQ / 240)
-#define APU_SAMPLES_CNT_LIMIT  (NES_CPU_FREQ / 44100)
-#define SOUND_BUFFER_SIZE      (2048)
+#define APU_SAMPLES_CNT_LIMIT  (NES_CPU_FREQ / AUDIO_FREQUENCY)
 
 
 static int32_t frame_counter_clock;
@@ -18,8 +18,8 @@ static uint8_t frame_counter_mode;       // $4017
 static bool irq_inhibit;                 // $4017
 static bool oddtick;
 
-static int16_t sound_buffer[SOUND_BUFFER_SIZE];
-static int16_t sound_buffer_idx;
+static audio_t audio_buffer[AUDIO_BUFFER_SIZE];
+static int16_t audio_buffer_idx;
 static int8_t apu_samples_cnt;
 
 // Pulse channels
@@ -276,7 +276,7 @@ void resetapu(void)
 	set_irq_source(IRQ_SRC_APU_DMC_TIMER, false);
 
 	// sound buffer, apu sample buffer
-	sound_buffer_idx = 0;
+	audio_buffer_idx = 0;
 	apu_samples_cnt = 0;
 
 	// Pulse
@@ -291,12 +291,12 @@ void stepapu(const unsigned aputicks)
 		if (++apu_samples_cnt == APU_SAMPLES_CNT_LIMIT) {
 			apu_samples_cnt = 0;
 			update_channels_output();
-			const unsigned sample = pulse[0].out + pulse[1].out; 
-			sound_buffer[sound_buffer_idx] = sample * 256;
-			if (++sound_buffer_idx >= SOUND_BUFFER_SIZE) {
-				sound_buffer_idx = 0;
-				queue_sound_buffer((void*)sound_buffer,
-				                   sizeof sound_buffer);
+
+			const unsigned sample = pulse[0].out + pulse[1].out;
+			audio_buffer[audio_buffer_idx] = sample<<8;
+			if (++audio_buffer_idx >= AUDIO_BUFFER_SIZE) {
+				audio_buffer_idx = 0;
+				queue_audio_buffer(audio_buffer);
 			}
 		}
 		oddtick = !oddtick;

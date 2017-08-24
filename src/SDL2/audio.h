@@ -6,12 +6,17 @@
 
 
 #define AUDIO_MAX_VOLUME (SDL_MIX_MAXVOLUME)
+#define AUDIO_BUFFER_SIZE (2048)
+#define AUDIO_FREQUENCY (44100)
 
 
-static void queue_sound_buffer(const uint8_t* const buffer, const uint32_t len)
+typedef int16_t audio_t;
+
+
+static inline void queue_audio_buffer(const audio_t* const buffer)
 {
 	extern SDL_AudioDeviceID audio_device;
-	SDL_QueueAudio(audio_device, buffer, len);
+	SDL_QueueAudio(audio_device, buffer, sizeof(*buffer) * AUDIO_BUFFER_SIZE);
 }
 
 

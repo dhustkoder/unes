@@ -16,14 +16,12 @@ enum IrqSource {
 
 enum Joypad {
 	JOYPAD_ONE,
-	JOYPAD_TWO,
-	JOYPAD_NJOYPADS
+	JOYPAD_TWO
 };
 
 enum KeyState {
 	KEYSTATE_UP,
-	KEYSTATE_DOWN,
-	KEYSTATE_NKEYSTATES
+	KEYSTATE_DOWN
 };
 
 enum Key {
@@ -34,8 +32,7 @@ enum Key {
 	KEY_UP,
 	KEY_DOWN,
 	KEY_LEFT,
-	KEY_RIGHT,
-	KEY_NKEYS
+	KEY_RIGHT
 };
 
 

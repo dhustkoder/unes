@@ -7,7 +7,7 @@
 
 static uint8_t getpadstate(const enum Joypad pad)
 {
-	extern Uint8 sdl2_padstate[JOYPAD_NJOYPADS];
+	extern Uint8 sdl2_padstate[2];
 	return sdl2_padstate[pad];
 }
 
