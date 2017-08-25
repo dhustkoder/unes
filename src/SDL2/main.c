@@ -229,7 +229,7 @@ int main(const int argc, const char* const* const argv)
 
 	#ifdef UNES_SDL2_FPS_BENCH
 	Uint32 fpstimer = SDL_GetTicks();
-	unsigned fps = 0;
+	int fps = 0;
 	#endif
 
 	#define UNES_SDL2_VSYNC
@@ -237,16 +237,16 @@ int main(const int argc, const char* const* const argv)
 	Uint32 frametimer = SDL_GetTicks();
 	#endif
 
-	const unsigned long frameticks = NES_CPU_FREQ / 60;
-	unsigned long clk = 0;
+	const int32_t frameclk = NES_CPU_FREQ / 60;
+	int32_t clk = 0;
 	while (update_events()) {
 		do {
 			const unsigned ticks = stepcpu();
 			stepppu((ticks<<1) + ticks);
 			stepapu(ticks);
 			clk += ticks;
-		} while (clk < frameticks);
-		clk -= frameticks;
+		} while (clk < frameclk);
+		clk -= frameclk;
 
 		#ifdef UNES_SDL2_FPS_BENCH
 		++fps;

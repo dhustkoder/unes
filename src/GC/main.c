@@ -131,8 +131,11 @@ __attribute__((noreturn)) void main(void)
 	resetppu();
 	resetapu();
 
-	const uint32_t frameclks = NES_CPU_FREQ / 60;
-	uint32_t clk = 0;
+	const int32_t frameclk = NES_CPU_FREQ / 60;
+	int32_t clk = 0;
+
+	#define UNES_GC_VSYNC
+	#define UNES_GC_FPS_BENCH
 
 	#ifdef UNES_GC_FPS_BENCH
 	int fps = 0;
@@ -141,12 +144,12 @@ __attribute__((noreturn)) void main(void)
 
 	for (;;) {
 		do {
-			const unsigned stepclks = stepcpu();
-			stepppu(stepclks * 3);
-			stepapu(stepclks);
-			clk += stepclks;
-		} while (clk < frameclks);
-		clk -= frameclks;
+			const unsigned ticks = stepcpu();
+			stepppu((ticks<<1) + ticks);
+			stepapu(ticks);
+			clk += ticks;
+		} while (clk < frameclk);
+		clk -= frameclk;
 
 		update_pad_events();
 
