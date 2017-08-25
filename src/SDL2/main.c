@@ -227,12 +227,13 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
-	#ifdef UNES_FPS_BENCH
+	#ifdef UNES_SDL2_FPS_BENCH
 	Uint32 fpstimer = SDL_GetTicks();
 	unsigned fps = 0;
 	#endif
 
-	#ifdef UNES_VSYNC
+	#define UNES_SDL2_VSYNC
+	#ifdef UNES_SDL2_VSYNC
 	Uint32 frametimer = SDL_GetTicks();
 	#endif
 
@@ -247,7 +248,7 @@ int main(const int argc, const char* const* const argv)
 		} while (clk < frameticks);
 		clk -= frameticks;
 
-		#ifdef UNES_FPS_BENCH
+		#ifdef UNES_SDL2_FPS_BENCH
 		++fps;
 		const Uint32 fpsnow = SDL_GetTicks();
 		if ((fpsnow - fpstimer) >= 1000) {
@@ -257,7 +258,7 @@ int main(const int argc, const char* const* const argv)
 		}
 		#endif
 
-		#ifdef UNES_VSYNC
+		#ifdef UNES_SDL2_VSYNC
 		const Uint32 now = SDL_GetTicks();
 		const Uint32 timediff = now - frametimer;
 		if (timediff < (1000 / 60))

@@ -94,25 +94,17 @@ static void quit(void)
 static void update_pad_events(void)
 {
 	PAD_ScanPads();
-	static int old_buttons[2] = { 0, 0 };
 	const int buttons[2] = { PAD_ButtonsHeld(0), PAD_ButtonsHeld(1) };
 
-	if (buttons[0] != old_buttons[0]) {
-		if (buttons[0]&PAD_TRIGGER_L) {
-			VIDEO_SetNextFramebuffer(console_fb);
-			VIDEO_Flush();
-		} else if (buttons[0]&PAD_TRIGGER_R) {
-			VIDEO_SetNextFramebuffer(gc_fb);
-			VIDEO_Flush();
-		}
+	if (buttons[0]&PAD_TRIGGER_L) {
+		VIDEO_SetNextFramebuffer(console_fb);
+		VIDEO_Flush();
+	} else if (buttons[0]&PAD_TRIGGER_R) {
+		VIDEO_SetNextFramebuffer(gc_fb);
+		VIDEO_Flush();
 	}
 
 	for (unsigned i = 0; i < 2; ++i) {
-		if (buttons[i] == old_buttons[i])
-			continue;
-
-		old_buttons[i] = buttons[i];
-
 		gc_nes_padstate[i] =
 			((buttons[i]&PAD_BUTTON_A) != 0)<<KEY_A          |
 			((buttons[i]&PAD_BUTTON_B) != 0)<<KEY_B          |
@@ -142,6 +134,9 @@ __attribute__((noreturn)) void main(void)
 	const uint32_t frameclks = NES_CPU_FREQ / 60;
 	uint32_t clk = 0;
 
+	int fps = 0;
+	time_t fpstimer = 0;
+
 	for (;;) {
 		do {
 			const unsigned stepclks = stepcpu();
@@ -153,18 +148,15 @@ __attribute__((noreturn)) void main(void)
 
 		update_pad_events();
 
-		static int fps = 0;
-		static time_t timer = 0;
-
 		++fps;
 		const time_t now = time(NULL);
-		if ((now - timer) >= 1) {
+		if ((now - fpstimer) >= 1) {
 			loginfo("FPS: %.4d\r", fps);
 			fps = 0;
-			timer = now;
+			fpstimer = now;
 		}
 
-		VIDEO_WaitVSync();
+		//VIDEO_WaitVSync();
 	}
 
 	freerom();

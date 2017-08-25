@@ -59,8 +59,7 @@ static const uint8_t clock_table[0x100] = {
 // globals
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
-uint8_t cpu_prgrom[0x8000]; // writen by rom.c
-uint8_t cpu_sram[0x2000];   // only this bank is supported for sram now
+const uint8_t* cpu_prgrom[2]; // lower and upper banks, switching is done in rom.c 
 
 // cpu.c
 static uint16_t step_cycles;
@@ -149,13 +148,13 @@ static void iowrite(const uint8_t val, const uint16_t addr)
 static uint8_t read(const uint16_t addr)
 {
 	if (addr >= ADDR_PRGROM)
-		return cpu_prgrom[addr&0x7FFF];
+		return cpu_prgrom[addr >= ADDR_PRGROM_UPPER][addr&0x3FFF];
 	else if (addr < ADDR_IOREGS1)
 		return ram[addr&0x7FF];
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-	else
-		return cpu_sram[addr&0x1FFF];
+
+	return 0;
 }
 
 static void write(const uint8_t val, const uint16_t addr)
@@ -166,8 +165,6 @@ static void write(const uint8_t val, const uint16_t addr)
 		iowrite(val, addr);
 	else if (addr >= ADDR_PRGROM)
 		romwrite(val, addr);
-	else
-		cpu_sram[addr&0x1FFF] = val;
 }
 
 static void oam_dma(const uint8_t val)

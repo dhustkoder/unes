@@ -16,7 +16,7 @@ extern uint8_t* ppu_patterntable_upper;
 extern uint8_t* ppu_patterntable_lower;
 extern bool ppu_need_screen_update;
 // cpu.c controls
-extern uint8_t cpu_prgrom[0x8000];
+extern const uint8_t* cpu_prgrom[2];
 extern uint8_t cpu_sram[0x2000];
 
 
@@ -51,7 +51,6 @@ static union {
 } mapper;
 
 
-
 // MMC1
 static void mmc1_update(const unsigned modified_reg_index)
 {
@@ -83,31 +82,30 @@ static void mmc1_update(const unsigned modified_reg_index)
 	}
 
 	// PRG bank
-	const uint8_t reg3 = mapper.mmc1.reg[3]&0x0F;
+	uint8_t reg3 = mapper.mmc1.reg[3]&0x0F;
+	const uint8_t reg0b23 = (mapper.mmc1.reg[0]&0x0C)>>2;
 	unsigned bank;
-	switch ((mapper.mmc1.reg[0]&0x0C)>>2) {
-	case 0x00:
-		// switch 32kb at $8000
+	switch (reg0b23) {
+	case 0x00: // switch 32kb at $8000
+	case 0x01: // switch 32kb at $8000 ignoring low bit of bank number
+		if (reg0b23 == 0x01)
+			reg3 &= 0x0E;
 		bank = PRGROM_BANK_SIZE * 2 * reg3;
-		memcpy(cpu_prgrom, &prgdata[bank], 0x8000);
-		break;
-	case 0x01:
-		// switch 32kb at $8000 ignoring low bit of bank number
-		bank = PRGROM_BANK_SIZE * 2 * (reg3&0x0E);
-		memcpy(cpu_prgrom, &prgdata[bank], 0x8000);
+		cpu_prgrom[0] = &prgdata[bank];
+		cpu_prgrom[1] = &prgdata[bank + 0x4000];
 		break;
 	case 0x02:
 		// fix first bank at $8000 and switch 16kb banks at $C000
 		bank = PRGROM_BANK_SIZE * reg3;
-		memcpy(cpu_prgrom, prgdata, 0x4000);
-		memcpy(&cpu_prgrom[0x4000], &prgdata[bank], 0x4000);
+		cpu_prgrom[0] = prgdata;
+		cpu_prgrom[1] = &prgdata[bank];
 		break;
-	default:
+	default:/*0x03*/
 		// fix last bank at $C000 and switch 16kb banks at $8000
-		bank = prgrom_size - PRGROM_BANK_SIZE;
-		memcpy(&cpu_prgrom[0x4000], &prgdata[bank], 0x4000);
 		bank = PRGROM_BANK_SIZE * reg3;
-		memcpy(cpu_prgrom, &prgdata[bank], 0x4000);
+		cpu_prgrom[0] = &prgdata[bank];
+		bank = prgrom_size - PRGROM_BANK_SIZE;
+		cpu_prgrom[1] = &prgdata[bank];
 		break;
 	}
 }
@@ -142,10 +140,11 @@ static void initmapper(void)
 	case NROM:
 		// cpu prg map
 		if (ines.prgrom_nbanks > 1) {
-			memcpy(cpu_prgrom, prgdata, 0x8000);
+			cpu_prgrom[0] = prgdata;
+			cpu_prgrom[1] = prgdata + 0x4000;
 		} else {
-			memcpy(cpu_prgrom, prgdata, 0x4000);
-			memcpy(&cpu_prgrom[0x4000], prgdata, 0x4000);
+			cpu_prgrom[0] = prgdata;
+			cpu_prgrom[1] = prgdata;
 		}
 		// ppu map
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
