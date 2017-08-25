@@ -154,9 +154,8 @@ static uint8_t read(const uint16_t addr)
 		return ram[addr&0x7FF];
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-	else if (addr >= ADDR_SRAM)
+	else
 		return cpu_sram[addr&0x1FFF];
-	return 0;
 }
 
 static void write(const uint8_t val, const uint16_t addr)
@@ -167,7 +166,7 @@ static void write(const uint8_t val, const uint16_t addr)
 		iowrite(val, addr);
 	else if (addr >= ADDR_PRGROM)
 		romwrite(val, addr);
-	else if (addr >= ADDR_SRAM)
+	else
 		cpu_sram[addr&0x1FFF] = val;
 }
 

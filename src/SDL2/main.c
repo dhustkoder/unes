@@ -227,13 +227,15 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
-	#define FPS_BENCH
-	#ifdef FPS_BENCH
+	#ifdef UNES_FPS_BENCH
 	Uint32 fpstimer = SDL_GetTicks();
 	unsigned fps = 0;
 	#endif
 
+	#ifdef UNES_VSYNC
 	Uint32 frametimer = SDL_GetTicks();
+	#endif
+
 	const unsigned long frameticks = NES_CPU_FREQ / 60;
 	unsigned long clk = 0;
 	while (update_events()) {
@@ -245,7 +247,7 @@ int main(const int argc, const char* const* const argv)
 		} while (clk < frameticks);
 		clk -= frameticks;
 
-		#ifdef FPS_BENCH
+		#ifdef UNES_FPS_BENCH
 		++fps;
 		const Uint32 fpsnow = SDL_GetTicks();
 		if ((fpsnow - fpstimer) >= 1000) {
@@ -255,11 +257,13 @@ int main(const int argc, const char* const* const argv)
 		}
 		#endif
 
+		#ifdef UNES_VSYNC
 		const Uint32 now = SDL_GetTicks();
 		const Uint32 timediff = now - frametimer;
 		if (timediff < (1000 / 60))
 			SDL_Delay((1000 / 60) - timediff);
 		frametimer = SDL_GetTicks();
+		#endif
 	}
 
 	exitcode = EXIT_SUCCESS;
