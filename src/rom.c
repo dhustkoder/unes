@@ -1,9 +1,7 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <inttypes.h>
-#include <string.h>
-#include <errno.h>
-#include <assert.h>
 #include "log.h"
 #include "cpu.h"
 #include "ppu.h"

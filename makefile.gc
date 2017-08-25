@@ -14,7 +14,7 @@ CFLAGS_RELEASE=-Werror -O3 -ffast-math -fstrict-aliasing \
 	       -ffunction-sections -fdata-sections -fno-unwind-tables  \
 	       -fno-asynchronous-unwind-tables -DNDEBUG
 
-LDFLAGS= $(MACHDEP) -L$(LIBOGC_LIB) -logc -lm
+LDFLAGS=$(MACHDEP) -L$(LIBOGC_LIB) -logc
 LDFLAGS_DEBUG=-g
 LDFLAGS_RELEASE=-s -Wl,--gc-sections
 
