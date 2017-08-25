@@ -244,7 +244,7 @@ bool loadrom(const uint8_t* const data)
 	return true;
 }
 
-void freerom(void)
+void unloadrom(void)
 {
 	if (rom_chr_is_ram)
 		free(chrdata);

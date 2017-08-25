@@ -208,12 +208,12 @@ int main(const int argc, const char* const* const argv)
 		return EXIT_FAILURE;
 	}
 
-	uint8_t* const data = readfile(argv[1]);
-	if (data == NULL)
+	uint8_t* const rom = readfile(argv[1]);
+	if (rom == NULL)
 		return EXIT_FAILURE;
 
-	if (!loadrom(data)) {
-		free(data);	
+	if (!loadrom(rom)) {
+		free(rom);	
 		return EXIT_FAILURE;
 	}
 
@@ -270,7 +270,7 @@ int main(const int argc, const char* const* const argv)
 	exitcode = EXIT_SUCCESS;
 	terminate_platform();
 Lfreerom:
-	freerom();
-	free(data);
+	unloadrom();
+	free(rom);
 	return exitcode;
 }

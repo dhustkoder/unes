@@ -134,8 +134,10 @@ __attribute__((noreturn)) void main(void)
 	const uint32_t frameclks = NES_CPU_FREQ / 60;
 	uint32_t clk = 0;
 
+	#ifdef UNES_GC_FPS_BENCH
 	int fps = 0;
 	time_t fpstimer = 0;
+	#endif
 
 	for (;;) {
 		do {
@@ -148,6 +150,7 @@ __attribute__((noreturn)) void main(void)
 
 		update_pad_events();
 
+		#ifdef UNES_GC_FPS_BENCH
 		++fps;
 		const time_t now = time(NULL);
 		if ((now - fpstimer) >= 1) {
@@ -155,10 +158,13 @@ __attribute__((noreturn)) void main(void)
 			fps = 0;
 			fpstimer = now;
 		}
+		#endif
 
-		//VIDEO_WaitVSync();
+		#ifdef UNES_GC_VSYNC
+		VIDEO_WaitVSync();
+		#endif
 	}
 
-	freerom();
+	unloadrom();
 	quit();
 }
