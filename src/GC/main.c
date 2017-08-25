@@ -131,9 +131,6 @@ __attribute__((noreturn)) void main(void)
 	resetppu();
 	resetapu();
 
-	const int32_t frameclk = NES_CPU_FREQ / 60;
-	int32_t clk = 0;
-
 	#define UNES_GC_VSYNC
 	#define UNES_GC_FPS_BENCH
 
@@ -142,6 +139,8 @@ __attribute__((noreturn)) void main(void)
 	time_t fpstimer = 0;
 	#endif
 
+	const int32_t frameclk = NES_CPU_FREQ / 60;
+	int32_t clk = 0;
 	for (;;) {
 		do {
 			const unsigned ticks = stepcpu();
