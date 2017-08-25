@@ -208,19 +208,16 @@ int main(const int argc, const char* const* const argv)
 		return EXIT_FAILURE;
 	}
 
-	uint8_t* const rom = readfile(argv[1]);
-	if (rom == NULL)
+	if (!initialize_platform())
 		return EXIT_FAILURE;
 
-	if (!loadrom(rom)) {
-		free(rom);	
-		return EXIT_FAILURE;
-	}
-
-	// initialize SDL2 and run game
 	int exitcode = EXIT_FAILURE;
 
-	if (!initialize_platform())
+	uint8_t* const rom = readfile(argv[1]);
+	if (rom == NULL)
+		goto Lterminate_platform;
+
+	if (!loadrom(rom))
 		goto Lfreerom;
 
 	resetcpu();
@@ -268,9 +265,10 @@ int main(const int argc, const char* const* const argv)
 	}
 
 	exitcode = EXIT_SUCCESS;
-	terminate_platform();
-Lfreerom:
 	unloadrom();
+Lfreerom:
 	free(rom);
+Lterminate_platform:
+	terminate_platform();
 	return exitcode;
 }
