@@ -224,12 +224,14 @@ int main(const int argc, const char* const* const argv)
 	resetapu();
 	resetppu();
 
+	#define UNES_SDL2_FPS_BENCH
+	#define UNES_SDL2_VSYNC
+
 	#ifdef UNES_SDL2_FPS_BENCH
 	Uint32 fpstimer = SDL_GetTicks();
 	int fps = 0;
 	#endif
 
-	#define UNES_SDL2_VSYNC
 	#ifdef UNES_SDL2_VSYNC
 	Uint32 frametimer = SDL_GetTicks();
 	#endif

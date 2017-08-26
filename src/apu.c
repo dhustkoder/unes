@@ -10,6 +10,7 @@
 #define APU_SAMPLES_CNT_LIMIT  (NES_CPU_FREQ / AUDIO_FREQUENCY)
 
 
+// apu.c
 static int32_t frame_counter_clock;
 static int8_t delayed_frame_timer_reset;
 static uint8_t status;                   // $4015

@@ -17,9 +17,9 @@ extern bool ppu_need_screen_update;
 extern const uint8_t* cpu_prgrom[2];
 extern uint8_t cpu_sram[0x2000];
 
-
-// rom.c
+// rom.c global
 bool rom_chr_is_ram;
+// rom.c
 static int32_t prgrom_size;
 static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;

@@ -9,7 +9,7 @@
 
 #define PPU_FRAME_TICKS (341)
 
-// globals
+// ppu.c globals
 enum NTMirroringMode ppu_ntmirroring_mode;
 uint8_t* ppu_patterntable_upper;
 uint8_t* ppu_patterntable_lower;
