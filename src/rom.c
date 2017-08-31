@@ -61,22 +61,24 @@ static void mmc1_update(const unsigned modified_reg_index)
 			NTMIRRORING_HORIZONTAL
 		};
 		ppu_ntmirroring_mode = modes[mapper.mmc1.reg[0]&0x03];
+		ppu_need_screen_update = true;
+	}
 
+	if (modified_reg_index != 3 && !rom_chr_is_ram) {
 		// CHR bank
 		const uint8_t* const reg = mapper.mmc1.reg;
 		uint8_t* const chr = chrdata;
+		const uint8_t mod = ines.chrrom_nbanks;
 		if ((reg[0]&0x10) == 0) {
 			// switch 8kb banks at $0000 - $1FFF
-			ppu_patterntable_lower = &chr[(reg[1]&0x1E) * 8192];
+			ppu_patterntable_lower = &chr[((reg[1]&0x1E) % mod) * 0x2000];
 			ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
 		} else {
 			// switch 4kb banks at $0000 - $0FFF
-			ppu_patterntable_lower = &chr[reg[1] * 4096];
+			ppu_patterntable_lower = &chr[(reg[1] % mod) * 0x1000];
 			// switch 4kb banks at $1000 - $1FFF
-			ppu_patterntable_upper = &chr[reg[2] * 4096];
+			ppu_patterntable_upper = &chr[(reg[2] % mod) * 0x1000];
 		}
-
-		ppu_need_screen_update = true;
 	}
 
 	// PRG bank
@@ -152,6 +154,10 @@ static void initmapper(void)
 		ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
 		break;
 	case MMC1:
+		if (rom_chr_is_ram) {
+			ppu_patterntable_lower = chrdata;
+			ppu_patterntable_upper = chrdata + 0x1000;
+		}
 		mapper.mmc1.reg[0] = 0x0C;
 		memset(mapper.mmc1.reglast, 0xFF, sizeof mapper.mmc1.reglast);
 		mmc1_update(0);
