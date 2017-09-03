@@ -11,8 +11,7 @@
 
 // ppu.c globals
 enum NTMirroringMode ppu_ntmirroring_mode;
-uint8_t* ppu_patterntable_upper;
-uint8_t* ppu_patterntable_lower;
+uint8_t* ppu_patterntable[2];
 bool ppu_need_screen_update;
 uint8_t ppu_oam[0x100];
 
@@ -95,9 +94,7 @@ static void draw_bg_scanline(void)
 
 	const uint8_t* const nt = &nametables[eval_nt_offset((ppuctrl&0x03)<<10)];
 	const uint8_t* const at = nt + 0x3C0;
-	const uint8_t* const pattern = (ppuctrl&0x10) 
-		                       ? ppu_patterntable_upper
-				       : ppu_patterntable_lower;
+	const uint8_t* const pattern = ppu_patterntable[(ppuctrl&0x10)>>4];
 	const unsigned greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
 	const unsigned spritey = scanline&0x07;
 	const unsigned ysprite = scanline>>3;
@@ -129,8 +126,6 @@ static void draw_sprite_scanline(void)
 
 	const unsigned ypos = scanline;
 	const unsigned sprh = (ppuctrl&0x20) ? 16 : 8;
-	const uint8_t* const pupper = ppu_patterntable_upper;
-	const uint8_t* const plower = ppu_patterntable_lower;
 	const uint8_t* poam = ppu_oam + 0xFC;
 	struct {
 		uint8_t y;
@@ -152,10 +147,10 @@ static void draw_sprite_scanline(void)
 		const uint8_t* pattern;
 		if (sprh == 8) {
 			tileidx = spr.tile<<4;
-			pattern = (ppuctrl&0x08) ? pupper : plower;
+			pattern = ppu_patterntable[(ppuctrl&0x08)>>3];
 		} else {
 			tileidx = (spr.tile>>1)<<5;
-			pattern = (spr.tile&0x01) ? pupper : plower;
+			pattern = ppu_patterntable[spr.tile&0x01];
 			if (tiley > 7)
 				tileidx += 8;
 		}
@@ -294,10 +289,8 @@ static void ppuaddr_inc(void)
 static uint8_t read_ppudata(void)
 {
 	uint8_t r;
-	if (ppuaddr < 0x1000)
-		r = ppu_patterntable_lower[ppuaddr];
-	else if (ppuaddr < 0x2000)
-		r = ppu_patterntable_upper[ppuaddr&0xFFF];
+	if (ppuaddr < 0x2000)
+		r = ppu_patterntable[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
 	else if (ppuaddr < 0x3F00)
 		r = nametables[eval_nt_offset(ppuaddr)];
 	else
@@ -315,10 +308,7 @@ static void write_ppudata(const uint8_t val)
 	if (ppuaddr < 0x2000) {
 		if (!rom_chr_is_ram)
 			goto Lppuaddr_inc;
-		else if (ppuaddr < 0x1000)
-			dest = &ppu_patterntable_lower[ppuaddr];
-		else
-			dest = &ppu_patterntable_upper[ppuaddr&0xFFF];
+		dest = &ppu_patterntable[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
 	} else if (ppuaddr < 0x3F00) {
 		dest = &nametables[eval_nt_offset(ppuaddr)];
 	} else {

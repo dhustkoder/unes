@@ -10,8 +10,7 @@
 
 // ppu.c controls
 extern enum NTMirroringMode ppu_ntmirroring_mode;
-extern uint8_t* ppu_patterntable_upper;
-extern uint8_t* ppu_patterntable_lower;
+extern uint8_t* ppu_patterntable[2];
 extern bool ppu_need_screen_update;
 // cpu.c controls
 extern const uint8_t* cpu_prgrom[2];
@@ -71,13 +70,13 @@ static void mmc1_update(const unsigned modified_reg_index)
 		const uint8_t mod = ines.chrrom_nbanks;
 		if ((reg[0]&0x10) == 0) {
 			// switch 8kb banks at $0000 - $1FFF
-			ppu_patterntable_lower = &chr[((reg[1]&0x1E) % mod) * 0x2000];
-			ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
+			ppu_patterntable[0] = &chr[((reg[1]&0x1E) % mod) * 0x2000];
+			ppu_patterntable[1] = ppu_patterntable[0] + 0x1000;
 		} else {
 			// switch 4kb banks at $0000 - $0FFF
-			ppu_patterntable_lower = &chr[(reg[1] % mod) * 0x1000];
+			ppu_patterntable[0] = &chr[(reg[1] % mod) * 0x1000];
 			// switch 4kb banks at $1000 - $1FFF
-			ppu_patterntable_upper = &chr[(reg[2] % mod) * 0x1000];
+			ppu_patterntable[1] = &chr[(reg[2] % mod) * 0x1000];
 		}
 	}
 
@@ -150,13 +149,13 @@ static void initmapper(void)
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
 			? NTMIRRORING_VERTICAL
 			: NTMIRRORING_HORIZONTAL;
-		ppu_patterntable_lower = chrdata;
-		ppu_patterntable_upper = ppu_patterntable_lower + 0x1000;
+		ppu_patterntable[0] = chrdata;
+		ppu_patterntable[1] = chrdata + 0x1000;
 		break;
 	case MMC1:
 		if (rom_chr_is_ram) {
-			ppu_patterntable_lower = chrdata;
-			ppu_patterntable_upper = chrdata + 0x1000;
+			ppu_patterntable[0] = chrdata;
+			ppu_patterntable[1] = chrdata + 0x1000;
 		}
 		mapper.mmc1.reg[0] = 0x0C;
 		memset(mapper.mmc1.reglast, 0xFF, sizeof mapper.mmc1.reglast);
