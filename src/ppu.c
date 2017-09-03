@@ -58,7 +58,7 @@ static int16_t eval_nt_offset(const uint16_t addr)
 
 static uint8_t eval_pal_rw_offset(const uint16_t addr)
 {
-	const uint8_t mirrors[0x20] = {
+	static const uint8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
 		0x04, 0x05, 0x06, 0x07,
 		0x08, 0x09, 0x0A, 0x0B,
@@ -74,7 +74,7 @@ static uint8_t eval_pal_rw_offset(const uint16_t addr)
 
 static uint8_t get_palette(const uint16_t addr)
 {
-	const uint8_t mirrors[0x20] = {
+	static const uint8_t mirrors[0x20] = {
 		0x00, 0x01, 0x02, 0x03,
 		0x00, 0x05, 0x06, 0x07,
 		0x00, 0x09, 0x0A, 0x0B,
@@ -126,38 +126,36 @@ static void draw_sprite_scanline(void)
 
 	const unsigned ypos = scanline;
 	const unsigned sprh = (ppuctrl&0x20) ? 16 : 8;
-	const uint8_t* poam = ppu_oam + 0xFC;
 	struct {
 		uint8_t y;
 		uint8_t tile;
 		uint8_t attr;
 		uint8_t x;
-	} spr;
-	for (unsigned drawn = 0; poam >= ppu_oam && drawn < 8; poam -= 4) {
-		memcpy(&spr, poam, sizeof spr);
-		++spr.y;
-		if (spr.y == 0 || spr.y > ypos || (ypos >= (spr.y + sprh)))
+	} *spr = (void*) (ppu_oam + 0xFC);
+	for (unsigned drawn = 0; (uint8_t*)spr >= ppu_oam && drawn < 8; --spr) {
+		if ((spr->y + 1u) == 0 || (spr->y + 1u) > ypos ||
+		    (ypos >= ((spr->y + 1u) + sprh)))
 			continue;
 
 		++drawn;
-		const unsigned tiley = (spr.attr&0x80) == 0
-		                 ? (ypos - spr.y)
-		                 : (unsigned) -(signed)((ypos - spr.y) - (sprh - 1)); // flip vertically
+		const unsigned tiley = (spr->attr&0x80) == 0
+		                 ? (ypos - (spr->y + 1u))
+		                 : (unsigned) -(signed)((ypos - (spr->y + 1u)) - (sprh - 1u)); // flip vertically
 		unsigned tileidx;
 		const uint8_t* pattern;
 		if (sprh == 8) {
-			tileidx = spr.tile<<4;
+			tileidx = spr->tile<<4;
 			pattern = ppu_patterntable[(ppuctrl&0x08)>>3];
 		} else {
-			tileidx = (spr.tile>>1)<<5;
-			pattern = ppu_patterntable[spr.tile&0x01];
+			tileidx = (spr->tile>>1)<<5;
+			pattern = ppu_patterntable[spr->tile&0x01];
 			if (tiley > 7)
 				tileidx += 8;
 		}
 
 		uint8_t b0 = pattern[tileidx + tiley];
 		uint8_t b1 = pattern[tileidx + tiley + 8];
-		if ((spr.attr&0x40) != 0) {
+		if ((spr->attr&0x40) != 0) {
 			// flip horizontally
 			unsigned tmp0 = 0;
 			unsigned tmp1 = 0;
@@ -169,14 +167,14 @@ static void draw_sprite_scanline(void)
 			b1 = tmp1;
 		}
 
-		for (unsigned p = 0; p < 8 && (spr.x + p) < 256; ++p) {
+		for (unsigned p = 0; p < 8 && (spr->x + p) < 256; ++p) {
 			const unsigned c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
 			if (c == 0)
 				continue;
-			const unsigned paladdr = 0x10|((spr.attr&0x03)<<2)|c;
-		 	screen[ypos][spr.x + p] = get_palette(paladdr);
+			const unsigned paladdr = 0x10|((spr->attr&0x03)<<2)|c;
+		 	screen[ypos][spr->x + p] = get_palette(paladdr);
 		}
 	}
 
