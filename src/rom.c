@@ -9,7 +9,7 @@
 
 
 // ppu.c controls
-extern enum NTMirroringMode ppu_ntmirroring_mode;
+extern uint8_t ppu_ntmirroring_mode;
 extern uint8_t* ppu_patterntable[2];
 extern bool ppu_need_screen_update;
 // cpu.c controls

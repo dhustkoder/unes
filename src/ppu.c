@@ -10,7 +10,7 @@
 #define PPU_FRAME_TICKS (341)
 
 // ppu.c globals
-enum NTMirroringMode ppu_ntmirroring_mode;
+uint8_t ppu_ntmirroring_mode;
 uint8_t* ppu_patterntable[2];
 bool ppu_need_screen_update;
 uint8_t ppu_oam[0x100];
