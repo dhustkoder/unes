@@ -127,7 +127,7 @@ static void iowrite(const uint8_t val, const uint16_t addr)
 static uint8_t read(const uint16_t addr)
 {
 	if (addr >= ADDR_PRGROM)
-		return cpu_prgrom[addr >= ADDR_PRGROM_UPPER][addr&0x3FFF];
+		return cpu_prgrom[(addr>>14)&0x01][addr&0x3FFF];
 	else if (addr < ADDR_IOREGS1)
 		return ram[addr&0x7FF];
 	else if (addr < ADDR_EXPROM)

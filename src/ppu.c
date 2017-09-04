@@ -288,7 +288,7 @@ static uint8_t read_ppudata(void)
 {
 	uint8_t r;
 	if (ppuaddr < 0x2000)
-		r = ppu_pattern[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
+		r = ppu_pattern[(ppuaddr>>12)&0x01][ppuaddr&0xFFF];
 	else if (ppuaddr < 0x3F00)
 		r = nametables[eval_nt_offset(ppuaddr)];
 	else
@@ -306,7 +306,7 @@ static void write_ppudata(const uint8_t val)
 	if (ppuaddr < 0x2000) {
 		if (!rom_chr_is_ram)
 			goto Lppuaddr_inc;
-		dest = &ppu_pattern[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
+		dest = &ppu_pattern[(ppuaddr>>12)&0x01][ppuaddr&0xFFF];
 	} else if (ppuaddr < 0x3F00) {
 		dest = &nametables[eval_nt_offset(ppuaddr)];
 	} else {

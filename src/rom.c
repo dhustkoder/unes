@@ -83,29 +83,23 @@ static void mmc1_update(const unsigned modified_reg_index)
 
 	// PRG bank
 	uint8_t reg3 = mapper.mmc1.reg[3]&0x0F;
-	const uint8_t reg0b23 = (mapper.mmc1.reg[0]&0x0C)>>2;
-	unsigned bank;
+	const uint8_t reg0b23 = (mapper.mmc1.reg[0]>>2)&0x03;
 	switch (reg0b23) {
-	case 0x00: // switch 32kb at $8000
 	case 0x01: // switch 32kb at $8000 ignoring low bit of bank number
-		if (reg0b23 == 0x01)
-			reg3 &= 0x0E;
-		bank = PRGROM_BANK_SIZE * 2 * reg3;
-		cpu_prgrom[0] = &prgdata[bank];
-		cpu_prgrom[1] = &prgdata[bank + 0x4000];
+		reg3 &= 0x0E; // fallthrough
+	case 0x00: // switch 32kb at $8000
+		cpu_prgrom[0] = &prgdata[PRGROM_BANK_SIZE * 2 * reg3];
+		cpu_prgrom[1] = cpu_prgrom[0] + 0x4000;
 		break;
 	case 0x02:
 		// fix first bank at $8000 and switch 16kb banks at $C000
-		bank = PRGROM_BANK_SIZE * reg3;
 		cpu_prgrom[0] = prgdata;
-		cpu_prgrom[1] = &prgdata[bank];
+		cpu_prgrom[1] = &prgdata[PRGROM_BANK_SIZE * reg3];
 		break;
 	default:/*0x03*/
 		// fix last bank at $C000 and switch 16kb banks at $8000
-		bank = PRGROM_BANK_SIZE * reg3;
-		cpu_prgrom[0] = &prgdata[bank];
-		bank = prgrom_size - PRGROM_BANK_SIZE;
-		cpu_prgrom[1] = &prgdata[bank];
+		cpu_prgrom[0] = &prgdata[PRGROM_BANK_SIZE * reg3];
+		cpu_prgrom[1] = &prgdata[prgrom_size - PRGROM_BANK_SIZE];
 		break;
 	}
 }
@@ -116,7 +110,7 @@ static void mmc1_write(const uint8_t value, const uint16_t addr)
 		mapper.mmc1.tmp = (mapper.mmc1.tmp>>1)|((value&0x01)<<4);
 		if (++mapper.mmc1.shiftcnt == 5) {
 			mapper.mmc1.shiftcnt = 0;
-			const unsigned regidx = (addr&0x6000)>>13;
+			const unsigned regidx = (addr>>13)&0x03;
 			mapper.mmc1.reg[regidx] = mapper.mmc1.tmp;
 			if (mapper.mmc1.reglast[regidx] != mapper.mmc1.reg[regidx]) {
 				mmc1_update(regidx);
