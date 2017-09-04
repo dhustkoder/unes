@@ -10,7 +10,7 @@
 
 // ppu.c controls
 extern uint8_t ppu_ntmirroring_mode;
-extern uint8_t* ppu_patterntable[2];
+extern uint8_t* ppu_pattern[2];
 extern bool ppu_need_screen_update;
 // cpu.c controls
 extern const uint8_t* cpu_prgrom[2];
@@ -51,7 +51,7 @@ static union {
 // MMC1
 static void mmc1_update(const unsigned modified_reg_index)
 {
-	if (modified_reg_index != 3) {
+	if (modified_reg_index == 0) {
 		// nametable mirroring mode
 		const uint8_t modes[] = {
 			NTMIRRORING_ONE_SCREEN_LOW,
@@ -63,20 +63,21 @@ static void mmc1_update(const unsigned modified_reg_index)
 		ppu_need_screen_update = true;
 	}
 
-	if (modified_reg_index != 3 && !rom_chr_is_ram) {
+	if (!rom_chr_is_ram && modified_reg_index != 3) {
 		// CHR bank
+		ppu_need_screen_update = true;
 		const uint8_t* const reg = mapper.mmc1.reg;
 		uint8_t* const chr = chrdata;
 		const uint8_t mod = ines.chrrom_nbanks;
 		if ((reg[0]&0x10) == 0) {
 			// switch 8kb banks at $0000 - $1FFF
-			ppu_patterntable[0] = &chr[((reg[1]&0x1E) % mod) * 0x2000];
-			ppu_patterntable[1] = ppu_patterntable[0] + 0x1000;
+			ppu_pattern[0] = &chr[((reg[1]&0x1E) % mod) * 0x2000];
+			ppu_pattern[1] = ppu_pattern[0] + 0x1000;
 		} else {
 			// switch 4kb banks at $0000 - $0FFF
-			ppu_patterntable[0] = &chr[(reg[1] % mod) * 0x1000];
+			ppu_pattern[0] = &chr[(reg[1] % mod) * 0x1000];
 			// switch 4kb banks at $1000 - $1FFF
-			ppu_patterntable[1] = &chr[(reg[2] % mod) * 0x1000];
+			ppu_pattern[1] = &chr[(reg[2] % mod) * 0x1000];
 		}
 	}
 
@@ -149,13 +150,13 @@ static void initmapper(void)
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
 			? NTMIRRORING_VERTICAL
 			: NTMIRRORING_HORIZONTAL;
-		ppu_patterntable[0] = chrdata;
-		ppu_patterntable[1] = chrdata + 0x1000;
+		ppu_pattern[0] = chrdata;
+		ppu_pattern[1] = chrdata + 0x1000;
 		break;
 	case MMC1:
 		if (rom_chr_is_ram) {
-			ppu_patterntable[0] = chrdata;
-			ppu_patterntable[1] = chrdata + 0x1000;
+			ppu_pattern[0] = chrdata;
+			ppu_pattern[1] = chrdata + 0x1000;
 		}
 		mapper.mmc1.reg[0] = 0x0C;
 		memset(mapper.mmc1.reglast, 0xFF, sizeof mapper.mmc1.reglast);

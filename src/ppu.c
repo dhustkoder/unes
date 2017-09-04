@@ -11,7 +11,7 @@
 
 // ppu.c globals
 uint8_t ppu_ntmirroring_mode;
-uint8_t* ppu_patterntable[2];
+uint8_t* ppu_pattern[2]; // lower and upper tables
 bool ppu_need_screen_update;
 uint8_t ppu_oam[0x100];
 
@@ -94,7 +94,7 @@ static void draw_bg_scanline(void)
 
 	const uint8_t* const nt = &nametables[eval_nt_offset((ppuctrl&0x03)<<10)];
 	const uint8_t* const at = nt + 0x3C0;
-	const uint8_t* const pattern = ppu_patterntable[(ppuctrl&0x10)>>4];
+	const uint8_t* const pattern = ppu_pattern[(ppuctrl&0x10)>>4];
 	const unsigned greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
 	const unsigned spritey = scanline&0x07;
 	const unsigned ysprite = scanline>>3;
@@ -145,10 +145,10 @@ static void draw_sprite_scanline(void)
 		const uint8_t* pattern;
 		if (sprh == 8) {
 			tileidx = spr->tile<<4;
-			pattern = ppu_patterntable[(ppuctrl&0x08)>>3];
+			pattern = ppu_pattern[(ppuctrl&0x08)>>3];
 		} else {
 			tileidx = (spr->tile>>1)<<5;
-			pattern = ppu_patterntable[spr->tile&0x01];
+			pattern = ppu_pattern[spr->tile&0x01];
 			if (tiley > 7)
 				tileidx += 8;
 		}
@@ -288,7 +288,7 @@ static uint8_t read_ppudata(void)
 {
 	uint8_t r;
 	if (ppuaddr < 0x2000)
-		r = ppu_patterntable[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
+		r = ppu_pattern[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
 	else if (ppuaddr < 0x3F00)
 		r = nametables[eval_nt_offset(ppuaddr)];
 	else
@@ -306,7 +306,7 @@ static void write_ppudata(const uint8_t val)
 	if (ppuaddr < 0x2000) {
 		if (!rom_chr_is_ram)
 			goto Lppuaddr_inc;
-		dest = &ppu_patterntable[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
+		dest = &ppu_pattern[(ppuaddr&0x1000)>>12][ppuaddr&0xFFF];
 	} else if (ppuaddr < 0x3F00) {
 		dest = &nametables[eval_nt_offset(ppuaddr)];
 	} else {
