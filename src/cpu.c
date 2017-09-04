@@ -50,7 +50,7 @@ static uint8_t padstate[2];
 static int8_t padshifts[2];
 static bool padstrobe;
 static uint8_t ram[0x800];  // zeropage,stack,ram
-
+static uint8_t sram[0x2000];
 
 static uint8_t getflags(void)
 {
@@ -132,6 +132,8 @@ static uint8_t read(const uint16_t addr)
 		return ram[addr&0x7FF];
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
+	else if (addr >= ADDR_SRAM)
+		return sram[addr&0x1FFF];
 
 	return 0;
 }
@@ -144,6 +146,8 @@ static void write(const uint8_t val, const uint16_t addr)
 		iowrite(val, addr);
 	else if (addr >= ADDR_PRGROM)
 		romwrite(val, addr);
+	else if (addr >= ADDR_SRAM)
+		sram[addr&0x1FFF] = val;
 }
 
 static void oam_dma(const uint8_t val)
