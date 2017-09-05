@@ -16,8 +16,10 @@ extern bool ppu_need_screen_update;
 extern const uint8_t* cpu_prgrom[2];
 extern uint8_t cpu_sram[0x2000];
 
-// rom.c global
+// rom.c globals
 bool rom_chr_is_ram;
+uint8_t* rom_sram;
+
 // rom.c
 static int32_t prgrom_size;
 static int32_t chr_size;   // chrrom or chrram size
@@ -211,6 +213,11 @@ bool loadrom(const uint8_t* const data)
 		rom_chr_is_ram = false;
 	}
 
+	if (sram_size != 0)
+		rom_sram = calloc(sram_size, sizeof(uint8_t));
+	else
+		rom_sram = NULL;
+
 	loginfo("INES HEADER:\n"
                "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
 	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
@@ -246,4 +253,6 @@ void unloadrom(void)
 {
 	if (rom_chr_is_ram)
 		free(chrdata);
+	if (rom_sram != NULL)
+		free(rom_sram);
 }

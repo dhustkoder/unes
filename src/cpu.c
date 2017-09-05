@@ -35,10 +35,13 @@
 #define FLAG_N (0x80)
 
 
+// rom.c globals
+extern uint8_t* rom_sram; // sram control
+
 // cpu.c globals
 bool cpu_nmi;
 bool cpu_irq_sources[IRQ_SRC_SIZE];
-const uint8_t* cpu_prgrom[2]; // lower and upper banks, switching is done in rom.c 
+const uint8_t* cpu_prgrom[2]; // lower and upper banks, switching is done in rom.c
 
 // cpu.c
 static uint16_t step_cycles;
@@ -50,7 +53,7 @@ static uint8_t padstate[2];
 static int8_t padshifts[2];
 static bool padstrobe;
 static uint8_t ram[0x800];  // zeropage,stack,ram
-static uint8_t sram[0x2000];
+
 
 static uint8_t getflags(void)
 {
@@ -132,8 +135,8 @@ static uint8_t read(const uint16_t addr)
 		return ram[addr&0x7FF];
 	else if (addr < ADDR_EXPROM)
 		return ioread(addr);
-	else if (addr >= ADDR_SRAM)
-		return sram[addr&0x1FFF];
+	else if (rom_sram != NULL)
+		return rom_sram[addr&0x1FFF];
 
 	return 0;
 }
@@ -146,8 +149,8 @@ static void write(const uint8_t val, const uint16_t addr)
 		iowrite(val, addr);
 	else if (addr >= ADDR_PRGROM)
 		romwrite(val, addr);
-	else if (addr >= ADDR_SRAM)
-		sram[addr&0x1FFF] = val;
+	else if (rom_sram != NULL)
+		rom_sram[addr&0x1FFF] = val;
 }
 
 static void oam_dma(const uint8_t val)
