@@ -336,12 +336,10 @@ static void write_ppuaddr(const uint8_t val)
 
 static void write_ppuscroll(const uint8_t val)
 {
-	if (states.write_toggle) {
+	if (states.write_toggle)
 		ppuscroll |= val;
-	} else {
-		ppuscroll = 0;
+	else
 		ppuscroll = val<<8;
-	}
 
 	states.write_toggle = !states.write_toggle;
 }
