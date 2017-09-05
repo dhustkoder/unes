@@ -7,12 +7,7 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
-#include "ninjaslapper_bin.h"
-#include "instrtest_bin.h"
-#include "dushlan_bin.h"
-#include "megamanii_bin.h"
-#include "donkeykong_bin.h"
-#include "tetris_bin.h"
+#include "zelda_bin.h"
 
 
 #define RGB_TO_Y1CBY2CR(r, g, b)                                                    \
@@ -122,7 +117,7 @@ __attribute__((noreturn)) void main(void)
 {
 	initialize_platform();
 
-	if (!loadrom(megamanii)) {
+	if (!loadrom(zelda)) {
 		logerror("Couldn't load rom!\n");
 		quit();
 	}
