@@ -212,7 +212,7 @@ static uint16_t spop16(void)
 
 
 // instructions
-static inline void ld(uint8_t* const reg, const uint8_t val)
+static void ld(uint8_t* const reg, const uint8_t val)
 {
 	*reg = val;
 	flags.z = *reg == 0x00;
@@ -273,12 +273,12 @@ static uint8_t asl(uint8_t val)
 	return val;
 }
 
-static inline void opm(uint8_t(*const op)(uint8_t), const uint16_t addr)
+static void opm(uint8_t(*const op)(uint8_t), const uint16_t addr)
 {
 	write(op(read(addr)), addr);
 }
 
-static inline void opzp(uint8_t(*const op)(uint8_t), const uint8_t addr)
+static void opzp(uint8_t(*const op)(uint8_t), const uint8_t addr)
 {
 	ram[addr] = op(ram[addr]);
 }
