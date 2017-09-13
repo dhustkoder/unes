@@ -5,7 +5,8 @@ include $(DEVKITPPC)/gamecube_rules
 
 LD=$(CC)
 
-CFLAGS=-std=gnu11 -Wall -Wextra -Wshadow -Wno-main -I $(SRC_DIR) -I $(SRC_DIR)/GC \
+CFLAGS=-std=gnu11 -Wall -Wextra -Wshadow -Wno-main -ffreestanding \
+       -I $(SRC_DIR) -I $(SRC_DIR)/GC                             \
        $(MACHDEP) $(INCLUDE)  -I$(LIBOGC_INC) -DPLATFORM_GC
 
 CFLAGS_DEBUG=-Og -DDEBUG

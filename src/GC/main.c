@@ -2,6 +2,7 @@
 #include <ogcsys.h>
 #include <gccore.h>
 #include <inttypes.h>
+#include <stdnoreturn.h>
 #include "log.h"
 #include "rom.h"
 #include "cpu.h"
@@ -113,7 +114,7 @@ static void update_pad_events(void)
 }
 
 
-__attribute__((noreturn)) void main(void)
+noreturn void main(void)
 {
 	initialize_platform();
 
