@@ -67,7 +67,7 @@ asm: $(ASM) $(PLATFORM_ASM)
 
 $(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
+	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 $(OBJS_DIR)/%.o: $(SRC)
 	@mkdir -p $(PLATFORM_OBJS_DIR)
