@@ -116,8 +116,7 @@ static bool initialize_platform(void)
 		goto Lquitsdl;
 	}
 
-	renderer = SDL_CreateRenderer(window, -1,
-		   SDL_RENDERER_ACCELERATED);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL) {
 		logerror("Failed to create SDL_Renderer: %s\n", SDL_GetError());
 		goto Lfreewindow;
