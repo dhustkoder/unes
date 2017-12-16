@@ -251,8 +251,14 @@ bool loadrom(const uint8_t* const data)
 
 void unloadrom(void)
 {
-	if (rom_chr_is_ram)
+	if (chrdata != NULL) {
 		free(chrdata);
-	if (rom_sram != NULL)
+		chrdata = NULL;
+	}
+
+	if (rom_sram != NULL) {
 		free(rom_sram);
+		rom_sram = NULL;
+	}
 }
+
