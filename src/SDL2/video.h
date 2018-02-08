@@ -7,7 +7,6 @@
 
 static void render(const uint8_t* restrict const screen)
 {
-	extern SDL_Renderer* renderer;
 	extern SDL_Texture* texture;
 	extern Uint32 nes_rgb[0x40];
 
