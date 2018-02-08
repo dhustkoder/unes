@@ -19,8 +19,6 @@ static void render(const uint8_t* restrict const screen)
 		pixels[i] = nes_rgb[screen[i]];
 
 	SDL_UnlockTexture(texture);
-	SDL_RenderCopy(renderer, texture, NULL, NULL);
-	SDL_RenderPresent(renderer);
 }
 
 
