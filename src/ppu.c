@@ -300,11 +300,11 @@ static uint8_t read_ppudata(void)
 
 static void write_ppudata(const uint8_t val)
 {
-	extern bool rom_chr_is_ram;
+	extern bool chrdata_is_ram;
 
 	uint8_t* dest;
 	if (ppuaddr < 0x2000) {
-		if (!rom_chr_is_ram)
+		if (!chrdata_is_ram)
 			goto Lppuaddr_inc;
 		dest = &ppu_pattern[(ppuaddr>>12)&0x01][ppuaddr&0xFFF];
 	} else if (ppuaddr < 0x3F00) {
