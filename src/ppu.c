@@ -10,7 +10,7 @@
 #define PPU_FRAME_TICKS (341)
 
 // ppu.c globals
-uint8_t ppu_ntmirroring_mode;
+nt_mirroring_mode_t ppu_ntmirroring_mode;
 uint8_t* ppu_pattern[2]; // lower and upper tables
 bool ppu_need_screen_update;
 uint8_t ppu_oam[0x100];
@@ -45,13 +45,13 @@ static uint8_t screen[240][256];
 static int16_t eval_nt_offset(const uint16_t addr)
 {
 	switch (ppu_ntmirroring_mode) {
-	case NTMIRRORING_HORIZONTAL:
+	case NT_MIRRORING_MODE_HORIZONTAL:
 		return ((addr>>1)&0x400) + (addr&0x3FF);
-	case NTMIRRORING_VERTICAL:
+	case NT_MIRRORING_MODE_VERTICAL:
 		return addr&0x7FF;
-	case NTMIRRORING_ONE_SCREEN_LOW:
+	case NT_MIRRORING_MODE_ONE_SCREEN_LOW:
 		return addr&0x3FF;
-	default:/*NTMIRRORING_ONE_SCREEN_UPPER*/
+	default:/*NT_MIRRORING_MODE_ONE_SCREEN_UPPER*/
 		return 0x400 + (addr&0x3FF);
 	}
 }

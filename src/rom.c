@@ -6,7 +6,7 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "rom.h"
-
+#include "utils.h"
 
 // ppu.c controls
 extern uint8_t ppu_ntmirroring_mode;
@@ -24,7 +24,7 @@ uint8_t* rom_sram;
 static int32_t prgrom_size;
 static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
-static uint8_t mappertype;
+static mapper_type_t mappertype;
 static const uint8_t* prgdata;
 static uint8_t* chrdata; 
 
@@ -49,6 +49,10 @@ static union {
 	} mmc1;
 } mapper;
 
+static mapper_type_t supported_mappers[] = {
+	MAPPER_TYPE_NROM, MAPPER_TYPE_MMC1
+};
+
 
 // MMC1
 static void mmc1_update(const unsigned modified_reg_index)
@@ -56,10 +60,10 @@ static void mmc1_update(const unsigned modified_reg_index)
 	if (modified_reg_index == 0) {
 		// nametable mirroring mode
 		const uint8_t modes[] = {
-			NTMIRRORING_ONE_SCREEN_LOW,
-			NTMIRRORING_ONE_SCREEN_UPPER,
-			NTMIRRORING_VERTICAL,
-			NTMIRRORING_HORIZONTAL
+			NT_MIRRORING_MODE_ONE_SCREEN_LOW,
+			NT_MIRRORING_MODE_ONE_SCREEN_UPPER,
+			NT_MIRRORING_MODE_VERTICAL,
+			NT_MIRRORING_MODE_HORIZONTAL
 		};
 		ppu_ntmirroring_mode = modes[mapper.mmc1.reg[0]&0x03];
 		ppu_need_screen_update = true;
@@ -133,7 +137,7 @@ static void initmapper(void)
 {
 	memset(&mapper, 0, sizeof mapper);
 	switch (mappertype) {
-	case NROM:
+	case MAPPER_TYPE_NROM:
 		// cpu prg map
 		if (ines.prgrom_nbanks > 1) {
 			cpu_prgrom[0] = prgdata;
@@ -144,12 +148,12 @@ static void initmapper(void)
 		}
 		// ppu map
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
-			? NTMIRRORING_VERTICAL
-			: NTMIRRORING_HORIZONTAL;
+			? NT_MIRRORING_MODE_VERTICAL
+			: NT_MIRRORING_MODE_HORIZONTAL;
 		ppu_pattern[0] = chrdata;
 		ppu_pattern[1] = chrdata + 0x1000;
 		break;
-	case MMC1:
+	case MAPPER_TYPE_MMC1:
 		if (chrdata_is_ram) {
 			ppu_pattern[0] = chrdata;
 			ppu_pattern[1] = chrdata + 0x1000;
@@ -165,8 +169,8 @@ static void initmapper(void)
 void romwrite(const uint8_t value, const uint16_t addr)
 {
 	switch (mappertype) {
-	case NROM: break;
-	case MMC1: mmc1_write(value, addr); break;
+	case MAPPER_TYPE_NROM: break;
+	case MAPPER_TYPE_MMC1: mmc1_write(value, addr); break;
 	}
 }
 
@@ -181,7 +185,7 @@ bool loadrom(const uint8_t* const data)
 	
 	// check cartridge compatibility
 	mappertype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
-	if (mappertype > MMC1) {
+	if (!IS_IN_ARRAY(mappertype, supported_mappers)) {
 		logerror("mapper %d not supported.\n", mappertype);
 		return false;
 	} else if ((ines.ctrl1&0x08) != 0) {
