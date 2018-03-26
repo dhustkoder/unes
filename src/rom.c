@@ -49,7 +49,7 @@ static union {
 	} mmc1;
 } mapper;
 
-static mapper_type_t supported_mappers[] = {
+static const mapper_type_t supported_mappers[] = {
 	MAPPER_TYPE_NROM, MAPPER_TYPE_MMC1
 };
 

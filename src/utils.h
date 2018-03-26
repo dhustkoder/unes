@@ -4,21 +4,16 @@
 #include <stdint.h>
 
 
-#define IS_IN_ARRAY(v, a) (is_in_array(&v, a, sizeof(a)/sizeof(v), sizeof(v)))
+#define IS_IN_ARRAY(v, a) (is_in_array(&v, a, sizeof(v), sizeof(a)/sizeof(v)))
 
 
-static inline bool is_in_array(void* value, void* array,
-                              int array_size, int element_size)
+static inline bool is_in_array(const void* const value, const void* const array, const int size, const int nmemb)
 {
-	uint8_t* const end = ((uint8_t*)array) + array_size * element_size;
-	uint8_t* p = array;
-	
-	while (p < end) {
-		if (memcmp(value, p, element_size) == 0)
+	const uint8_t* const end = ((const uint8_t* const)array) + size * nmemb;
+	for (const uint8_t* p = array; p < end; p += size) {
+		if (memcmp(value, p, size) == 0)
 			return true;
-		p += element_size;
 	}
-
 	return false;
 }
 
