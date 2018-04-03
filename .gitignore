@@ -9,4 +9,7 @@ src/GC/zelda_bin.h
 *.cdl
 *.o
 *.out
-
+*.exe
+*.dll
+*.lib
+*.obj
