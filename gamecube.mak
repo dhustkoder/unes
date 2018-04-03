@@ -6,7 +6,7 @@ include $(DEVKITPPC)/gamecube_rules
 LD=$(CC)
 
 CFLAGS=-std=gnu11 -Wall -Wextra -Wshadow -Wno-main -ffreestanding \
-       -I $(SRC_DIR) -I $(SRC_DIR)/GC                             \
+       -I $(SRC_DIR) -I $(SRC_DIR)/gc                             \
        $(MACHDEP) $(INCLUDE)  -I$(LIBOGC_INC) -DPLATFORM_GC
 
 CFLAGS_DEBUG=-Og -DDEBUG
@@ -23,9 +23,9 @@ BUILD_DIR=./build
 OBJS_DIR=./objs
 ASM_DIR=./asm
 SRC_DIR=./src
-PLATFORM_OBJS_DIR=$(OBJS_DIR)/GC
-PLATFORM_SRC_DIR=$(SRC_DIR)/GC
-PLATFORM_ASM_DIR=$(ASM_DIR)/GC
+PLATFORM_OBJS_DIR=$(OBJS_DIR)/gc
+PLATFORM_SRC_DIR=$(SRC_DIR)/gc
+PLATFORM_ASM_DIR=$(ASM_DIR)/gc
 
 SRC=$(SRC_DIR)/%.c
 PLATFORM_SRC=$(PLATFORM_SRC_DIR)/%.c
