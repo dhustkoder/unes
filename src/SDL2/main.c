@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <errno.h>
 #include "SDL.h"
+#include "SDL_main.h"
 #include "SDL_audio.h"
 #include "audio.h"
 #include "log.h"
@@ -189,8 +191,8 @@ static uint8_t* readfile(const char* filepath)
 		goto Lfclose;
 	}
 
-	if (fread(data, 1, size, file) < size) {
-		logerror("Couldn't read \'%s\'\n", filepath);
+	if (fread(data, 1, size, file) < size && ferror(file) != 0) {
+		logerror("Couldn't read \'%s\': %s\n", filepath);
 		free(data);
 		data = NULL;
 		goto Lfclose;
@@ -202,7 +204,7 @@ Lfclose:
 }
 
 
-int main(const int argc, const char* const* const argv)
+int main(int argc, char* argv[])
 {
 	if (argc < 2) {
 		logerror("Usage: %s [rom]\n", argv[0]);
