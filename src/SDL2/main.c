@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <errno.h>
 #include "SDL.h"
-#include "SDL_main.h"
-#include "SDL_audio.h"
 #include "audio.h"
 #include "log.h"
 #include "rom.h"
