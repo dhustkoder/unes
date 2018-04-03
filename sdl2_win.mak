@@ -20,9 +20,11 @@ LDFLAGS+=$(LDFLAGS_RELEASE)
 all: compile copy_dll clean
 
 compile:
+	if not exist "build" mkdir build
 	$(CC) /Febuild\unes.exe $(SRC) $(LIBS) $(CFLAGS) /link $(LDFLAGS)
 
 copy_dll:
-	copy $(SDL2_LIB)\SDL2.dll build\SDL2.dll
+	if not exist "build\SDL2.dll" copy $(SDL2_LIB)\SDL2.dll build\SDL2.dll
+
 clean:
 	del *.obj
