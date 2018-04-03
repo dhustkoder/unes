@@ -189,7 +189,7 @@ static uint8_t* readfile(const char* filepath)
 	}
 
 	if (fread(data, 1, size, file) < size && ferror(file) != 0) {
-		logerror("Couldn't read \'%s\': %s\n", filepath);
+		logerror("Couldn't read \'%s\'\n", filepath);
 		free(data);
 		data = NULL;
 		goto Lfclose;
