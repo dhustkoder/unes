@@ -5,7 +5,7 @@
 #include "cpu.h"
 
 
-static uint8_t getpadstate(const enum Joypad pad)
+static inline uint8_t getpadstate(const enum Joypad pad)
 {
 	extern Uint8 sdl2_padstate[2];
 	return sdl2_padstate[pad];

@@ -5,7 +5,7 @@
 #include "log.h"
 
 
-static void render(const uint8_t* const screen)
+static inline void render(const uint8_t* const screen)
 {
 	extern SDL_Texture* texture;
 	extern Uint32 nes_rgb[0x40];

@@ -7,7 +7,7 @@ SRC=src\\*.c src\\sdl2\\*.c
 LIBS=$(SDL2_LIB)\SDL2.lib $(SDL2_LIB)\SDL2main.lib
 
 CC=cl
-CFLAGS=/wd4028
+CFLAGS=/D_CRT_SECURE_NO_WARNINGS /wd4028 /W3
 LDFLAGS=
 
 CFLAGS_RELEASE=/Ox $(INCLUDE_DIRS) 
@@ -21,7 +21,7 @@ all: compile copy_dll clean
 
 compile:
 	if not exist "build" mkdir build
-	$(CC) /Febuild\unes.exe $(SRC) $(LIBS) $(CFLAGS) /link $(LDFLAGS)
+	$(CC) $(CFLAGS) $(SRC) $(LIBS) /Febuild\unes.exe /link $(LDFLAGS)
 
 copy_dll:
 	if not exist "build\SDL2.dll" copy $(SDL2_LIB)\SDL2.dll build\SDL2.dll
