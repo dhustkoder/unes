@@ -167,7 +167,7 @@ static void oam_dma(const uint8_t val)
 		}
 	} else {
 		for (unsigned i = 0; i < 0x100; ++i)
-			ppu_oam[i] = read(offset + i);
+			ppu_oam[i] = read((uint16_t)(offset + i));
 		ppu_need_screen_update = true;
 	}
 	step_cycles += 513;

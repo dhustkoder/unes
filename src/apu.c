@@ -49,7 +49,7 @@ static struct Pulse {
 
 static void eval_sweep_target(struct Pulse* const p)
 {
-	const unsigned offset = p->timer >> p->sweep_shift;
+	const uint16_t offset = p->timer>>p->sweep_shift;
 	if (p->sweep_negate) {
 		if (p == &pulse[0])
 			p->sweep_target = p->timer - (offset + 1);
@@ -292,7 +292,7 @@ void stepapu(const unsigned aputicks)
 			apu_samples_cnt = 0;
 			update_channels_output();
 
-			const unsigned sample = pulse[0].out + pulse[1].out;
+			const audio_t sample = pulse[0].out + pulse[1].out;
 			audio_buffer[audio_buffer_idx] = sample<<8;
 			if (++audio_buffer_idx >= AUDIO_BUFFER_SIZE) {
 				audio_buffer_idx = 0;

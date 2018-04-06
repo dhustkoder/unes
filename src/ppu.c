@@ -24,7 +24,7 @@ static uint8_t oamaddr;     // $2003
 static uint16_t ppuscroll;  // $2005
 static int16_t ppuaddr;     // $2006
 
-static int16_t ppuclk;      // 0 - 341
+static long ppuclk;         // 0 - 341
 static int16_t scanline;    // 0 - 262
 
 static struct {
@@ -112,8 +112,8 @@ static void draw_bg_scanline(void)
 		unsigned b1 = pattern[spridx + spritey + 8];
 		for (unsigned p = 0; p < 8; ++p) {
 			const unsigned paladdr = palrow|((b1>>6)&0x02)|((b0>>7)&0x01);
-			const unsigned pal = get_palette(paladdr);
-			pixels[(i<<3) + p] = pal&greymsk;
+			const unsigned pal = get_palette((uint16_t)paladdr);
+			pixels[(i<<3) + p] = (uint8_t)(pal&greymsk);
 			b0 <<= 1;
 			b1 <<= 1;
 		}
@@ -157,9 +157,9 @@ static void draw_sprite_scanline(void)
 		uint8_t b1 = pattern[tileidx + tiley + 8];
 		if ((spr->attr&0x40) != 0) {
 			// flip horizontally
-			unsigned tmp0 = 0;
-			unsigned tmp1 = 0;
-			for (unsigned j = 0; j < 8; ++j) {
+			uint8_t tmp0 = 0;
+			uint8_t tmp1 = 0;
+			for (uint8_t j = 0; j < 8; ++j) {
 				tmp0 |= ((b0>>j)&0x01)<<(7 - j);
 				tmp1 |= ((b1>>j)&0x01)<<(7 - j);
 			}
@@ -168,12 +168,12 @@ static void draw_sprite_scanline(void)
 		}
 
 		for (unsigned p = 0; p < 8 && (spr->x + p) < 256; ++p) {
-			const unsigned c = ((b1>>6)&0x02)|(b0>>7);
+			const uint16_t c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
 			if (c == 0)
 				continue;
-			const unsigned paladdr = 0x10|((spr->attr&0x03)<<2)|c;
+			const uint16_t paladdr = 0x10|((spr->attr&0x03)<<2)|c;
 		 	screen[ypos][spr->x + p] = get_palette(paladdr);
 		}
 	}
