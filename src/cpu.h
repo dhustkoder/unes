@@ -26,8 +26,8 @@ enum KeyState {
 	KEYSTATE_DOWN
 };
 
-typedef uint8_t key_t;
-enum Key {
+typedef uint8_t joykey_t;
+enum JoyKey {
 	KEY_A,
 	KEY_B,
 	KEY_SELECT,
