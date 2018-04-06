@@ -64,7 +64,7 @@ static const Uint8 keys_id[2][8] = {
 };
 
 
-static void update_key(const Uint32 code, const enum KeyState state)
+static void update_key(const Uint32 code, const key_state_t state)
 {
 	for (unsigned pad = 0; pad < 2; ++pad) {
 		for (unsigned key = 0; key < 8; ++key) {

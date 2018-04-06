@@ -6,7 +6,7 @@
 
 #define NES_CPU_FREQ (1789773)
 
-
+typedef uint8_t irq_source_t;
 enum IrqSource {
 	IRQ_SRC_APU_FRAME_COUNTER,
 	IRQ_SRC_APU_DMC_TIMER,
@@ -14,16 +14,19 @@ enum IrqSource {
 	IRQ_SRC_SIZE
 };
 
+typedef uint8_t joypad_t;
 enum Joypad {
 	JOYPAD_ONE,
 	JOYPAD_TWO
 };
 
+typedef uint8_t key_state_t;
 enum KeyState {
 	KEYSTATE_UP,
 	KEYSTATE_DOWN
 };
 
+typedef uint8_t key_t;
 enum Key {
 	KEY_A,
 	KEY_B,
@@ -41,13 +44,13 @@ extern void request_nmi(void);
 extern unsigned stepcpu(void);
 
 
-static inline void set_irq_source(const enum IrqSource src, const bool value)
+static inline void set_irq_source(const irq_source_t src, const bool value)
 {
 	extern bool cpu_irq_sources[IRQ_SRC_SIZE];
 	cpu_irq_sources[src] = value;
 }
 
-static inline bool get_irq_source(const enum IrqSource src)
+static inline bool get_irq_source(const irq_source_t src)
 {
 	extern bool cpu_irq_sources[IRQ_SRC_SIZE];
 	return cpu_irq_sources[src];

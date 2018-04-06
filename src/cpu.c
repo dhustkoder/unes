@@ -80,7 +80,7 @@ static void joywrite(const uint8_t val)
 	const bool oldstrobe = padstrobe;
 	padstrobe = (val&0x01) != 0;
 	if (oldstrobe && !padstrobe) {
-		for (unsigned pad = 0; pad < 2; ++pad) {
+		for (joypad_t pad = 0; pad < 2; ++pad) {
 			padshifts[pad] = 0;
 			padstate[pad] = getpadstate(pad);
 		}
@@ -91,7 +91,7 @@ static uint8_t joyread(const uint16_t addr)
 {
 	assert(addr == 0x4016 || addr == 0x4017);
 
-	const unsigned pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
+	const joypad_t pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
 
 	if (padstrobe)
 		return getpadstate(pad)&0x01;
