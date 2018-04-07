@@ -81,9 +81,9 @@ static void mmc1_update(const unsigned modified_reg_index)
 			ppu_pattern[1] = ppu_pattern[0] + 0x1000;
 		} else {
 			// switch 4kb banks at $0000 - $0FFF
-			ppu_pattern[0] = &chr[(reg[1] % mod) * 0x1000];
+			ppu_pattern[0] = &chr[reg[1] * 0x1000];
 			// switch 4kb banks at $1000 - $1FFF
-			ppu_pattern[1] = &chr[(reg[2] % mod) * 0x1000];
+			ppu_pattern[1] = &chr[reg[2] * 0x1000];
 		}
 	}
 
