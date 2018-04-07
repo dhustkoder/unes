@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <inttypes.h>
 #include "video.h"
 #include "cpu.h"
 #include "rom.h"
@@ -181,68 +182,6 @@ static void draw_sprite_scanline(void)
 	oamaddr = 0;
 }
 
-
-void resetppu(void)
-{
-	ppuopenbus = 0x00;
-	ppuctrl = 0x00;
-	ppumask = 0x00;
-	ppustatus = 0xA0;
-	oamaddr = 0x00;
-	ppuscroll = 0x0000;
-	ppuaddr = 0x0000;
-	ppuclk = 0;
-	scanline = 240;
-	ppu_need_screen_update = false;
-	states.scanline_drawn = false;
-	memset(&states, 0, sizeof states);
-	memset(screen, 0x0D, sizeof screen);
-}
-
-void stepppu(const unsigned pputicks)
-{
-	ppuclk -= pputicks;
-
-	if (ppu_need_screen_update && scanline < 240 &&
-	    ppuclk <= (PPU_FRAME_TICKS - 256) && !states.scanline_drawn) {
-		states.scanline_drawn = true;
-		if ((ppumask&0x08) != 0) {
-			draw_bg_scanline();
-			states.need_render = true;
-		}
-		if ((ppumask&0x10) != 0) {
-			draw_sprite_scanline();
-			states.need_render = true;
-		}
-	} else if (ppuclk <= 0) {
-		ppuclk += PPU_FRAME_TICKS;
-		states.scanline_drawn = false;
-		++scanline;
-		if (scanline == 262) {
-			scanline = 0;
-			if (states.need_render) {
-				render((uint8_t*)screen);
-				states.need_render = false;
-			}
-			if ((ppumask&0x18) && states.oddframe)
-				++ppuclk;
-			states.oddframe = !states.oddframe;
-		} else if (scanline == 241) {
-			states.nmi_occurred = true;
-			states.nmi_for_frame = false;
-		} else if (scanline == 261) {
-			states.nmi_occurred = false;
-		}
-	}
-
-	if (!states.nmi_for_frame && states.nmi_occurred && states.nmi_output) {
-		states.nmi_for_frame = true;
-		ppu_need_screen_update = false;
-		trigger_nmi();
-	}
-}
-
-
 static uint8_t read_ppustatus(void)
 {
 	const uint8_t b7 = states.nmi_occurred<<7;
@@ -345,6 +284,97 @@ static void write_ppuscroll(const uint8_t val)
 }
 
 
+
+
+void resetppu(void)
+{
+	ppuopenbus = 0x00;
+	ppuctrl = 0x00;
+	ppumask = 0x00;
+	ppustatus = 0xA0;
+	oamaddr = 0x00;
+	ppuscroll = 0x0000;
+	ppuaddr = 0x0000;
+	ppuclk = 0;
+	scanline = 240;
+	ppu_need_screen_update = false;
+	states.scanline_drawn = false;
+	memset(&states, 0, sizeof states);
+	memset(screen, 0x0D, sizeof screen);
+}
+
+void stepppu(const unsigned pputicks)
+{
+	ppuclk -= pputicks;
+
+	if (ppu_need_screen_update && scanline < 240 &&
+	    ppuclk <= (PPU_FRAME_TICKS - 256) && !states.scanline_drawn) {
+		states.scanline_drawn = true;
+		if ((ppumask&0x08) != 0) {
+			draw_bg_scanline();
+			states.need_render = true;
+		}
+		if ((ppumask&0x10) != 0) {
+			draw_sprite_scanline();
+			states.need_render = true;
+		}
+	} else if (ppuclk <= 0) {
+		ppuclk += PPU_FRAME_TICKS;
+		states.scanline_drawn = false;
+		++scanline;
+		if (scanline == 262) {
+			scanline = 0;
+			if (states.need_render) {
+				render((uint8_t*)screen);
+				states.need_render = false;
+			}
+			if ((ppumask&0x18) && states.oddframe)
+				++ppuclk;
+			states.oddframe = !states.oddframe;
+		} else if (scanline == 241) {
+			states.nmi_occurred = true;
+			states.nmi_for_frame = false;
+		} else if (scanline == 261) {
+			states.nmi_occurred = false;
+		}
+	}
+
+	if (!states.nmi_for_frame && states.nmi_occurred && states.nmi_output) {
+		states.nmi_for_frame = true;
+		ppu_need_screen_update = false;
+		trigger_nmi();
+	}
+}
+
+void log_ppu_state(void)
+{
+	loginfo("\nPPU STATE: {\n" 
+	        "\tOPENBUS: %" PRIu8 "\n"
+	        "\tCTRL: %" PRIu8 "\n"
+	        "\tMASK: %" PRIu8 "\n"
+	        "\tSTATUS: %" PRIu8 "\n" 
+	        "\tOAM ADDR: %" PRIu8 "\n"
+	        "\tSCROLL: %" PRIu16 "\n"
+	        "\tADDR: %" PRIi16 "\n"
+	        "\tCLK: %li\n"
+	        "\tSCANLINE: %" PRIi16 "\n"
+	        "\tSTATES {"
+	        "\n\t\tscanline_drawn: %" PRIu8 
+	        "\n\t\tnmi_occurred: %" PRIu8
+	        "\n\t\tnmi_output: %" PRIu8 
+	        "\n\t\toddframe: %" PRIu8
+	        "\n\t\tnmi_for_frame: %" PRIu8
+	        "\n\t\twrite_toggle: %" PRIu8
+	        "\n\t\tneed_render: %" PRIu8
+	        "\n\t}"
+	        "\n}",
+	        ppuopenbus, ppuctrl, ppumask, ppustatus,
+		oamaddr, ppuscroll, ppuaddr, ppuclk,
+		scanline, states.scanline_drawn, states.nmi_occurred,
+		states.nmi_output, states.oddframe, states.nmi_for_frame,
+		states.write_toggle, states.need_render);	
+}
+
 void ppuwrite(const uint8_t val, const uint16_t addr)
 {
 	switch (addr&0x0007) {
@@ -368,3 +398,4 @@ uint8_t ppuread(const uint16_t addr)
 	default: return ppuopenbus;      break;
 	}
 }
+

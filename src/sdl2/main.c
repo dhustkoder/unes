@@ -224,7 +224,7 @@ int main(int argc, char* argv[])
 	resetapu();
 	resetppu();
 
-	#define UNES_SDL2_FPS_BENCH
+	//#define UNES_SDL2_FPS_BENCH
 
 	#ifdef UNES_SDL2_FPS_BENCH
 	Uint32 fpstimer = SDL_GetTicks();
@@ -255,6 +255,8 @@ int main(int argc, char* argv[])
 			fpstimer = fpsnow;
 		}
 		#endif
+
+		log_ppu_state();
 	}
 
 	exitcode = EXIT_SUCCESS;
