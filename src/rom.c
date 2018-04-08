@@ -19,6 +19,7 @@ extern uint8_t cpu_sram[0x2000];
 // rom.c globals
 bool chrdata_is_ram;
 uint8_t* rom_sram;
+const void* ppu_pattern_base_addr;
 
 // rom.c
 static int32_t prgrom_size;
@@ -150,14 +151,8 @@ static void initmapper(void)
 		ppu_ntmirroring_mode = (ines.ctrl1&0x01)
 			? NT_MIRRORING_MODE_VERTICAL
 			: NT_MIRRORING_MODE_HORIZONTAL;
-		ppu_pattern[0] = chrdata;
-		ppu_pattern[1] = chrdata + 0x1000;
 		break;
 	case MAPPER_TYPE_MMC1:
-		if (chrdata_is_ram) {
-			ppu_pattern[0] = chrdata;
-			ppu_pattern[1] = chrdata + 0x1000;
-		}
 		mapper.mmc1.reg[0] = 0x0C;
 		memset(mapper.mmc1.reglast, 0xFF, sizeof mapper.mmc1.reglast);
 		mmc1_update(0);
@@ -216,6 +211,10 @@ bool loadrom(const uint8_t* const data)
 		chrdata = (uint8_t*) &data[0x10 + prgrom_size];
 		chrdata_is_ram = false;
 	}
+
+	ppu_pattern_base_addr = chrdata;
+	ppu_pattern[0] = chrdata;
+	ppu_pattern[1] = chrdata + 0x1000;
 
 	if (sram_size != 0)
 		rom_sram = calloc(sram_size, sizeof(uint8_t));

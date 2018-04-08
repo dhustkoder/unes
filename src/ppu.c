@@ -348,7 +348,12 @@ void stepppu(const unsigned pputicks)
 
 void log_ppu_state(void)
 {
-	loginfo("\nPPU STATE: {\n" 
+	extern const void* ppu_pattern_base_addr;
+	loginfo("PPU STATE: {\n"
+	        "\tNT_MIRRORING_MODE: %d\n"
+	        "\tPPU_PATTERN[0]: 0x%lx\n"
+	        "\tPPU_PATTERN[1]: 0x%lx\n"
+	        "\tPPU_NEED_SCREEN_UPDATE: %" PRIu8 "\n"
 	        "\tOPENBUS: %" PRIu8 "\n"
 	        "\tCTRL: %" PRIu8 "\n"
 	        "\tMASK: %" PRIu8 "\n"
@@ -368,6 +373,8 @@ void log_ppu_state(void)
 	        "\n\t\tneed_render: %" PRIu8
 	        "\n\t}"
 	        "\n}",
+	        (int)ppu_ntmirroring_mode, ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr,
+	        ppu_pattern[1] - (uint8_t*)ppu_pattern_base_addr, ppu_need_screen_update,
 	        ppuopenbus, ppuctrl, ppumask, ppustatus,
 		oamaddr, ppuscroll, ppuaddr, ppuclk,
 		scanline, states.scanline_drawn, states.nmi_occurred,

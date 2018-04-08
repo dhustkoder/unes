@@ -256,6 +256,7 @@ int main(int argc, char* argv[])
 		}
 		#endif
 
+		log_cpu_state();
 		log_ppu_state();
 	}
 

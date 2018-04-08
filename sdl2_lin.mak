@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -pedantic-errors -Wall -Wextra -Wshadow \
+CFLAGS=-std=c99 -pedantic-errors -Wall -Wextra -Wshadow \
        -I $(SRC_DIR) -I $(SRC_DIR)/sdl2 $(shell sdl2-config --cflags) \
        -DPLATFORM_SDL2
 

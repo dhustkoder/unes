@@ -42,6 +42,7 @@ enum JoyKey {
 extern void resetcpu(void);
 extern void request_nmi(void);
 extern unsigned stepcpu(void);
+extern void log_cpu_state(void);
 
 
 static inline void set_irq_source(const irq_source_t src, const bool value)
