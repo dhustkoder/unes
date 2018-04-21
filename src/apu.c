@@ -9,6 +9,9 @@
 #define FRAME_COUNTER_RATE     (NES_CPU_FREQ / 240)
 #define APU_SAMPLES_CNT_LIMIT  (NES_CPU_FREQ / AUDIO_FREQUENCY)
 
+// cpu.c
+extern bool cpu_irq_sources[IRQ_SRC_SIZE];
+
 
 // apu.c
 static int32_t frame_counter_clock;
@@ -105,7 +108,7 @@ static void write_pulse_reg3(const uint8_t val, struct Pulse* const p)
 
 static void write_dmc_reg0(const uint8_t val)
 {
-	set_irq_source(IRQ_SRC_APU_DMC_TIMER, (val&0x80) != 0);
+	cpu_irq_sources[IRQ_SRC_APU_DMC_TIMER] = (val&0x80) != 0;
 }
 
 static void tick_timer(void)
@@ -181,7 +184,7 @@ static void tick_frame_counter(void)
 			frame_counter_clock = 0;
 		} else if (++frame_counter_clock == T4 + 2) {
 			frame_counter_clock = 0;
-			set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, !irq_inhibit);
+			cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER] = !irq_inhibit;
 		}
 
 		switch (frame_counter_clock) {
@@ -196,11 +199,11 @@ static void tick_frame_counter(void)
 			break;
 
 		case T4:
-			set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, !irq_inhibit);
+			cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER] = !irq_inhibit;
 			break;
 
 		case T4 + 1:
-			set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, !irq_inhibit);
+			cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER] = !irq_inhibit;
 			tick_length();
 			tick_sweep();
 			tick_envelope();
@@ -236,7 +239,7 @@ static void write_frame_counter(const uint8_t val)
 	irq_inhibit = (val&0x40) != 0;
 	
 	if (irq_inhibit)
-		set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
+		cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER] = false;
 
 	// side effects
 	delayed_frame_timer_reset = oddtick ? 4 : 3;
@@ -272,8 +275,8 @@ void resetapu(void)
 	status = 0;
 	irq_inhibit = false;
 	oddtick = false;
-	set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
-	set_irq_source(IRQ_SRC_APU_DMC_TIMER, false);
+	cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER] = false;
+	cpu_irq_sources[IRQ_SRC_APU_DMC_TIMER] = false;
 
 	// sound buffer, apu sample buffer
 	audio_buffer_idx = 0;
@@ -311,7 +314,7 @@ static void write_apu_status(const uint8_t val)
 		if (!pulse[i].enabled)
 			pulse[i].len_cnt = 0;
 	}
-	set_irq_source(IRQ_SRC_APU_DMC_TIMER, false);
+	cpu_irq_sources[IRQ_SRC_APU_DMC_TIMER] = false;
 }
 
 
@@ -336,9 +339,9 @@ void apuwrite(const uint8_t val, const uint16_t addr)
 
 uint8_t apuread_status(void)
 {
-	const bool frame_irq = get_irq_source(IRQ_SRC_APU_FRAME_COUNTER);
-	const bool dmc_irq = get_irq_source(IRQ_SRC_APU_DMC_TIMER);
-	set_irq_source(IRQ_SRC_APU_FRAME_COUNTER, false);
+	const bool frame_irq = cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER];
+	const bool dmc_irq = cpu_irq_sources[IRQ_SRC_APU_DMC_TIMER];
+	cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER] = false;
 
 	return (dmc_irq<<7)|(frame_irq<<6)|
 		((pulse[1].len_cnt > 0)<<1)|(pulse[0].len_cnt > 0);

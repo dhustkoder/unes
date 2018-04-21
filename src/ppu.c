@@ -10,6 +10,10 @@
 
 #define PPU_FRAME_TICKS (341)
 
+// cpu.c
+extern bool cpu_nmi;
+
+
 // ppu.c globals
 nt_mirroring_mode_t ppu_ntmirroring_mode;
 uint8_t* ppu_pattern[2]; // lower and upper tables
@@ -342,7 +346,7 @@ void stepppu(const unsigned pputicks)
 	if (!states.nmi_for_frame && states.nmi_occurred && states.nmi_output) {
 		states.nmi_for_frame = true;
 		ppu_need_screen_update = false;
-		trigger_nmi();
+		cpu_nmi = true;
 	}
 }
 

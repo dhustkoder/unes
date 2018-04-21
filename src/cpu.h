@@ -45,23 +45,4 @@ extern unsigned stepcpu(void);
 extern void log_cpu_state(void);
 
 
-static inline void set_irq_source(const irq_source_t src, const bool value)
-{
-	extern bool cpu_irq_sources[IRQ_SRC_SIZE];
-	cpu_irq_sources[src] = value;
-}
-
-static inline bool get_irq_source(const irq_source_t src)
-{
-	extern bool cpu_irq_sources[IRQ_SRC_SIZE];
-	return cpu_irq_sources[src];
-}
-
-static inline void trigger_nmi(void)
-{
-	extern bool cpu_nmi;
-	cpu_nmi = true;
-}
-
-
 #endif
