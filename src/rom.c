@@ -103,7 +103,7 @@ static void mmc1_update(const unsigned modified_reg_index)
 		cpu_prgrom[0] = prgdata;
 		cpu_prgrom[1] = &prgdata[PRGROM_BANK_SIZE * reg3];
 		break;
-	default:/*0x03*/
+	case 0x03:
 		// fix last bank at $C000 and switch 16kb banks at $8000
 		cpu_prgrom[0] = &prgdata[PRGROM_BANK_SIZE * reg3];
 		cpu_prgrom[1] = &prgdata[prgrom_size - PRGROM_BANK_SIZE];
