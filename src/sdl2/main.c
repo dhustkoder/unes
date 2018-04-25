@@ -116,8 +116,7 @@ static bool initialize_platform(void)
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
-	                              SDL_RENDERER_ACCELERATED|
-	                              SDL_RENDERER_PRESENTVSYNC);
+	                              SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL) {
 		logerror("Failed to create SDL_Renderer: %s\n", SDL_GetError());
 		goto Lfreewindow;
@@ -224,16 +223,10 @@ int main(int argc, char* argv[])
 	resetapu();
 	resetppu();
 
-	//#define UNES_SDL2_FPS_BENCH
-
-	#ifdef UNES_SDL2_FPS_BENCH
-	Uint32 fpstimer = SDL_GetTicks();
-	int fps = 0;
-	#endif
-
 	const int32_t frameclk = NES_CPU_FREQ / 60;
 	int32_t clk = 0;
 	while (update_events()) {
+		const Uint32 begin_ticks = SDL_GetTicks();
 		do {
 			const unsigned ticks = stepcpu();
 			stepppu((ticks<<1) + ticks);
@@ -245,16 +238,10 @@ int main(int argc, char* argv[])
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, texture, NULL, NULL);
 		SDL_RenderPresent(renderer);
-
-		#ifdef UNES_SDL2_FPS_BENCH
-		++fps;
-		const Uint32 fpsnow = SDL_GetTicks();
-		if ((fpsnow - fpstimer) >= 1000) {
-			loginfo("%d\n", fps);
-			fps = 0;
-			fpstimer = fpsnow;
-		}
-		#endif
+		const Uint32 end_ticks = SDL_GetTicks();
+		const Uint32 passed = end_ticks - begin_ticks;
+		if (passed < (1000 / 60))
+			SDL_Delay((1000 / 60) - passed);
 
 		log_cpu_state();
 		log_ppu_state();

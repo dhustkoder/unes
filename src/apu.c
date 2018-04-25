@@ -306,7 +306,6 @@ void stepapu(const unsigned aputicks)
 	}
 }
 
-
 static void write_apu_status(const uint8_t val)
 {
 	for (unsigned i = 0; i < 2; ++i) {
