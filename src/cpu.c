@@ -673,29 +673,6 @@ unsigned stepcpu(void)
 
 void log_cpu_state(void)
 {
-	/*
-
-	// rom.c globals
-	extern uint8_t* rom_sram; // sram control
-
-	// cpu.c globals
-	bool cpu_nmi;
-	bool cpu_irq_sources[IRQ_SRC_SIZE];
-	const uint8_t* cpu_prgrom[2]; // lower and upper banks, switching is done in rom.c
-
-	// cpu.c
-	static uint16_t step_cycles;
-	static bool irq_pass;
-	static uint16_t pc;
-	static uint8_t a, x, y, s;
-	static struct { bool c : 1, z : 1, i : 1, d : 1, v : 1, n : 1; } flags;
-	static uint8_t padstate[2];
-	static int8_t padshifts[2];
-	static bool padstrobe;
-	static uint8_t ram[0x800];  // zeropage,stack,ram
-
-	*/
-
 	loginfo("CPU STATE: {\n"
 	        "\tCPU_NMI: %" PRIu8 "\n"
 	        "\tSTEP_CYCLES: %" PRIu16 "\n"
