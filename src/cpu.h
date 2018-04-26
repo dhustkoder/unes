@@ -40,7 +40,6 @@ enum JoyKey {
 
 
 extern void resetcpu(void);
-extern void request_nmi(void);
 extern unsigned stepcpu(void);
 extern void log_cpu_state(void);
 
