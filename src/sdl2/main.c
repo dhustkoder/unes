@@ -243,8 +243,10 @@ int main(int argc, char* argv[])
 		if (passed < (1000 / 60))
 			SDL_Delay((1000 / 60) - passed);
 
+		#ifdef UNES_LOG_STATE
 		cpu_log_state();
 		ppu_log_state();
+		#endif
 	}
 
 	exitcode = EXIT_SUCCESS;

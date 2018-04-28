@@ -2,7 +2,7 @@ CFLAGS=-std=c99 -pedantic-errors -Wall -Wextra -Wshadow \
        -I $(SRC_DIR) -I $(SRC_DIR)/sdl2 $(shell sdl2-config --cflags) \
        -DPLATFORM_SDL2
 
-CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG
+CFLAGS_DEBUG=-g -O0 -fsanitize=address -DDEBUG -DUNES_LOG_STATE
 
 CFLAGS_RELEASE=-Werror -O3 -march=native -ffast-math -fstrict-aliasing \
 	       -ffunction-sections -fdata-sections -fno-unwind-tables  \
