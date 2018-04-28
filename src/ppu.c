@@ -353,7 +353,7 @@ void ppu_step(const unsigned pputicks)
 void ppu_log_state(void)
 {
 	extern const void* ppu_pattern_base_addr;
-	loginfo("PPU STATE: {\n"
+	log_info("PPU STATE: {\n"
 	        "\tNT_MIRRORING_MODE: %d\n"
 	        "\tPPU_PATTERN[0]: 0x%lx\n"
 	        "\tPPU_PATTERN[1]: 0x%lx\n"

@@ -66,7 +66,7 @@ static void initialize_platform(void)
 	if (vmode->viTVMode&VI_NON_INTERLACE)
 		VIDEO_WaitVSync();
 
-	loginfo("GC VMODE INFO:\n"
+	log_info("GC VMODE INFO:\n"
 		"viTVMode: %" PRIu32 "\n"
 	        "fbWidth: %" PRIu16 "\n"
 		"efbHeight: %" PRIu16 "\n"
@@ -119,7 +119,7 @@ noreturn void main(void)
 	initialize_platform();
 
 	if (!rom_load(zelda)) {
-		logerror("Couldn't load rom!\n");
+		log_error("Couldn't load rom!\n");
 		quit();
 	}
 
@@ -152,7 +152,7 @@ noreturn void main(void)
 		++fps;
 		const time_t now = time(NULL);
 		if ((now - fpstimer) >= 1) {
-			loginfo("FPS: %.4d\r", fps);
+			log_info("FPS: %.4d\r", fps);
 			fps = 0;
 			fpstimer = now;
 		}

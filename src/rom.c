@@ -174,23 +174,23 @@ bool rom_load(const uint8_t* const data)
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
 	memcpy(&ines, data, sizeof ines);
 	if (memcmp(ines.match, match, sizeof match) != 0) {
-		logerror("file is not an ines file.\n");
+		log_error("file is not an ines file.\n");
 		return false;
 	}
 	
 	// check cartridge compatibility
 	mappertype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 	if (!IS_IN_ARRAY(mappertype, supported_mappers)) {
-		logerror("mapper %d not supported.\n", mappertype);
+		log_error("mapper %d not supported.\n", mappertype);
 		return false;
 	} else if ((ines.ctrl1&0x08) != 0) {
-		logerror("four screen mirroring not supported.\n");
+		log_error("four screen mirroring not supported.\n");
 		return false;
 	} else if ((ines.ctrl1&0x04) != 0) {
-		logerror("trainer is not supported.\n");
+		log_error("trainer is not supported.\n");
 		return false;
 	} else if (ines.sram_nbanks > 1) {
-		logerror("sram bank switching not supported.\n");
+		log_error("sram bank switching not supported.\n");
 		return false;
 	}
 
@@ -221,7 +221,7 @@ bool rom_load(const uint8_t* const data)
 	else
 		rom_sram = NULL;
 
-	loginfo("INES HEADER:\n"
+	log_info("INES HEADER:\n"
                "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
 	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"

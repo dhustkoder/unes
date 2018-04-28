@@ -101,7 +101,7 @@ static bool update_events(void)
 static bool initialize_platform(void)
 {
 	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
-		logerror("Couldn't initialize SDL: %s\n", SDL_GetError());
+		log_error("Couldn't initialize SDL: %s\n", SDL_GetError());
 		return false;
 	}
 
@@ -111,14 +111,14 @@ static bool initialize_platform(void)
 				  WIN_WIDTH, WIN_HEIGHT,
 				  SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
 	if (window == NULL) {
-		logerror("Failed to create SDL_Window: %s\n", SDL_GetError());
+		log_error("Failed to create SDL_Window: %s\n", SDL_GetError());
 		goto Lquitsdl;
 	}
 
 	renderer = SDL_CreateRenderer(window, -1,
 	                              SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL) {
-		logerror("Failed to create SDL_Renderer: %s\n", SDL_GetError());
+		log_error("Failed to create SDL_Renderer: %s\n", SDL_GetError());
 		goto Lfreewindow;
 	}
 
@@ -128,7 +128,7 @@ static bool initialize_platform(void)
 	                            SDL_TEXTUREACCESS_STREAMING,
 				    TEXTURE_WIDTH, TEXTURE_HEIGHT);
 	if (texture == NULL) {
-		logerror("Failed to create SDL_Texture: %s\n", SDL_GetError());
+		log_error("Failed to create SDL_Texture: %s\n", SDL_GetError());
 		goto Lfreerenderer;
 	}
 
@@ -140,7 +140,7 @@ static bool initialize_platform(void)
 	want.channels = 1;
 	want.samples = AUDIO_BUFFER_SIZE;
 	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
-		logerror("Failed to open audio: %s\n", SDL_GetError());
+		log_error("Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
 	}
 
@@ -169,11 +169,11 @@ static void terminate_platform(void)
 	SDL_Quit();
 }
 
-static uint8_t* readfile(const char* filepath)
+static uint8_t* read_file(const char* filepath)
 {
 	FILE* const file = fopen(filepath, "r");
 	if (file == NULL) {
-		logerror("Couldn't open \'%s\'\n", filepath);
+		log_error("Couldn't open \'%s\'\n", filepath);
 		return NULL;
 	}
 
@@ -183,12 +183,12 @@ static uint8_t* readfile(const char* filepath)
 
 	uint8_t* data = malloc(size);
 	if (data == NULL) {
-		logerror("Couldn't allocate memory\n");
+		log_error("Couldn't allocate memory\n");
 		goto Lfclose;
 	}
 
 	if (fread(data, 1, size, file) < size && ferror(file) != 0) {
-		logerror("Couldn't read \'%s\'\n", filepath);
+		log_error("Couldn't read \'%s\'\n", filepath);
 		free(data);
 		data = NULL;
 		goto Lfclose;
@@ -203,7 +203,7 @@ Lfclose:
 int main(int argc, char* argv[])
 {
 	if (argc < 2) {
-		logerror("Usage: %s [rom]\n", argv[0]);
+		log_error("Usage: %s [rom]\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 
@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
 
 	int exitcode = EXIT_FAILURE;
 
-	uint8_t* const rom = readfile(argv[1]);
+	uint8_t* const rom = read_file(argv[1]);
 	if (rom == NULL)
 		goto Lterminate_platform;
 

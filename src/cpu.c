@@ -84,7 +84,7 @@ static void joywrite(const uint8_t val)
 	if (oldstrobe && !padstrobe) {
 		for (joypad_t pad = 0; pad < 2; ++pad) {
 			padshifts[pad] = 0;
-			padstate[pad] = getpadstate(pad);
+			padstate[pad] = get_pad_state(pad);
 		}
 	}
 }
@@ -96,7 +96,7 @@ static uint8_t joyread(const uint16_t addr)
 	const joypad_t pad = addr == 0x4016 ? JOYPAD_ONE : JOYPAD_TWO;
 
 	if (padstrobe)
-		return getpadstate(pad)&0x01;
+		return get_pad_state(pad)&0x01;
 	else if (padshifts[pad] >= 8)
 		return 0x01;
 	
@@ -663,7 +663,7 @@ unsigned cpu_step(void)
 	case 0x9A: s = x;                                       break; // TXS
 	case 0x98: ld(&a, y);                                   break; // TYA
 	default:
-		logerror("UNKOWN OPCODE: $%.2x\n PC: $%.2x\n", opcode, pc);
+		log_error("UNKOWN OPCODE: $%.2x\n PC: $%.2x\n", opcode, pc);
 		assert(false);
 		break;
 	}
@@ -673,7 +673,7 @@ unsigned cpu_step(void)
 
 void cpu_log_state(void)
 {
-	loginfo("CPU STATE: {\n"
+	log_info("CPU STATE: {\n"
 	        "\tCPU_NMI: %" PRIu8 "\n"
 	        "\tSTEP_CYCLES: %" PRIu16 "\n"
 	        "\tIRQ_PASS: %" PRIu8 "\n"
