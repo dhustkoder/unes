@@ -216,21 +216,21 @@ int main(int argc, char* argv[])
 	if (rom == NULL)
 		goto Lterminate_platform;
 
-	if (!loadrom(rom))
+	if (!rom_load(rom))
 		goto Lfreerom;
 
-	resetcpu();
-	resetapu();
-	resetppu();
+	cpu_reset();
+	apu_reset();
+	ppu_reset();
 
 	const int32_t frameclk = NES_CPU_FREQ / 60;
 	int32_t clk = 0;
 	while (update_events()) {
 		const Uint32 begin_ticks = SDL_GetTicks();
 		do {
-			const unsigned ticks = stepcpu();
-			stepppu((ticks<<1) + ticks);
-			stepapu(ticks);
+			const unsigned ticks = cpu_step();
+			ppu_step((ticks<<1) + ticks);
+			apu_step(ticks);
 			clk += ticks;
 		} while (clk < frameclk);
 		clk -= frameclk;
@@ -243,12 +243,12 @@ int main(int argc, char* argv[])
 		if (passed < (1000 / 60))
 			SDL_Delay((1000 / 60) - passed);
 
-		log_cpu_state();
-		log_ppu_state();
+		cpu_log_state();
+		ppu_log_state();
 	}
 
 	exitcode = EXIT_SUCCESS;
-	unloadrom();
+	rom_unload();
 Lfreerom:
 	free(rom);
 Lterminate_platform:

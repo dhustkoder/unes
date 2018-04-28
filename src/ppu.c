@@ -290,7 +290,7 @@ static void write_ppuscroll(const uint8_t val)
 
 
 
-void resetppu(void)
+void ppu_reset(void)
 {
 	ppuopenbus = 0x00;
 	ppuctrl = 0x00;
@@ -307,7 +307,7 @@ void resetppu(void)
 	memset(screen, 0x0D, sizeof screen);
 }
 
-void stepppu(const unsigned pputicks)
+void ppu_step(const unsigned pputicks)
 {
 	ppuclk -= pputicks;
 
@@ -350,7 +350,7 @@ void stepppu(const unsigned pputicks)
 	}
 }
 
-void log_ppu_state(void)
+void ppu_log_state(void)
 {
 	extern const void* ppu_pattern_base_addr;
 	loginfo("PPU STATE: {\n"
@@ -386,7 +386,7 @@ void log_ppu_state(void)
 		states.write_toggle, states.need_render);	
 }
 
-void ppuwrite(const uint8_t val, const uint16_t addr)
+void ppu_write(const uint8_t val, const uint16_t addr)
 {
 	switch (addr&0x0007) {
 	case 0: write_ppuctrl(val);   break;
@@ -400,7 +400,7 @@ void ppuwrite(const uint8_t val, const uint16_t addr)
 	ppuopenbus = val;
 }
 
-uint8_t ppuread(const uint16_t addr)
+uint8_t ppu_read(const uint16_t addr)
 {
 	switch (addr&0x0007) {	
 	case 2: return read_ppustatus(); break;

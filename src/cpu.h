@@ -39,9 +39,9 @@ enum JoyKey {
 };
 
 
-extern void resetcpu(void);
-extern unsigned stepcpu(void);
-extern void log_cpu_state(void);
+extern void cpu_reset(void);
+extern unsigned cpu_step(void);
+extern void cpu_log_state(void);
 
 
 #endif

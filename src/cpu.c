@@ -111,21 +111,21 @@ static uint8_t ioread(const uint16_t addr)
 	if (addr >= 0x4016)
 		return joyread(addr);
 	else if (addr == 0x4015)
-		return apuread_status();
+		return apu_read_status();
 	else
-		return ppuread(addr);
+		return ppu_read(addr);
 }
 
 static void iowrite(const uint8_t val, const uint16_t addr)
 {
 	if (addr >= 0x4000) {
 		switch (addr) {
-		default: apuwrite(val, addr); break;
+		default: apu_write(val, addr); break;
 		case 0x4014: oam_dma(val);    break;
 		case 0x4016: joywrite(val);   break;
 		}
 	} else {
-		ppuwrite(val, addr);
+		ppu_write(val, addr);
 	}
 }
 
@@ -150,7 +150,7 @@ static void write(const uint8_t val, const uint16_t addr)
 	else if (addr < ADDR_EXPROM)
 		iowrite(val, addr);
 	else if (addr >= ADDR_PRGROM)
-		romwrite(val, addr);
+		rom_write(val, addr);
 	else if (rom_sram != NULL)
 		rom_sram[addr&0x1FFF] = val;
 }
@@ -374,7 +374,7 @@ static void dointerrupt(const uint16_t vector, const bool brk)
 
 
 
-void resetcpu(void)
+void cpu_reset(void)
 {
 	cpu_nmi = false;
 	memset(cpu_irq_sources, 0, sizeof cpu_irq_sources);
@@ -393,7 +393,7 @@ void resetcpu(void)
 	padstrobe = false;
 }
 
-unsigned stepcpu(void)
+unsigned cpu_step(void)
 {
 	#define fetch8()            (read(pc++))
 	#define fetch16()           (pc += 2, read16(pc - 2))
@@ -671,7 +671,7 @@ unsigned stepcpu(void)
 	return step_cycles;
 }
 
-void log_cpu_state(void)
+void cpu_log_state(void)
 {
 	loginfo("CPU STATE: {\n"
 	        "\tCPU_NMI: %" PRIu8 "\n"

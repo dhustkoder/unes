@@ -161,7 +161,7 @@ static void initmapper(void)
 }
 
 
-void romwrite(const uint8_t value, const uint16_t addr)
+void rom_write(const uint8_t value, const uint16_t addr)
 {
 	switch (mappertype) {
 	case MAPPER_TYPE_NROM: break;
@@ -169,7 +169,7 @@ void romwrite(const uint8_t value, const uint16_t addr)
 	}
 }
 
-bool loadrom(const uint8_t* const data)
+bool rom_load(const uint8_t* const data)
 {
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
 	memcpy(&ines, data, sizeof ines);
@@ -252,7 +252,7 @@ bool loadrom(const uint8_t* const data)
 	return true;
 }
 
-void unloadrom(void)
+void rom_unload(void)
 {
 	if (chrdata_is_ram) {
 		free(chrdata);

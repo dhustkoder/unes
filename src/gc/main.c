@@ -118,14 +118,14 @@ noreturn void main(void)
 {
 	initialize_platform();
 
-	if (!loadrom(zelda)) {
+	if (!rom_load(zelda)) {
 		logerror("Couldn't load rom!\n");
 		quit();
 	}
 
-	resetcpu();
-	resetppu();
-	resetapu();
+	cpu_reset();
+	ppu_reset();
+	apu_reset();
 
 	#define UNES_GC_VSYNC
 	#define UNES_GC_FPS_BENCH
@@ -139,9 +139,9 @@ noreturn void main(void)
 	int32_t clk = 0;
 	for (;;) {
 		do {
-			const unsigned ticks = stepcpu();
-			stepppu((ticks<<1) + ticks);
-			stepapu(ticks);
+			const unsigned ticks = cpu_step();
+			ppu_step((ticks<<1) + ticks);
+			apu_step(ticks);
 			clk += ticks;
 		} while (clk < frameclk);
 		clk -= frameclk;
@@ -163,6 +163,6 @@ noreturn void main(void)
 		#endif
 	}
 
-	unloadrom();
+	rom_unload();
 	quit();
 }

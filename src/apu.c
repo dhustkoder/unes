@@ -267,7 +267,7 @@ static void update_channels_output(void)
 }
 
 
-void resetapu(void)
+void apu_reset(void)
 {
 	frame_counter_clock = 0;
 	delayed_frame_timer_reset = 0;
@@ -286,7 +286,7 @@ void resetapu(void)
 	memset(pulse, 0, sizeof pulse);
 }
 
-void stepapu(const unsigned aputicks)
+void apu_step(const unsigned aputicks)
 {
 	for (unsigned i = 0; i < aputicks; ++i) {
 		tick_frame_counter();
@@ -319,7 +319,7 @@ static void write_apu_status(const uint8_t val)
 
 
 
-void apuwrite(const uint8_t val, const uint16_t addr)
+void apu_write(const uint8_t val, const uint16_t addr)
 {
 	switch (addr) {
 	case 0x4000: write_pulse_reg0(val, &pulse[0]); break;
@@ -336,7 +336,7 @@ void apuwrite(const uint8_t val, const uint16_t addr)
 	}
 }
 
-uint8_t apuread_status(void)
+uint8_t apu_read_status(void)
 {
 	const bool frame_irq = cpu_irq_sources[IRQ_SRC_APU_FRAME_COUNTER];
 	const bool dmc_irq = cpu_irq_sources[IRQ_SRC_APU_DMC_TIMER];

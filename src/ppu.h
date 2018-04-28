@@ -2,10 +2,10 @@
 #define UNES_PPU_H_
 #include <stdint.h>
 
-extern void resetppu(void);
-extern void stepppu(unsigned pputicks);
-extern void log_ppu_state(void);
-extern void ppuwrite(uint8_t val, uint16_t addr);
-extern uint8_t ppuread(uint16_t addr);
+extern void ppu_reset(void);
+extern void ppu_step(unsigned pputicks);
+extern void ppu_log_state(void);
+extern void ppu_write(uint8_t val, uint16_t addr);
+extern uint8_t ppu_read(uint16_t addr);
 
 #endif

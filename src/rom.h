@@ -24,9 +24,9 @@ enum NTMirroringMode {
 };
 
 
-extern bool loadrom(const uint8_t* data);
-extern void unloadrom(void);
-extern void romwrite(uint8_t value, uint16_t addr);
+extern bool rom_load(const uint8_t* data);
+extern void rom_unload(void);
+extern void rom_write(uint8_t value, uint16_t addr);
 
 
 #endif
