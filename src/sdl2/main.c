@@ -13,8 +13,8 @@
 
 #define TEXTURE_WIDTH  (256)
 #define TEXTURE_HEIGHT (240)
-#define WIN_WIDTH      TEXTURE_WIDTH
-#define WIN_HEIGHT     TEXTURE_HEIGHT
+#define WIN_WIDTH      (TEXTURE_WIDTH * 3)
+#define WIN_HEIGHT     (TEXTURE_HEIGHT * 3)
 
 
 const Uint32 nes_rgb[0x40] = {
