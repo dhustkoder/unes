@@ -57,13 +57,13 @@ static uint8_t ram[0x800];  // zeropage,stack,ram
 
 
 
-static uint8_t getflags(void)
+static uint8_t get_flags(void)
 {
 	return (flags.n<<7)|(flags.v<<6)|FLAG_R|(flags.d<<3)|
 	       (flags.i<<2)|(flags.z<<1)|(flags.c);
 }
 
-static void setflags(const uint8_t val)
+static void set_flags(const uint8_t val)
 {
 	flags.n = (val>>7)&0x01;
 	flags.v = (val>>6)&0x01;
@@ -77,7 +77,7 @@ static void setflags(const uint8_t val)
 // cpu memory bus
 static void oam_dma(uint8_t val);
 
-static void joywrite(const uint8_t val)
+static void joy_write(const uint8_t val)
 {
 	const bool oldstrobe = padstrobe;
 	padstrobe = (val&0x01) != 0;
@@ -89,7 +89,7 @@ static void joywrite(const uint8_t val)
 	}
 }
 
-static uint8_t joyread(const uint16_t addr)
+static uint8_t joy_read(const uint16_t addr)
 {
 	assert(addr == 0x4016 || addr == 0x4017);
 
@@ -106,49 +106,49 @@ static uint8_t joyread(const uint16_t addr)
 	return k;
 }
 
-static uint8_t ioread(const uint16_t addr)
+static uint8_t io_read(const uint16_t addr)
 {
 	if (addr >= 0x4016)
-		return joyread(addr);
+		return joy_read(addr);
 	else if (addr == 0x4015)
 		return apu_read_status();
 	else
 		return ppu_read(addr);
 }
 
-static void iowrite(const uint8_t val, const uint16_t addr)
+static void io_write(const uint8_t val, const uint16_t addr)
 {
 	if (addr >= 0x4000) {
 		switch (addr) {
 		default: apu_write(val, addr); break;
 		case 0x4014: oam_dma(val);    break;
-		case 0x4016: joywrite(val);   break;
+		case 0x4016: joy_write(val);   break;
 		}
 	} else {
 		ppu_write(val, addr);
 	}
 }
 
-static uint8_t read(const uint16_t addr)
+static uint8_t mem_read(const uint16_t addr)
 {
 	if (addr >= ADDR_PRGROM)
 		return cpu_prgrom[(addr>>14)&0x01][addr&0x3FFF];
 	else if (addr < ADDR_IOREGS1)
 		return ram[addr&0x7FF];
 	else if (addr < ADDR_EXPROM)
-		return ioread(addr);
+		return io_read(addr);
 	else if (rom_sram != NULL)
 		return rom_sram[addr&0x1FFF];
 
 	return 0;
 }
 
-static void write(const uint8_t val, const uint16_t addr)
+static void mem_write(const uint8_t val, const uint16_t addr)
 {
 	if (addr < ADDR_IOREGS1)
 		ram[addr&0x7FF] = val;
 	else if (addr < ADDR_EXPROM)
-		iowrite(val, addr);
+		io_write(val, addr);
 	else if (addr >= ADDR_PRGROM)
 		rom_write(val, addr);
 	else if (rom_sram != NULL)
@@ -169,22 +169,22 @@ static void oam_dma(const uint8_t val)
 		}
 	} else {
 		for (unsigned i = 0; i < 0x100; ++i)
-			ppu_oam[i] = read((uint16_t)(offset + i));
+			ppu_oam[i] = mem_read((uint16_t)(offset + i));
 		ppu_need_screen_update = true;
 	}
 	step_cycles += 513;
 }
 
-static uint16_t read16(const uint16_t addr)
+static uint16_t mem_read_16(const uint16_t addr)
 {
-	return (read(addr + 1)<<8)|read(addr);
+	return (mem_read(addr + 1)<<8)|mem_read(addr);
 }
 
-static uint16_t read16msk(const uint16_t addr)
+static uint16_t mem_read_16_msk(const uint16_t addr)
 {
 	if ((addr&0x00FF) == 0xFF)
-		return (read(addr&0xFF00)<<8)|read(addr);
-	return read16(addr);
+		return (mem_read(addr&0xFF00)<<8)|mem_read(addr);
+	return mem_read_16(addr);
 }
 
 
@@ -277,7 +277,7 @@ static uint8_t asl(uint8_t val)
 
 static void opm(uint8_t(*const op)(uint8_t), const uint16_t addr)
 {
-	write(op(read(addr)), addr);
+	mem_write(op(mem_read(addr)), addr);
 }
 
 static void opzp(uint8_t(*const op)(uint8_t), const uint8_t addr)
@@ -335,7 +335,7 @@ static void sbc(const uint8_t val)
 	adc(val ^ 0xFF);
 }
 
-static uint16_t chkpagecross(const uint16_t addr, const int16_t val)
+static uint16_t check_page_cross(const uint16_t addr, const int16_t val)
 {
 	// check for page cross in adding value to addr
 	// add 1 to step_cycles if it does cross a page
@@ -347,9 +347,9 @@ static uint16_t chkpagecross(const uint16_t addr, const int16_t val)
 static void branch(const bool cond)
 {
 	if (cond) {
-		const int8_t val = read(pc++);
+		const int8_t val = mem_read(pc++);
 		++step_cycles;
-		pc = chkpagecross(pc, val);
+		pc = check_page_cross(pc, val);
 	} else {
 		++pc;
 	}
@@ -363,11 +363,11 @@ static bool check_irq_sources(void)
 	return false;
 }
 
-static void dointerrupt(const uint16_t vector, const bool brk)
+static void trigger_interrupt(const uint16_t vector, const bool brk)
 {
 	spush16(brk ? pc + 1 : pc);
-	spush(getflags()|(brk ? FLAG_B : 0x00));
-	pc = read16(vector);
+	spush(get_flags()|(brk ? FLAG_B : 0x00));
+	pc = mem_read_16(vector);
 	flags.i = 1;
 	step_cycles += 7;
 }
@@ -380,7 +380,7 @@ void cpu_reset(void)
 	memset(cpu_irq_sources, 0, sizeof cpu_irq_sources);
 	irq_pass = false;
 
-	pc = read16(ADDR_RESET_VECTOR);
+	pc = mem_read_16(ADDR_RESET_VECTOR);
 	a = 0x00;
 	x = 0x00;
 	y = 0x00;
@@ -395,8 +395,8 @@ void cpu_reset(void)
 
 unsigned cpu_step(void)
 {
-	#define fetch8()            (read(pc++))
-	#define fetch16()           (pc += 2, read16(pc - 2))
+	#define fetch8()            (mem_read(pc++))
+	#define fetch16()           (pc += 2, mem_read_16(pc - 2))
 	#define writezp(data, addr) (ram[addr] = data)
 
 	#define immediate()      (fetch8())
@@ -404,22 +404,22 @@ unsigned cpu_step(void)
 	#define wzeropagex()     ((fetch8() + x)&0xFF)
 	#define wzeropagey()     ((fetch8() + y)&0xFF)
 	#define wabsolute()      (fetch16())
-	#define wabsolutex()     (chkpagecross(fetch16(), x))
+	#define wabsolutex()     (check_page_cross(fetch16(), x))
 	#define wabsolutexnchk() ((fetch16() + x)&0xFFFF)
-	#define wabsolutey()     (chkpagecross(fetch16(), y))
+	#define wabsolutey()     (check_page_cross(fetch16(), y))
 	#define wabsoluteynchk() ((fetch16() + y)&0xFFFF)
-	#define windirectx()     (read16msk((fetch8() + x)&0xFF))
-	#define windirecty()     (chkpagecross(read16msk(fetch8()), y))
-	#define windirectynchk() ((read16msk(fetch8()) + y)&0xFFFF)
+	#define windirectx()     (mem_read_16_msk((fetch8() + x)&0xFF))
+	#define windirecty()     (check_page_cross(mem_read_16_msk(fetch8()), y))
+	#define windirectynchk() ((mem_read_16_msk(fetch8()) + y)&0xFFFF)
 
 	#define rzeropage()  (ram[wzeropage()])
 	#define rzeropagex() (ram[wzeropagex()])
 	#define rzeropagey() (ram[wzeropagey()])
-	#define rabsolute()  (read(wabsolute()))
-	#define rabsolutex() (read(wabsolutex()))
-	#define rabsolutey() (read(wabsolutey()))
-	#define rindirectx() (read(windirectx()))
-	#define rindirecty() (read(windirecty()))
+	#define rabsolute()  (mem_read(wabsolute()))
+	#define rabsolutex() (mem_read(wabsolutex()))
+	#define rabsolutey() (mem_read(wabsolutey()))
+	#define rindirectx() (mem_read(windirectx()))
+	#define rindirecty() (mem_read(windirecty()))
 
 	static const uint8_t clock_table[0x100] = {
 		      /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
@@ -444,10 +444,10 @@ unsigned cpu_step(void)
 	step_cycles = 0;
 
 	if (cpu_nmi) {
-		dointerrupt(ADDR_NMI_VECTOR, false);
+		trigger_interrupt(ADDR_NMI_VECTOR, false);
 		cpu_nmi = false;
 	} else if (irq_pass && check_irq_sources()) {
-		dointerrupt(ADDR_IRQ_VECTOR, false);
+		trigger_interrupt(ADDR_IRQ_VECTOR, false);
 	}
 
 	irq_pass = flags.i == 0;
@@ -586,21 +586,21 @@ unsigned cpu_step(void)
 	// STA
 	case 0x85: writezp(a, wzeropage());    break;
 	case 0x95: writezp(a, wzeropagex());   break;
-	case 0x8D: write(a, wabsolute());      break;
-	case 0x9D: write(a, wabsolutexnchk()); break;
-	case 0x99: write(a, wabsoluteynchk()); break;
-	case 0x81: write(a, windirectx());     break;
-	case 0x91: write(a, windirectynchk()); break;
+	case 0x8D: mem_write(a, wabsolute());      break;
+	case 0x9D: mem_write(a, wabsolutexnchk()); break;
+	case 0x99: mem_write(a, wabsoluteynchk()); break;
+	case 0x81: mem_write(a, windirectx());     break;
+	case 0x91: mem_write(a, windirectynchk()); break;
 
 	// STX
 	case 0x86: writezp(x, wzeropage());  break;
 	case 0x96: writezp(x, wzeropagey()); break;
-	case 0x8E: write(x, wabsolute());    break;
+	case 0x8E: mem_write(x, wabsolute());    break;
 
 	// STY
 	case 0x84: writezp(y, wzeropage());  break;
 	case 0x94: writezp(y, wzeropagex()); break;
-	case 0x8C: write(y, wabsolute());    break;
+	case 0x8C: mem_write(y, wabsolute());    break;
 
 	// CMP
 	case 0xC9: cmp(a, immediate());  break;
@@ -630,10 +630,10 @@ unsigned cpu_step(void)
 
 	// JMP
 	case 0x4C: pc = wabsolute();          break;
-	case 0x6C: pc = read16msk(fetch16()); break;
+	case 0x6C: pc = mem_read_16_msk(fetch16()); break;
 
 	// implieds
-	case 0x00: dointerrupt(ADDR_IRQ_VECTOR, true);          break; // BRK
+	case 0x00: trigger_interrupt(ADDR_IRQ_VECTOR, true);    break; // BRK
 	case 0x18: flags.c = false;                             break; // CLC
 	case 0x38: flags.c = true;                              break; // SEC
 	case 0x58: flags.i = false;                             break; // CLI
@@ -645,13 +645,13 @@ unsigned cpu_step(void)
 	case 0x88: y = dec(y);                                  break; // DEY
 	case 0xE8: x = inc(x);                                  break; // INX
 	case 0xC8: y = inc(y);                                  break; // INY
-	case 0x08: spush(getflags()|FLAG_B);                    break; // PHP
-	case 0x28: setflags(spop());                            break; // PLP
+	case 0x08: spush(get_flags()|FLAG_B);                   break; // PHP
+	case 0x28: set_flags(spop());                           break; // PLP
 	case 0x48: spush(a);                                    break; // PHA
 	case 0x68: ld(&a, spop());                              break; // PLA
 	case 0xEA:                                              break; // NOP
 	case 0x40: // RTI
-		setflags(spop());
+		set_flags(spop());
 		pc = spop16();
 		irq_pass = flags.i == 0;
 		break;
