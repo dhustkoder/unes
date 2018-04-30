@@ -134,7 +134,7 @@ static void mmc1_write(const uint8_t value, const uint16_t addr)
 	}
 }
 
-static void initmapper(void)
+static void init_mapper(void)
 {
 	memset(&mapper, 0, sizeof mapper);
 	switch (mappertype) {
@@ -248,7 +248,7 @@ bool rom_load(const uint8_t* const data)
 	       (ines.ctrl2&0xF0)>>4, mappertype);
 	
 
-	initmapper();
+	init_mapper();
 	return true;
 }
 

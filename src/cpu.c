@@ -155,6 +155,18 @@ static void mem_write(const uint8_t val, const uint16_t addr)
 		rom_sram[addr&0x1FFF] = val;
 }
 
+static uint16_t mem_read16(const uint16_t addr)
+{
+	return (mem_read(addr + 1)<<8)|mem_read(addr);
+}
+
+static uint16_t mem_read16_msk(const uint16_t addr)
+{
+	if ((addr&0x00FF) == 0xFF)
+		return (mem_read(addr&0xFF00)<<8)|mem_read(addr);
+	return mem_read16(addr);
+}
+
 static void oam_dma(const uint8_t val)
 {
 	extern uint8_t ppu_oam[0x100];
@@ -173,18 +185,6 @@ static void oam_dma(const uint8_t val)
 		ppu_need_screen_update = true;
 	}
 	step_cycles += 513;
-}
-
-static uint16_t mem_read_16(const uint16_t addr)
-{
-	return (mem_read(addr + 1)<<8)|mem_read(addr);
-}
-
-static uint16_t mem_read_16_msk(const uint16_t addr)
-{
-	if ((addr&0x00FF) == 0xFF)
-		return (mem_read(addr&0xFF00)<<8)|mem_read(addr);
-	return mem_read_16(addr);
 }
 
 
@@ -367,7 +367,7 @@ static void trigger_interrupt(const uint16_t vector, const bool brk)
 {
 	spush16(brk ? pc + 1 : pc);
 	spush(get_flags()|(brk ? FLAG_B : 0x00));
-	pc = mem_read_16(vector);
+	pc = mem_read16(vector);
 	flags.i = 1;
 	step_cycles += 7;
 }
@@ -380,7 +380,7 @@ void cpu_reset(void)
 	memset(cpu_irq_sources, 0, sizeof cpu_irq_sources);
 	irq_pass = false;
 
-	pc = mem_read_16(ADDR_RESET_VECTOR);
+	pc = mem_read16(ADDR_RESET_VECTOR);
 	a = 0x00;
 	x = 0x00;
 	y = 0x00;
@@ -396,7 +396,7 @@ void cpu_reset(void)
 unsigned cpu_step(void)
 {
 	#define fetch8()            (mem_read(pc++))
-	#define fetch16()           (pc += 2, mem_read_16(pc - 2))
+	#define fetch16()           (pc += 2, mem_read16(pc - 2))
 	#define writezp(data, addr) (ram[addr] = data)
 
 	#define immediate()      (fetch8())
@@ -408,9 +408,9 @@ unsigned cpu_step(void)
 	#define wabsolutexnchk() ((fetch16() + x)&0xFFFF)
 	#define wabsolutey()     (check_page_cross(fetch16(), y))
 	#define wabsoluteynchk() ((fetch16() + y)&0xFFFF)
-	#define windirectx()     (mem_read_16_msk((fetch8() + x)&0xFF))
-	#define windirecty()     (check_page_cross(mem_read_16_msk(fetch8()), y))
-	#define windirectynchk() ((mem_read_16_msk(fetch8()) + y)&0xFFFF)
+	#define windirectx()     (mem_read16_msk((fetch8() + x)&0xFF))
+	#define windirecty()     (check_page_cross(mem_read16_msk(fetch8()), y))
+	#define windirectynchk() ((mem_read16_msk(fetch8()) + y)&0xFFFF)
 
 	#define rzeropage()  (ram[wzeropage()])
 	#define rzeropagex() (ram[wzeropagex()])
@@ -630,7 +630,7 @@ unsigned cpu_step(void)
 
 	// JMP
 	case 0x4C: pc = wabsolute();          break;
-	case 0x6C: pc = mem_read_16_msk(fetch16()); break;
+	case 0x6C: pc = mem_read16_msk(fetch16()); break;
 
 	// implieds
 	case 0x00: trigger_interrupt(ADDR_IRQ_VECTOR, true);    break; // BRK
