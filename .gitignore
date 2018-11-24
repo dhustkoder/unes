@@ -3,6 +3,7 @@ objs/
 asm/
 tests/blargg_cpu_tests/
 src/GC/zelda_bin.h
+compile_commands.json
 *.fns
 *.nes
 *.deb

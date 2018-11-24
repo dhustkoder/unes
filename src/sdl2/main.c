@@ -4,17 +4,12 @@
 #include <assert.h>
 #include "SDL.h"
 #include "audio.h"
+#include "video.h"
 #include "log.h"
 #include "rom.h"
 #include "cpu.h"
 #include "apu.h"
 #include "ppu.h"
-
-
-#define TEXTURE_WIDTH  (256)
-#define TEXTURE_HEIGHT (240)
-#define WIN_WIDTH      (TEXTURE_WIDTH * 3)
-#define WIN_HEIGHT     (TEXTURE_HEIGHT * 3)
 
 
 const Uint32 nes_rgb[0x40] = {
@@ -126,7 +121,7 @@ static bool initialize_platform(void)
 	SDL_GetRendererInfo(renderer, &info);
 	texture = SDL_CreateTexture(renderer, info.texture_formats[0],
 	                            SDL_TEXTUREACCESS_STREAMING,
-				    TEXTURE_WIDTH, TEXTURE_HEIGHT);
+	                            TEXTURE_WIDTH, TEXTURE_HEIGHT);
 	if (texture == NULL) {
 		log_error("Failed to create SDL_Texture: %s\n", SDL_GetError());
 		goto Lfreerenderer;

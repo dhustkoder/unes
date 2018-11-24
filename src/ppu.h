@@ -2,6 +2,13 @@
 #define UNES_PPU_H_
 #include <stdint.h>
 
+
+#define NES_SCR_WIDTH  (256)
+#define NES_SCR_HEIGHT (240)
+
+#define NES_FB_WIDTH   (NES_SCR_WIDTH)
+#define NES_FB_HEIGHT  (NES_SCR_HEIGHT)
+
 extern void ppu_reset(void);
 extern void ppu_step(unsigned pputicks);
 extern void ppu_log_state(void);

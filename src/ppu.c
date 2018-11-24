@@ -44,7 +44,7 @@ static struct {
 
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1C];
-static uint8_t screen[240][256];
+static uint8_t framebuffer[NES_FB_HEIGHT][NES_FB_WIDTH];
 
 
 static int16_t eval_nt_offset(const uint16_t addr)
@@ -95,40 +95,60 @@ static uint8_t get_palette(const uint16_t addr)
 
 static void draw_bg_scanline(void)
 {
-	assert(scanline >= 0 && scanline <= 239); // visible lines
+	
+	const unsigned xscroll = (ppuscroll>>8)&0xFF;
+	const unsigned xscroll_div = xscroll>>3;
+	const unsigned xscroll_mod = xscroll&0x07;
 
-	const uint8_t* const nt = &nametables[eval_nt_offset((ppuctrl&0x03)<<10)];
-	const uint8_t* const at = nt + 0x3C0;
 	const uint8_t* const pattern = ppu_pattern[(ppuctrl&0x10)>>4];
 	const unsigned greymsk = (ppumask&0x01) ? 0x30 : 0xFF;
 	const unsigned spritey = scanline&0x07;
 	const unsigned ysprite = scanline>>3;
 	const unsigned palrowshift = (ysprite&0x03) > 1 ? 4 : 0;
-	uint8_t* const pixels = &screen[scanline][0];
-	for (unsigned i = 0; i < 32; ++i) {
-		unsigned palrow = at[((ysprite>>2)<<3) + (i>>2)];
-		palrow >>= ((i&0x03) > 1) ? 2 : 0;
+
+	const uint8_t* nt = &nametables[eval_nt_offset(((ppuctrl&0x03)<<10))];
+	const uint8_t* at = nt + 0x3C0;
+	bool changed = false;
+
+	uint8_t* pixels = &framebuffer[scanline][0];
+
+	const unsigned ntiles = xscroll_mod ? 33 : 32;
+
+	for (unsigned i = 0, nt_tile_idx = xscroll_div; i < ntiles; ++i, ++nt_tile_idx) {
+		if (!changed && (xscroll_div + i) >= 32) {
+			nt = &nametables[eval_nt_offset(((ppuctrl&0x03)<<10) + 0x400)];
+			at = nt + 0x3C0;
+			nt_tile_idx = 0;
+			changed = true;
+		}
+
+		unsigned palrow = at[((ysprite>>2)<<3) + (nt_tile_idx>>2)];
+		palrow >>= ((nt_tile_idx&0x03) > 1) ? 2 : 0;
 		palrow >>= palrowshift;
 		palrow &= 0x03;
 		palrow <<= 2;
 
-		const unsigned spridx = nt[(ysprite<<5) + i]<<4;
-		unsigned b0 = pattern[spridx + spritey];
-		unsigned b1 = pattern[spridx + spritey + 8];
-		for (unsigned p = 0; p < 8; ++p) {
+		const unsigned spridx = nt[((ysprite<<5) + nt_tile_idx)]<<4;
+		const unsigned pbeg = (i == 0) ?  xscroll_mod : 0;
+		const unsigned pend = (i == 32) ? xscroll_mod : 8;
+		unsigned b0 = pattern[spridx + spritey]<<pbeg;
+		unsigned b1 = pattern[spridx + spritey + 8]<<pbeg;
+
+		for (unsigned p = pbeg; p < pend; ++p) {
 			const unsigned paladdr = palrow|((b1>>6)&0x02)|((b0>>7)&0x01);
 			const unsigned pal = get_palette((uint16_t)paladdr);
-			pixels[(i<<3) + p] = (uint8_t)(pal&greymsk);
+			*pixels++ = (uint8_t)(pal&greymsk);
 			b0 <<= 1;
 			b1 <<= 1;
 		}
 	}
+
+	assert((pixels - (&framebuffer[scanline][0])) == NES_FB_WIDTH);
+
 }
 
 static void draw_sprite_scanline(void)
 {
-	assert(scanline >= 0 && scanline <= 239); // visible lines
-
 	const unsigned ypos = scanline;
 	const unsigned sprh = (ppuctrl&0x20) ? 16 : 8;
 	struct {
@@ -179,7 +199,7 @@ static void draw_sprite_scanline(void)
 			if (c == 0)
 				continue;
 			const uint16_t paladdr = 0x10|((spr->attr&0x03)<<2)|c;
-		 	screen[ypos][spr->x + p] = get_palette(paladdr);
+		 	framebuffer[ypos % NES_FB_HEIGHT][(spr->x + p) % NES_FB_WIDTH] = get_palette(paladdr);
 		}
 	}
 
@@ -304,7 +324,7 @@ void ppu_reset(void)
 	ppu_need_screen_update = false;
 	states.scanline_drawn = false;
 	memset(&states, 0, sizeof states);
-	memset(screen, 0x0D, sizeof screen);
+	memset(framebuffer, 0x0D, sizeof framebuffer);
 }
 
 void ppu_step(const unsigned pputicks)
@@ -329,7 +349,7 @@ void ppu_step(const unsigned pputicks)
 		if (scanline == 262) {
 			scanline = 0;
 			if (states.need_render) {
-				render((uint8_t*)screen);
+				render((void*)framebuffer);
 				states.need_render = false;
 			}
 			if ((ppumask&0x18) && states.oddframe)
@@ -380,10 +400,10 @@ void ppu_log_state(void)
 	        (int)ppu_ntmirroring_mode, ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr,
 	        ppu_pattern[1] - (uint8_t*)ppu_pattern_base_addr, ppu_need_screen_update,
 	        ppuopenbus, ppuctrl, ppumask, ppustatus,
-		oamaddr, ppuscroll, ppuaddr, ppuclk,
-		scanline, states.scanline_drawn, states.nmi_occurred,
-		states.nmi_output, states.oddframe, states.nmi_for_frame,
-		states.write_toggle, states.need_render);	
+	        oamaddr, ppuscroll, ppuaddr, ppuclk,
+	        scanline, states.scanline_drawn, states.nmi_occurred,
+	        states.nmi_output, states.oddframe, states.nmi_for_frame,
+	        states.write_toggle, states.need_render);	
 }
 
 void ppu_write(const uint8_t val, const uint16_t addr)
