@@ -45,7 +45,7 @@ static struct {
 
 static uint8_t nametables[0x800];
 static uint8_t palettes[0x1C];
-static uint8_t framebuffer[NES_FB_HEIGHT][NES_FB_WIDTH];
+static uint8_t framebuffer[NES_SCR_HEIGHT][NES_SCR_WIDTH];
 
 
 static int16_t eval_nt_offset(const uint16_t addr)
@@ -143,7 +143,7 @@ static void draw_bg_scanline(void)
 		}
 	}
 
-	assert((pixels - (&framebuffer[scanline][0])) == NES_FB_WIDTH);
+	assert((pixels - (&framebuffer[scanline][0])) == NES_SCR_WIDTH);
 }
 
 static void draw_sprite_scanline(void)
@@ -198,7 +198,7 @@ static void draw_sprite_scanline(void)
 			if (c == 0)
 				continue;
 			const uint16_t paladdr = 0x10|((spr->attr&0x03)<<2)|c;
-		 	framebuffer[ypos % NES_FB_HEIGHT][(spr->x + p) % NES_FB_WIDTH] = get_palette(paladdr);
+		 	framebuffer[ypos % NES_SCR_HEIGHT][(spr->x + p) % NES_SCR_WIDTH] = get_palette(paladdr);
 		}
 	}
 
