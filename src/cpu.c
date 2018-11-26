@@ -674,22 +674,22 @@ unsigned cpu_step(void)
 void cpu_log_state(void)
 {
 	log_info("CPU STATE: {\n"
-	        "\tCPU_NMI: %" PRIu8 "\n"
+	        "\tCPU_NMI: %d\n"
 	        "\tSTEP_CYCLES: %" PRIu16 "\n"
-	        "\tIRQ_PASS: %" PRIu8 "\n"
+	        "\tIRQ_PASS: %d\n"
 	        "\tPC: %" PRIu16 "\n"
 	        "\tA: %" PRIu8 "\n"
 	        "\tX: %" PRIu8 "\n"
 	        "\tY: %" PRIu8 "\n"
 	        "\tS: %" PRIu8 "\n"
 	        "\tflags {\n"
-	        "\t\tc: %" PRIu8 "\n"
-	        "\t\tz: %" PRIu8 "\n"
-	        "\t\ti: %" PRIu8 "\n"
-	        "\t\tv: %" PRIu8 "\n"
-	        "\t\tn: %" PRIu8 "\n"
+	        "\t\tc: %d\n"
+	        "\t\tz: %d\n"
+	        "\t\ti: %d\n"
+	        "\t\tv: %d\n"
+	        "\t\tn: %d\n"
 	        "\t}\n"
-	        "\tPADSTROBE: %" PRIu8 "\n"
+	        "\tPADSTROBE: %d\n"
 	        "}\n",
 	        cpu_nmi, step_cycles, irq_pass,
 	        pc, a, x, y, s,

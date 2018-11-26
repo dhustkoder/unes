@@ -377,24 +377,24 @@ void ppu_log_state(void)
 	        "\tNT_MIRRORING_MODE: %d\n"
 	        "\tPPU_PATTERN[0]: 0x%lx\n"
 	        "\tPPU_PATTERN[1]: 0x%lx\n"
-	        "\tPPU_NEED_SCREEN_UPDATE: %" PRIu8 "\n"
-	        "\tOPENBUS: %" PRIu8 "\n"
-	        "\tCTRL: %" PRIu8 "\n"
-	        "\tMASK: %" PRIu8 "\n"
-	        "\tSTATUS: %" PRIu8 "\n" 
-	        "\tOAM ADDR: %" PRIu8 "\n"
+	        "\tPPU_NEED_SCREEN_UPDATE: %d\n"
+	        "\tOPENBUS: %d\n"
+	        "\tCTRL: %d\n"
+	        "\tMASK: %d\n"
+	        "\tSTATUS: %d\n" 
+	        "\tOAM ADDR: %d\n"
 	        "\tSCROLL: %" PRIu16 "\n"
 	        "\tADDR: %" PRIi16 "\n"
 	        "\tCLK: %li\n"
 	        "\tSCANLINE: %" PRIi16 "\n"
 	        "\tSTATES {"
-	        "\n\t\tscanline_drawn: %" PRIu8 
-	        "\n\t\tnmi_occurred: %" PRIu8
-	        "\n\t\tnmi_output: %" PRIu8 
-	        "\n\t\toddframe: %" PRIu8
-	        "\n\t\tnmi_for_frame: %" PRIu8
-	        "\n\t\twrite_toggle: %" PRIu8
-	        "\n\t\tneed_render: %" PRIu8
+	        "\n\t\tscanline_drawn: %d" 
+	        "\n\t\tnmi_occurred: %d"
+	        "\n\t\tnmi_output: %d" 
+	        "\n\t\toddframe: %d"
+	        "\n\t\tnmi_for_frame: %d"
+	        "\n\t\twrite_toggle: %d"
+	        "\n\t\tneed_render: %d"
 	        "\n\t}"
 	        "\n}",
 	        (int)ppu_ntmirroring_mode, ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr,

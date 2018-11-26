@@ -12,7 +12,7 @@ CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer
 
 LDFLAGS=$(shell sdl2-config --libs)
 LDFLAGS_DEBUG=-g
-LDFLAGS_RELEASE=-s -Wl,--gc-sections
+LDFLAGS_RELEASE=
 LDFLAGS_PERF=-g
 
 BUILD_DIR=./build
@@ -64,7 +64,7 @@ endif
 all: $(BUILD_DIR)/unes
 asm: $(ASM) $(PLATFORM_ASM)
 
-
+	
 $(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
