@@ -387,16 +387,16 @@ void ppu_log_state(void)
 	        "\tADDR: %" PRIi16 "\n"
 	        "\tCLK: %li\n"
 	        "\tSCANLINE: %" PRIi16 "\n"
-	        "\tSTATES {"
-	        "\n\t\tscanline_drawn: %d" 
-	        "\n\t\tnmi_occurred: %d"
-	        "\n\t\tnmi_output: %d" 
-	        "\n\t\toddframe: %d"
-	        "\n\t\tnmi_for_frame: %d"
-	        "\n\t\twrite_toggle: %d"
-	        "\n\t\tneed_render: %d"
-	        "\n\t}"
-	        "\n}",
+	        "\tSTATES {\n"
+	        "\t\tscanline_drawn: %d\n" 
+	        "\t\tnmi_occurred: %d\n"
+	        "\t\tnmi_output: %d\n" 
+	        "\t\toddframe: %d\n"
+	        "\t\tnmi_for_frame: %d\n"
+	        "\t\twrite_toggle: %d\n"
+	        "\t\tneed_render: %d\n"
+	        "\t}\n"
+	        "}",
 	        (int)ppu_ntmirroring_mode, ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr,
 	        ppu_pattern[1] - (uint8_t*)ppu_pattern_base_addr, ppu_need_screen_update,
 	        ppuopenbus, ppuctrl, ppumask, ppustatus,
