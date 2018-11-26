@@ -12,7 +12,7 @@ CFLAGS_PERF=-g -O3 -fno-omit-frame-pointer
 
 LDFLAGS=$(shell sdl2-config --libs)
 LDFLAGS_DEBUG=-g
-LDFLAGS_RELEASE=-Wl,-dead_strip
+LDFLAGS_RELEASE=
 LDFLAGS_PERF=-g
 
 BUILD_DIR=./build
