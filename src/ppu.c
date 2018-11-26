@@ -96,7 +96,6 @@ static uint8_t get_palette(const uint16_t addr)
 
 static void draw_bg_scanline(void)
 {
-	
 	const unsigned xscroll = (ppuscroll>>8)&0xFF;
 	const unsigned xscroll_div = xscroll>>3;
 	const unsigned xscroll_mod = xscroll&0x07;
@@ -145,7 +144,6 @@ static void draw_bg_scanline(void)
 	}
 
 	assert((pixels - (&framebuffer[scanline][0])) == NES_FB_WIDTH);
-
 }
 
 static void draw_sprite_scanline(void)

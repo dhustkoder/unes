@@ -12,6 +12,7 @@
 extern uint8_t ppu_ntmirroring_mode;
 extern uint8_t* ppu_pattern[2];
 extern bool ppu_need_screen_update;
+
 // cpu.c controls
 extern const uint8_t* cpu_prgrom[2];
 extern uint8_t cpu_sram[0x2000];
