@@ -198,7 +198,7 @@ static void draw_sprite_scanline(void)
 			if (c == 0)
 				continue;
 			const uint16_t paladdr = 0x10|((spr->attr&0x03)<<2)|c;
-		 	framebuffer[ypos % NES_SCR_HEIGHT][(spr->x + p) % NES_SCR_WIDTH] = get_palette(paladdr);
+		 	framebuffer[ypos][spr->x + p] = get_palette(paladdr);
 		}
 	}
 
