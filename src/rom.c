@@ -15,11 +15,12 @@ extern bool ppu_need_screen_update;
 // cpu.c controls
 extern const uint8_t* cpu_prgrom[2];
 extern uint8_t cpu_sram[0x2000];
+extern const void* ppu_pattern_base_addr;
 
 // rom.c globals
-bool chrdata_is_ram;
+bool rom_chrdata_is_ram;
 uint8_t* rom_sram;
-const void* ppu_pattern_base_addr;
+
 
 // rom.c
 static int32_t prgrom_size;
@@ -70,7 +71,7 @@ static void mmc1_update(const unsigned modified_reg_index)
 		ppu_need_screen_update = true;
 	}
 
-	if (!chrdata_is_ram && modified_reg_index != 3) {
+	if (!rom_chrdata_is_ram && modified_reg_index != 3) {
 		// CHR bank
 		ppu_need_screen_update = true;
 		const uint8_t* const reg = mapper.mmc1.reg;
@@ -206,10 +207,10 @@ bool rom_load(const uint8_t* const data)
 
 	if (ines.chrrom_nbanks == 0) {
 		chrdata = malloc(chrram_size);
-		chrdata_is_ram = true;
+		rom_chrdata_is_ram = true;
 	} else {
 		chrdata = (uint8_t*) &data[0x10 + prgrom_size];
-		chrdata_is_ram = false;
+		rom_chrdata_is_ram = false;
 	}
 
 	ppu_pattern_base_addr = chrdata;
@@ -254,7 +255,7 @@ bool rom_load(const uint8_t* const data)
 
 void rom_unload(void)
 {
-	if (chrdata_is_ram) {
+	if (rom_chrdata_is_ram) {
 		free(chrdata);
 		chrdata = NULL;
 	}

@@ -16,6 +16,7 @@ extern bool cpu_nmi;
 
 // ppu.c globals
 nt_mirroring_mode_t ppu_ntmirroring_mode;
+const void* ppu_pattern_base_addr;
 uint8_t* ppu_pattern[2]; // lower and upper tables
 bool ppu_need_screen_update;
 uint8_t ppu_oam[0x100];
@@ -263,11 +264,11 @@ static uint8_t read_ppudata(void)
 
 static void write_ppudata(const uint8_t val)
 {
-	extern bool chrdata_is_ram;
+	extern bool rom_chrdata_is_ram;
 
 	uint8_t* dest;
 	if (ppuaddr < 0x2000) {
-		if (!chrdata_is_ram)
+		if (!rom_chrdata_is_ram)
 			goto Lppuaddr_inc;
 		dest = &ppu_pattern[(ppuaddr>>12)&0x01][ppuaddr&0xFFF];
 	} else if (ppuaddr < 0x3F00) {
@@ -372,7 +373,6 @@ void ppu_step(const unsigned pputicks)
 
 void ppu_log_state(void)
 {
-	extern const void* ppu_pattern_base_addr;
 	log_info("PPU STATE: {\n"
 	        "\tNT_MIRRORING_MODE: %d\n"
 	        "\tPPU_PATTERN[0]: 0x%lx\n"
