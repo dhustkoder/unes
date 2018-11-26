@@ -222,7 +222,7 @@ bool rom_load(const uint8_t* const data)
 		rom_sram = NULL;
 
 	log_info("INES HEADER:\n"
-               "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
+	       "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
 	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
 	       "SRAM BANKS:    %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
