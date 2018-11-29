@@ -21,7 +21,7 @@ static inline void render(const uint8_t* const fb)
 	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
 
 	for (int i = 0; i < NES_SCR_WIDTH * NES_SCR_HEIGHT; ++i)
-		pixels[i] = nes_rgb[fb[i]];
+		pixels[i] = nes_rgb[fb[i]&0x3F];
 
 	SDL_UnlockTexture(texture);
 }

@@ -36,6 +36,8 @@ static int16_t scanline;    // 0 - 262
 static struct {
 	bool scanline_drawn  : 1;
 	bool nmi_occurred    : 1;
+	bool spr_overflow    : 1;
+	bool spr0_hit        : 1;
 	bool nmi_output      : 1;
 	bool oddframe        : 1;
 	bool nmi_for_frame   : 1;
@@ -135,9 +137,13 @@ static void draw_bg_scanline(void)
 		unsigned b1 = pattern[spridx + spritey + 8]<<pbeg;
 
 		for (unsigned p = pbeg; p < pend; ++p) {
-			const unsigned paladdr = palrow|((b1>>6)&0x02)|((b0>>7)&0x01);
+			const unsigned c = ((b1>>6)&0x02)|((b0>>7)&0x01);
+			const unsigned paladdr = palrow|c;
 			const unsigned pal = get_palette((uint16_t)paladdr);
-			*pixels++ = (uint8_t)(pal&greymsk);
+			*pixels = (uint8_t)(pal&greymsk);
+			if (c != 0)
+				*pixels |= 0x80;
+			++pixels;
 			b0 <<= 1;
 			b1 <<= 1;
 		}
@@ -156,10 +162,14 @@ static void draw_sprite_scanline(void)
 		uint8_t attr;
 		uint8_t x;
 	} *spr = (void*) (ppu_oam + 0xFC);
-	for (unsigned drawn = 0; (uint8_t*)spr >= ppu_oam && drawn < 8; --spr) {
+	for (unsigned drawn = 0; (uint8_t*)spr >= ppu_oam; --spr) {
 		if ((spr->y + 1u) == 0 || (spr->y + 1u) > ypos ||
 		    (ypos >= ((spr->y + 1u) + sprh)))
 			continue;
+
+		if (drawn >= 8) {
+			states.spr_overflow = true;
+		}
 
 		++drawn;
 		const unsigned tiley = (spr->attr&0x80) == 0
@@ -191,14 +201,20 @@ static void draw_sprite_scanline(void)
 			b1 = tmp1;
 		}
 
-		for (unsigned p = 0; p < 8 && (spr->x + p) < 256; ++p) {
+		for (unsigned p = 0; p < 8; ++p) {
 			const uint16_t c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
-			if (c == 0)
+			
+			if (c != 0) {
+				if ((framebuffer[ypos][spr->x + p]&0x80) && ((uint8_t*)spr == ppu_oam))
+						states.spr0_hit = true;
+			} else {
 				continue;
+			}
+
 			const uint16_t paladdr = 0x10|((spr->attr&0x03)<<2)|c;
-		 	framebuffer[ypos][spr->x + p] = get_palette(paladdr);
+		 	framebuffer[ypos][(spr->x + p)&0xFF] = get_palette(paladdr);
 		}
 	}
 
@@ -208,8 +224,10 @@ static void draw_sprite_scanline(void)
 static uint8_t read_ppustatus(void)
 {
 	const uint8_t b7 = states.nmi_occurred<<7;
+	const uint8_t b6 = states.spr0_hit<<6;
+	const uint8_t b5 = states.spr_overflow<<5;
 	states.nmi_occurred = false;
-	return b7|(ppuopenbus&0x1F);
+	return b7|b6|b5|(ppuopenbus&0x1F);
 }
 
 static void write_ppuctrl(const uint8_t val)
@@ -321,7 +339,6 @@ void ppu_reset(void)
 	ppuclk = 0;
 	scanline = 240;
 	ppu_need_screen_update = false;
-	states.scanline_drawn = false;
 	memset(&states, 0, sizeof states);
 	memset(framebuffer, 0x0D, sizeof framebuffer);
 }
@@ -359,6 +376,8 @@ void ppu_step(const unsigned pputicks)
 			states.nmi_for_frame = false;
 		} else if (scanline == 261) {
 			states.nmi_occurred = false;
+			states.spr_overflow = false;
+			states.spr0_hit = false;
 		}
 	}
 

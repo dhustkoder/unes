@@ -454,6 +454,9 @@ unsigned cpu_step(void)
 	const uint8_t opcode = fetch8();
 	step_cycles += clock_table[opcode];
 
+
+	//printf("PC $%.4X -> OPCODE -> $%.2X\n", pc - 1, opcode);
+
 	switch (opcode) {
 	// ADC
 	case 0x69: adc(immediate());  break;
@@ -477,6 +480,13 @@ unsigned cpu_step(void)
 
 	// AND
 	case 0x29: and(immediate());  break;
+	/*{
+		const uint8_t val = mem_read(pc);
+		pc += 1;
+		printf("PERFORMING AND OP WITH $%.2X & A ($%.2X)\n", val, a);
+		and(val);
+		break;
+	}*/
 	case 0x25: and(rzeropage());  break;
 	case 0x35: and(rzeropagex()); break;
 	case 0x2D: and(rabsolute());  break;
@@ -564,6 +574,14 @@ unsigned cpu_step(void)
 	case 0xA5: ld(&a, rzeropage());  break;
 	case 0xB5: ld(&a, rzeropagex()); break;
 	case 0xAD: ld(&a, rabsolute());  break;
+	/*{
+		const uint16_t addr = mem_read16(pc);
+		pc += 2;
+		const uint8_t val = mem_read(addr);
+		printf("LOADING THE CONTENTS OF $%.4X -> $%.2X INTO A\n", addr, val);
+		ld(&a, val);
+		break;
+	}*/
 	case 0xBD: ld(&a, rabsolutex()); break;
 	case 0xB9: ld(&a, rabsolutey()); break;
 	case 0xA1: ld(&a, rindirectx()); break;
