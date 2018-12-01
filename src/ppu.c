@@ -141,8 +141,11 @@ static void draw_bg_scanline(void)
 			const unsigned paladdr = palrow|c;
 			const unsigned pal = get_palette((uint16_t)paladdr);
 			*pixels = (uint8_t)(pal&greymsk);
-			if (c != 0)
+
+			/* using the 8th bit to flag if pixel is transparent */
+			if (c == 0)
 				*pixels |= 0x80;
+
 			++pixels;
 			b0 <<= 1;
 			b1 <<= 1;
@@ -167,7 +170,7 @@ static void draw_sprite_scanline(void)
 		    (ypos >= ((spr->y + 1u) + sprh)))
 			continue;
 
-		if (drawn >= 8) {
+		if (!states.spr_overflow && drawn >= 8) {
 			states.spr_overflow = true;
 		}
 
@@ -207,8 +210,11 @@ static void draw_sprite_scanline(void)
 			b1 <<= 1;
 			
 			if (c != 0) {
-				if ((framebuffer[ypos][spr->x + p]&0x80) && ((uint8_t*)spr == ppu_oam))
+				if (!(framebuffer[ypos][spr->x + p]&0x80) && (uint8_t*)spr == ppu_oam)
 						states.spr0_hit = true;
+
+				if ((spr->attr&0x20) && !(framebuffer[ypos][spr->x + p]&0x80))
+					continue;
 			} else {
 				continue;
 			}
