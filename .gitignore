@@ -1,8 +1,8 @@
 build/
 objs/
 asm/
-tests/blargg_cpu_tests/
-src/GC/zelda_bin.h
+tests/
+src/gc/megamanii.h
 compile_commands.json
 *.fns
 *.nes
