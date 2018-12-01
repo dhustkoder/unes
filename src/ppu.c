@@ -142,7 +142,7 @@ static void draw_bg_scanline(void)
 			const unsigned pal = get_palette((uint16_t)paladdr);
 			*pixels = (uint8_t)(pal&greymsk);
 
-			/* using the 8th bit to flag if pixel is transparent */
+			/* using the 8th bit to flag if bkg pixel is transparent */
 			if (c == 0)
 				*pixels |= 0x80;
 
@@ -208,19 +208,18 @@ static void draw_sprite_scanline(void)
 			const uint16_t c = ((b1>>6)&0x02)|(b0>>7);
 			b0 <<= 1;
 			b1 <<= 1;
-			
-			if (c != 0) {
-				if (!(framebuffer[ypos][spr->x + p]&0x80) && (uint8_t*)spr == ppu_oam)
-						states.spr0_hit = true;
-
-				if ((spr->attr&0x20) && !(framebuffer[ypos][spr->x + p]&0x80))
+			uint8_t* const pix = &framebuffer[ypos][(spr->x + p)&0xFF];
+			if (c != 0 && !(*pix&0x80)) {
+				if (!states.spr0_hit && ((uint8_t*)spr) == ppu_oam)
+					states.spr0_hit = true;
+				if (spr->attr&0x20)
 					continue;
-			} else {
+			} else if (c == 0) {
 				continue;
 			}
 
 			const uint16_t paladdr = 0x10|((spr->attr&0x03)<<2)|c;
-		 	framebuffer[ypos][(spr->x + p)&0xFF] = get_palette(paladdr);
+		 	*pix = get_palette(paladdr);
 		}
 	}
 
