@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <inttypes.h>
+#include "log.h"
 #include "video.h"
 #include "cpu.h"
 #include "rom.h"
@@ -397,8 +398,8 @@ void ppu_log_state(void)
 {
 	log_info("PPU STATE: {\n"
 	        "\tNT_MIRRORING_MODE: %d\n"
-	        "\tPPU_PATTERN[0]: 0x%lx\n"
-	        "\tPPU_PATTERN[1]: 0x%lx\n"
+	        "\tPPU_PATTERN[0]: 0x%p\n"
+	        "\tPPU_PATTERN[1]: 0x%p\n"
 	        "\tPPU_NEED_SCREEN_UPDATE: %d\n"
 	        "\tOPENBUS: %d\n"
 	        "\tCTRL: %d\n"
@@ -419,8 +420,8 @@ void ppu_log_state(void)
 	        "\t\tneed_render: %d\n"
 	        "\t}\n"
 	        "}",
-	        (int)ppu_ntmirroring_mode, ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr,
-	        ppu_pattern[1] - (uint8_t*)ppu_pattern_base_addr, ppu_need_screen_update,
+	        (int)ppu_ntmirroring_mode, (void*) (ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr),
+	        (void*)(ppu_pattern[1] - (uint8_t*)ppu_pattern_base_addr), ppu_need_screen_update,
 	        ppuopenbus, ppuctrl, ppumask, ppustatus,
 	        oamaddr, ppuscroll, ppuaddr, ppuclk,
 	        scanline, states.scanline_drawn, states.nmi_occurred,

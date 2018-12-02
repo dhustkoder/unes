@@ -1,15 +1,14 @@
-#include <time.h>
 #include <ogcsys.h>
 #include <gccore.h>
 #include <inttypes.h>
 #include <stdnoreturn.h>
+#include <string.h>
 #include "log.h"
 #include "rom.h"
 #include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
-#include "zelda_bin.h"
-
+#include "megamanii.h"
 
 #define RGB_TO_Y1CBY2CR(r, g, b)                                                    \
   ((((299 * r + 587 * g + 114 * b) / 1000)<<24) |                                   \
@@ -40,6 +39,7 @@ const uint32_t gc_nes_colors[0x40] = {
 
 uint8_t gc_nes_padstate[2];
 uint32_t* gc_fb;
+GXRModeObj* gc_vmode;
 static void* console_fb;
 
 
@@ -48,23 +48,22 @@ static void initialize_platform(void)
 	VIDEO_Init();
 	PAD_Init();
 	
-	GXRModeObj* const vmode = VIDEO_GetPreferredMode(NULL);
-	VIDEO_Configure(vmode);
+	gc_vmode= VIDEO_GetPreferredMode(NULL);
+	VIDEO_Configure(gc_vmode);
 
-	gc_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(vmode));
-	console_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(vmode));
+	gc_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
+	console_fb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(gc_vmode));
 
-	console_init(console_fb, 0, 0, vmode->fbWidth, vmode->xfbHeight,
-	             vmode->fbWidth * 2);
+	console_init(console_fb, 0, 0,
+	             gc_vmode->fbWidth,
+	             gc_vmode->xfbHeight,
+	             gc_vmode->fbWidth * 2);
 
-	VIDEO_ClearFrameBuffer(vmode, gc_fb, COLOR_BLACK);
+	VIDEO_ClearFrameBuffer(gc_vmode, gc_fb, COLOR_BLACK);
 	VIDEO_SetNextFramebuffer(gc_fb);
 	VIDEO_SetBlack(FALSE);
 	VIDEO_Flush();
 	VIDEO_WaitVSync();
-
-	if (vmode->viTVMode&VI_NON_INTERLACE)
-		VIDEO_WaitVSync();
 
 	log_info("GC VMODE INFO:\n"
 		"viTVMode: %" PRIu32 "\n"
@@ -76,9 +75,9 @@ static void initialize_platform(void)
 		"viWidth: %" PRIu16 "\n"
 		"viHeight: %" PRIu16 "\n"
 		"xfbMode: %" PRIu32 "\n\n",
-		vmode->viTVMode, vmode->fbWidth, vmode->efbHeight,
-		vmode->xfbHeight, vmode->viXOrigin, vmode->viYOrigin,
-		vmode->viWidth, vmode->viHeight, vmode->xfbMode);
+		gc_vmode->viTVMode, gc_vmode->fbWidth, gc_vmode->efbHeight,
+		gc_vmode->xfbHeight, gc_vmode->viXOrigin, gc_vmode->viYOrigin,
+		gc_vmode->viWidth, gc_vmode->viHeight, gc_vmode->xfbMode);
 }
 
 static void quit(void)
@@ -118,7 +117,7 @@ noreturn void main(void)
 {
 	initialize_platform();
 
-	if (!rom_load(zelda)) {
+	if (!rom_load(megamanii)) {
 		log_error("Couldn't load rom!\n");
 		quit();
 	}
@@ -127,16 +126,10 @@ noreturn void main(void)
 	ppu_reset();
 	apu_reset();
 
-	#define UNES_GC_VSYNC
-	#define UNES_GC_FPS_BENCH
+	const int nes_clock_div = (gc_vmode->viTVMode&VI_NON_INTERLACE) ? 60 : 50;
+	const int frameclk = NES_CPU_FREQ / nes_clock_div;
 
-	#ifdef UNES_GC_FPS_BENCH
-	int fps = 0;
-	time_t fpstimer = 0;
-	#endif
-
-	const int32_t frameclk = NES_CPU_FREQ / 60;
-	int32_t clk = 0;
+	int clk = 0;
 	for (;;) {
 		do {
 			const unsigned ticks = cpu_step();
@@ -147,20 +140,7 @@ noreturn void main(void)
 		clk -= frameclk;
 
 		update_pad_events();
-
-		#ifdef UNES_GC_FPS_BENCH
-		++fps;
-		const time_t now = time(NULL);
-		if ((now - fpstimer) >= 1) {
-			log_info("FPS: %.4d\r", fps);
-			fps = 0;
-			fpstimer = now;
-		}
-		#endif
-
-		#ifdef UNES_GC_VSYNC
 		VIDEO_WaitVSync();
-		#endif
 	}
 
 	rom_unload();
