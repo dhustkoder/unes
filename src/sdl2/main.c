@@ -12,7 +12,7 @@
 #include "ppu.h"
 
 
-const Uint32 nes_rgb[0x40] = {
+const Uint32 sdl_nes_rgb[0x40] = {
 	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
 	0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
 	0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
@@ -23,15 +23,15 @@ const Uint32 nes_rgb[0x40] = {
 	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
 };
 
-
 Uint8 sdl2_padstate[2] = { 
 	[JOYPAD_ONE] = KEYSTATE_UP,
 	[JOYPAD_TWO] = KEYSTATE_UP 
 };
 
-SDL_AudioDeviceID audio_device;
-SDL_Renderer* renderer;
-SDL_Texture* texture;
+SDL_AudioDeviceID sdl_audio_device;
+SDL_Texture* sdl_texture;
+
+static SDL_Renderer* renderer;
 static SDL_Window* window;
 
 static const Uint8 keys_id[2][8] = {
@@ -119,10 +119,10 @@ static bool initialize_platform(void)
 
 	SDL_RendererInfo info;
 	SDL_GetRendererInfo(renderer, &info);
-	texture = SDL_CreateTexture(renderer, info.texture_formats[0],
+	sdl_texture = SDL_CreateTexture(renderer, info.texture_formats[0],
 	                            SDL_TEXTUREACCESS_STREAMING,
 	                            TEXTURE_WIDTH, TEXTURE_HEIGHT);
-	if (texture == NULL) {
+	if (sdl_texture == NULL) {
 		log_error("Failed to create SDL_Texture: %s\n", SDL_GetError());
 		goto Lfreerenderer;
 	}
@@ -134,18 +134,18 @@ static bool initialize_platform(void)
 	want.format = AUDIO_S16SYS;
 	want.channels = 1;
 	want.samples = AUDIO_BUFFER_SIZE;
-	if ((audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
+	if ((sdl_audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
 		log_error("Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
 	}
 
 	SDL_RenderClear(renderer);
 	SDL_RenderPresent(renderer);
-	SDL_PauseAudioDevice(audio_device, 0);
+	SDL_PauseAudioDevice(sdl_audio_device, 0);
 	return true;
 
 Lfreetexture:
-	SDL_DestroyTexture(texture);
+	SDL_DestroyTexture(sdl_texture);
 Lfreerenderer:
 	SDL_DestroyRenderer(renderer);
 Lfreewindow:
@@ -157,8 +157,8 @@ Lquitsdl:
 
 static void terminate_platform(void)
 {
-	SDL_CloseAudioDevice(audio_device);
-	SDL_DestroyTexture(texture);
+	SDL_CloseAudioDevice(sdl_audio_device);
+	SDL_DestroyTexture(sdl_texture);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
 		ticks -= ticks_per_sec;
 
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, NULL, NULL);
+		SDL_RenderCopy(renderer, sdl_texture, NULL, NULL);
 		SDL_RenderPresent(renderer);
 
 		#ifdef UNES_LOG_STATE
