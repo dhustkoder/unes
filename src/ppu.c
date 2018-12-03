@@ -408,7 +408,7 @@ void ppu_log_state(void)
 	        "\tOAM ADDR: %d\n"
 	        "\tSCROLL: %" PRIu16 "\n"
 	        "\tADDR: %" PRIi16 "\n"
-	        "\tCLK: %li\n"
+	        "\tCLK: %d\n"
 	        "\tSCANLINE: %" PRIi16 "\n"
 	        "\tSTATES {\n"
 	        "\t\tscanline_drawn: %d\n" 
