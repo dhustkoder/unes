@@ -45,7 +45,7 @@ bool cpu_irq_sources[IRQ_SRC_SIZE];
 const uint8_t* cpu_prgrom[2]; // lower and upper banks, switching is done in rom.c
 
 // cpu.c
-static uint16_t step_cycles;
+static short step_cycles;
 static bool irq_pass;
 static uint16_t pc;
 static uint8_t a, x, y, s;
@@ -421,7 +421,7 @@ short cpu_step(void)
 	#define rindirectx() (mem_read(windirectx()))
 	#define rindirecty() (mem_read(windirecty()))
 
-	static const uint8_t clock_table[0x100] = {
+	static const int8_t clock_table[0x100] = {
 		      /*0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F*/
 		/*0*/	0, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6,
 		/*1*/	2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,

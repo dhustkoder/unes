@@ -23,7 +23,7 @@ static bool oddtick;
 
 static audio_t audio_buffer[AUDIO_BUFFER_SIZE];
 static int16_t audio_buffer_idx;
-static int8_t apu_samples_cnt;
+static short apu_samples_cnt;
 
 // Pulse channels
 static struct Pulse {

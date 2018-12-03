@@ -31,7 +31,7 @@ static uint8_t oamaddr;     // $2003
 static uint16_t ppuscroll;  // $2005
 static int16_t ppuaddr;     // $2006
 
-static long ppuclk;         // 0 - 341
+static short ppuclk;         // 0 - 341
 static int16_t scanline;    // 0 - 262
 
 static struct {
