@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 extern void apu_reset(void);
-extern void apu_step(unsigned aputicks);
+extern void apu_step(short aputicks);
 extern void apu_write(uint8_t val, uint16_t addr);
 extern uint8_t apu_read_status(void);
 

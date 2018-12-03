@@ -393,7 +393,7 @@ void cpu_reset(void)
 	padstrobe = false;
 }
 
-unsigned cpu_step(void)
+short cpu_step(void)
 {
 	#define fetch8()            (mem_read(pc++))
 	#define fetch16()           (pc += 2, mem_read16(pc - 2))

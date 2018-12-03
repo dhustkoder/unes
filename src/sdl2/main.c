@@ -218,18 +218,19 @@ int main(int argc, char* argv[])
 	apu_reset();
 	ppu_reset();
 
-	int32_t ticks = 0;
+	const Sint32 ticks_per_sec = NES_CPU_FREQ / 60;
+	Sint32 ticks = 0;
 	
 	while (update_events()) {
 
 		do {
-			const unsigned step_ticks = cpu_step();
+			const short step_ticks = cpu_step();
 			ppu_step((step_ticks<<1) + step_ticks);
 			apu_step(step_ticks);
 			ticks += step_ticks;
-		} while (ticks < NES_CPU_TICKS_PER_SEC);
+		} while (ticks < ticks_per_sec);
 
-		ticks -= NES_CPU_TICKS_PER_SEC;
+		ticks -= ticks_per_sec;
 
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, texture, NULL, NULL);

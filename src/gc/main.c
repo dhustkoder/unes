@@ -127,17 +127,17 @@ noreturn void main(void)
 	apu_reset();
 
 	const int nes_clock_div = (gc_vmode->viTVMode&VI_NON_INTERLACE) ? 60 : 50;
-	const int frameclk = NES_CPU_FREQ / nes_clock_div;
+	const int ticks_per_sec = NES_CPU_FREQ / nes_clock_div;
 
 	int clk = 0;
 	for (;;) {
 		do {
-			const unsigned ticks = cpu_step();
+			const short ticks = cpu_step();
 			ppu_step((ticks<<1) + ticks);
 			apu_step(ticks);
 			clk += ticks;
-		} while (clk < frameclk);
-		clk -= frameclk;
+		} while (clk < ticks_per_sec);
+		clk -= ticks_per_sec;
 
 		update_pad_events();
 		VIDEO_WaitVSync();

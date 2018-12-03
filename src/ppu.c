@@ -349,7 +349,7 @@ void ppu_reset(void)
 	memset(framebuffer, 0x0D, sizeof framebuffer);
 }
 
-void ppu_step(const unsigned pputicks)
+void ppu_step(const short pputicks)
 {
 	ppuclk -= pputicks;
 

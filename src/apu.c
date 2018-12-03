@@ -286,9 +286,9 @@ void apu_reset(void)
 	memset(pulse, 0, sizeof pulse);
 }
 
-void apu_step(const unsigned aputicks)
+void apu_step(const short aputicks)
 {
-	for (unsigned i = 0; i < aputicks; ++i) {
+	for (short i = 0; i < aputicks; ++i) {
 		tick_frame_counter();
 		tick_timer();
 		if (++apu_samples_cnt == APU_SAMPLES_CNT_LIMIT) {

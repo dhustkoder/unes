@@ -5,7 +5,6 @@
 
 
 #define NES_CPU_FREQ          (1789773)
-#define NES_CPU_TICKS_PER_SEC (NES_CPU_FREQ / 60)
 
 
 typedef uint8_t irq_source_t;
@@ -42,7 +41,7 @@ enum JoyKey {
 
 
 extern void cpu_reset(void);
-extern unsigned cpu_step(void);
+extern short cpu_step(void);
 extern void cpu_log_state(void);
 
 
