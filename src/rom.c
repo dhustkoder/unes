@@ -9,7 +9,7 @@
 #include "utils.h"
 
 // ppu.c controls
-extern uint8_t ppu_ntmirroring_mode;
+extern nt_mirroring_mode_t ppu_ntmirroring_mode;
 extern uint8_t* ppu_pattern[2];
 extern bool ppu_need_screen_update;
 
@@ -62,7 +62,7 @@ static void mmc1_update(const unsigned modified_reg_index)
 {
 	if (modified_reg_index == 0) {
 		// nametable mirroring mode
-		const uint8_t modes[] = {
+		const nt_mirroring_mode_t modes[] = {
 			NT_MIRRORING_MODE_ONE_SCREEN_LOW,
 			NT_MIRRORING_MODE_ONE_SCREEN_UPPER,
 			NT_MIRRORING_MODE_VERTICAL,
