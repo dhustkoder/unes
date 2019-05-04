@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <errno.h>
 #include "SDL.h"
 #include "audio.h"
 #include "video.h"
@@ -164,11 +165,11 @@ static void terminate_platform(void)
 	SDL_Quit();
 }
 
-static uint8_t* read_file(const char* filepath)
+static uint8_t* read_file(const char* const filepath)
 {
 	FILE* const file = fopen(filepath, "r");
 	if (file == NULL) {
-		log_error("Couldn't open \'%s\'\n", filepath);
+		log_error("Couldn't open \'%s\': %s\n", filepath, strerror(errno));
 		return NULL;
 	}
 
@@ -178,12 +179,12 @@ static uint8_t* read_file(const char* filepath)
 
 	uint8_t* data = malloc(size);
 	if (data == NULL) {
-		log_error("Couldn't allocate memory\n");
+		log_error("Couldn't allocate memory: %s\n", strerror(errno));
 		goto Lfclose;
 	}
 
 	if (fread(data, 1, size, file) < size && ferror(file) != 0) {
-		log_error("Couldn't read \'%s\'\n", filepath);
+		log_error("Couldn't read \'%s\': %s\n", filepath, strerror(errno));
 		free(data);
 		data = NULL;
 		goto Lfclose;
@@ -207,7 +208,7 @@ int main(int argc, char* argv[])
 
 	int exitcode = EXIT_FAILURE;
 
-	uint8_t* const rom = read_file(argv[1]);
+	const uint8_t* const rom = read_file(argv[1]);
 	if (rom == NULL)
 		goto Lterminate_platform;
 
@@ -245,7 +246,7 @@ int main(int argc, char* argv[])
 	exitcode = EXIT_SUCCESS;
 	rom_unload();
 Lfreerom:
-	free(rom);
+	free((void*)rom);
 Lterminate_platform:
 	terminate_platform();
 	return exitcode;
