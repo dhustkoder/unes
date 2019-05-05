@@ -13,17 +13,6 @@
 #include "ppu.h"
 
 
-const Uint32 sdl_nes_rgb[0x40] = {
-	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
-	0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
-	0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
-	0xAC7C00, 0x00B800, 0x00A800, 0x00A844, 0x008888, 0x000000, 0x000000, 0x000000,
-	0xF8F8F8, 0x3CBCFC, 0x6888FC, 0x9878F8, 0xF878F8, 0xF85898, 0xF87858, 0xFCA044,
-	0xF8B800, 0xB8F818, 0x58D854, 0x58F898, 0x00E8D8, 0x787878, 0x000000, 0x000000,
-	0xFCFCFC, 0xA4E4FC, 0xB8B8F8, 0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8,
-	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
-};
-
 SDL_Color sdl_colors[0x40] = {
 	{.r = 0x7C, .g = 0x7C, .b = 0x7C }, {.r = 0x00, .g = 0x00, .b = 0xFC }, {.r = 0x00, .g = 0x00, .b = 0xBC }, 
 	{.r = 0x44, .g = 0x28, .b = 0xBC }, {.r = 0x94, .g = 0x00, .b = 0x84 }, {.r = 0xA8, .g = 0x00, .b = 0x20 },
@@ -56,7 +45,7 @@ Uint8 sdl_padstate[2] = {
 
 SDL_Surface* sdl_surface;
 
-static const Uint8 keys_id[2][8] = {
+static const unsigned keys_id[2][8] = {
 	[JOYPAD_ONE] = {
 		[KEY_A]      = SDLK_z,
 		[KEY_B]      = SDLK_x,
@@ -122,13 +111,27 @@ static bool initialize_platform(void)
 		return false;
 	}
 
-	sdl_surface = SDL_SetVideoMode(TEXTURE_WIDTH, TEXTURE_HEIGHT, 8, SDL_SWSURFACE);
+	sdl_surface = SDL_SetVideoMode(TEXTURE_WIDTH, TEXTURE_HEIGHT, 8, SDL_HWPALETTE|SDL_DOUBLEBUF);
 	if (sdl_surface == NULL) {
 		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
 		goto Lquitsdl;
 	}
 
-	SDL_SetColors(sdl_surface, sdl_colors, 0, 0x40);
+	SDL_Color* const colors = calloc(sizeof(SDL_Color), 256);
+	if (colors == NULL) {
+		log_error("Couldn't allocate mem\n");
+		goto Lquitsdl;
+	}
+
+	memcpy(colors, sdl_colors, sizeof(SDL_Color) * 0x40);
+
+	if (SDL_SetColors(sdl_surface, colors, 0, 256) != 1) {
+		log_error("Couldn't setup video config: %s\n", SDL_GetError());
+		free(colors);
+		goto Lquitsdl;
+	}
+
+	free(colors);
 
 	return true;
 Lquitsdl:

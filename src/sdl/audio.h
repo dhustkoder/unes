@@ -16,6 +16,7 @@ typedef int16_t audio_t;
 static inline void queue_audio_buffer(const audio_t* const buffer)
 {
 	// TODO: implements
+	((void)buffer);
 }
 
 

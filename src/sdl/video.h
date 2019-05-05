@@ -13,7 +13,6 @@
 
 static inline void render(const uint8_t* const fb)
 {
-	extern const Uint32 sdl_nes_rgb[0x40];
 	extern SDL_Surface* sdl_surface;
 
     SDL_LockSurface( sdl_surface );
