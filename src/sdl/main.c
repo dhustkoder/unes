@@ -24,38 +24,59 @@ const Uint32 sdl_nes_rgb[0x40] = {
 	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
 };
 
-Uint8 sdl2_padstate[2] = { 
+SDL_Color sdl_colors[0x40] = {
+	{.r = 0x7C, .g = 0x7C, .b = 0x7C }, {.r = 0x00, .g = 0x00, .b = 0xFC }, {.r = 0x00, .g = 0x00, .b = 0xBC }, 
+	{.r = 0x44, .g = 0x28, .b = 0xBC }, {.r = 0x94, .g = 0x00, .b = 0x84 }, {.r = 0xA8, .g = 0x00, .b = 0x20 },
+	{.r = 0xA8, .g = 0x10, .b = 0x00 }, {.r = 0x88, .g = 0x14, .b = 0x00 }, {.r = 0x50, .g = 0x30, .b = 0x00 }, 
+	{.r = 0x00, .g = 0x78, .b = 0x00 }, {.r = 0x00, .g = 0x68, .b = 0x00 }, {.r = 0x00, .g = 0x58, .b = 0x00 },
+	{.r = 0x00, .g = 0x40, .b = 0x58 }, {.r = 0x00, .g = 0x00, .b = 0x00 }, {.r = 0x00, .g = 0x00, .b = 0x00 },
+	{.r = 0x00, .g = 0x00, .b = 0x00 }, {.r = 0xBC, .g = 0xBC, .b = 0xBC }, {.r = 0x00, .g = 0x78, .b = 0xF8 },
+	{.r = 0x00, .g = 0x58, .b = 0xF8 }, {.r = 0x68, .g = 0x44, .b = 0xFC }, {.r = 0xD8, .g = 0x00, .b = 0xCC },
+	{.r = 0xE4, .g = 0x00, .b = 0x58 }, {.r = 0xF8, .g = 0x38, .b = 0x00 }, {.r = 0xE4, .g = 0x5C, .b = 0x10 },
+	{.r = 0xAC, .g = 0x7C, .b = 0x00 }, {.r = 0x00, .g = 0xB8, .b = 0x00 }, {.r = 0x00, .g = 0xA8, .b = 0x00 },
+	{.r = 0x00, .g = 0xA8, .b = 0x44 }, {.r = 0x00, .g = 0x88, .b = 0x88 }, {.r = 0x00, .g = 0x00, .b = 0x00 },
+	{.r = 0x00, .g = 0x00, .b = 0x00 }, {.r = 0x00, .g = 0x00, .b = 0x00 }, {.r = 0xF8, .g = 0xF8, .b = 0xF8 },
+	{.r = 0x3C, .g = 0xBC, .b = 0xFC }, {.r = 0x68, .g = 0x88, .b = 0xFC }, {.r = 0x98, .g = 0x78, .b = 0xF8 }, 
+	{.r = 0xF8, .g = 0x78, .b = 0xF8 }, {.r = 0xF8, .g = 0x58, .b = 0x98 }, {.r = 0xF8, .g = 0x78, .b = 0x58 },
+	{.r = 0xFC, .g = 0xA0, .b = 0x44 }, {.r = 0xF8, .g = 0xB8, .b = 0x00 }, {.r = 0xB8, .g = 0xF8, .b = 0x18 }, 
+	{.r = 0x58, .g = 0xD8, .b = 0x54 }, {.r = 0x58, .g = 0xF8, .b = 0x98 }, {.r = 0x00, .g = 0xE8, .b = 0xD8 }, 
+	{.r = 0x78, .g = 0x78, .b = 0x78 }, {.r = 0x00, .g = 0x00, .b = 0x00 }, {.r = 0x00, .g = 0x00, .b = 0x00 },
+	{.r = 0xFC, .g = 0xFC, .b = 0xFC }, {.r = 0xA4, .g = 0xE4, .b = 0xFC }, {.r = 0xB8, .g = 0xB8, .b = 0xF8 },
+	{.r = 0xD8, .g = 0xB8, .b = 0xF8 }, {.r = 0xF8, .g = 0xB8, .b = 0xF8 }, {.r = 0xF8, .g = 0xA4, .b = 0xC0 },
+	{.r = 0xF0, .g = 0xD0, .b = 0xB0 }, {.r = 0xFC, .g = 0xE0, .b = 0xA8 }, {.r = 0xF8, .g = 0xD8, .b = 0x78 },
+	{.r = 0xD8, .g = 0xF8, .b = 0x78 }, {.r = 0xB8, .g = 0xF8, .b = 0xB8 }, {.r = 0xB8, .g = 0xF8, .b = 0xD8 }, 
+	{.r = 0x00, .g = 0xFC, .b = 0xFC }, {.r = 0xF8, .g = 0xD8, .b = 0xF8 }, {.r = 0x00, .g = 0x00, .b = 0x00 }, 
+	{.r = 0x00, .g=  0x00, .b = 0x00 }
+};
+
+Uint8 sdl_padstate[2] = { 
 	[JOYPAD_ONE] = KEYSTATE_UP,
 	[JOYPAD_TWO] = KEYSTATE_UP 
 };
 
-SDL_AudioDeviceID sdl_audio_device;
-SDL_Texture* sdl_texture;
-
-static SDL_Renderer* renderer;
-static SDL_Window* window;
+SDL_Surface* sdl_surface;
 
 static const Uint8 keys_id[2][8] = {
 	[JOYPAD_ONE] = {
-		[KEY_A]      = SDL_SCANCODE_Z,
-		[KEY_B]      = SDL_SCANCODE_X,
-		[KEY_SELECT] = SDL_SCANCODE_C,
-		[KEY_START]  = SDL_SCANCODE_V,
-		[KEY_UP]     = SDL_SCANCODE_UP,
-		[KEY_DOWN]   = SDL_SCANCODE_DOWN,
-		[KEY_LEFT]   = SDL_SCANCODE_LEFT,
-		[KEY_RIGHT]  = SDL_SCANCODE_RIGHT
+		[KEY_A]      = SDLK_z,
+		[KEY_B]      = SDLK_x,
+		[KEY_SELECT] = SDLK_c,
+		[KEY_START]  = SDLK_v,
+		[KEY_UP]     = SDLK_UP,
+		[KEY_DOWN]   = SDLK_DOWN,
+		[KEY_LEFT]   = SDLK_LEFT,
+		[KEY_RIGHT]  = SDLK_RIGHT
 	},
 
 	[JOYPAD_TWO] = {
-		[KEY_A]      = SDL_SCANCODE_Q,
-		[KEY_B]      = SDL_SCANCODE_E,
-		[KEY_SELECT] = SDL_SCANCODE_R,
-		[KEY_START]  = SDL_SCANCODE_T,
-		[KEY_UP]     = SDL_SCANCODE_W,
-		[KEY_DOWN]   = SDL_SCANCODE_S,
-		[KEY_LEFT]   = SDL_SCANCODE_A,
-		[KEY_RIGHT]  = SDL_SCANCODE_D
+		[KEY_A]      = SDLK_q,
+		[KEY_B]      = SDLK_e,
+		[KEY_SELECT] = SDLK_r,
+		[KEY_START]  = SDLK_t,
+		[KEY_UP]     = SDLK_w,
+		[KEY_DOWN]   = SDLK_s,
+		[KEY_LEFT]   = SDLK_a,
+		[KEY_RIGHT]  = SDLK_d
 	}
 };
 
@@ -65,8 +86,8 @@ static void update_key(const Uint32 code, const key_state_t state)
 	for (unsigned pad = 0; pad < 2; ++pad) {
 		for (unsigned key = 0; key < 8; ++key) {
 			if (keys_id[pad][key] == code) {
-				sdl2_padstate[pad] &= ~(0x01<<key);
-				sdl2_padstate[pad] |= state<<key;
+				sdl_padstate[pad] &= ~(0x01<<key);
+				sdl_padstate[pad] |= state<<key;
 				break;
 			}
 		}
@@ -81,12 +102,12 @@ static bool update_events(void)
 		case SDL_QUIT:
 			return false;
 		case SDL_KEYDOWN:
-			if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+			if (event.key.keysym.sym == SDLK_ESCAPE)
 				return false;
-			update_key(event.key.keysym.scancode, KEYSTATE_DOWN);
+			update_key(event.key.keysym.sym, KEYSTATE_DOWN);
 			break;
 		case SDL_KEYUP:
-			update_key(event.key.keysym.scancode, KEYSTATE_UP);
+			update_key(event.key.keysym.sym, KEYSTATE_UP);
 			break;
 		}
 	}
@@ -96,61 +117,20 @@ static bool update_events(void)
 
 static bool initialize_platform(void)
 {
-	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
 		log_error("Couldn't initialize SDL: %s\n", SDL_GetError());
 		return false;
 	}
 
-	// video
-	window = SDL_CreateWindow("µnes", SDL_WINDOWPOS_CENTERED,
-				  SDL_WINDOWPOS_CENTERED,
-				  WIN_WIDTH, WIN_HEIGHT,
-				  SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
-	if (window == NULL) {
-		log_error("Failed to create SDL_Window: %s\n", SDL_GetError());
+	sdl_surface = SDL_SetVideoMode(TEXTURE_WIDTH, TEXTURE_HEIGHT, 8, SDL_SWSURFACE);
+	if (sdl_surface == NULL) {
+		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
 		goto Lquitsdl;
 	}
 
-	renderer = SDL_CreateRenderer(window, -1,
-	                              SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
-	if (renderer == NULL) {
-		log_error("Failed to create SDL_Renderer: %s\n", SDL_GetError());
-		goto Lfreewindow;
-	}
+	SDL_SetColors(sdl_surface, sdl_colors, 0, 0x40);
 
-	SDL_RendererInfo info;
-	SDL_GetRendererInfo(renderer, &info);
-	sdl_texture = SDL_CreateTexture(renderer, info.texture_formats[0],
-	                            SDL_TEXTUREACCESS_STREAMING,
-	                            TEXTURE_WIDTH, TEXTURE_HEIGHT);
-	if (sdl_texture == NULL) {
-		log_error("Failed to create SDL_Texture: %s\n", SDL_GetError());
-		goto Lfreerenderer;
-	}
-
-	// audio
-	SDL_AudioSpec want;
-	SDL_zero(want);
-	want.freq = AUDIO_FREQUENCY;
-	want.format = AUDIO_S16SYS;
-	want.channels = 1;
-	want.samples = AUDIO_BUFFER_SIZE;
-	if ((sdl_audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
-		log_error("Failed to open audio: %s\n", SDL_GetError());
-		goto Lfreetexture;
-	}
-
-	SDL_RenderClear(renderer);
-	SDL_RenderPresent(renderer);
-	SDL_PauseAudioDevice(sdl_audio_device, 0);
 	return true;
-
-Lfreetexture:
-	SDL_DestroyTexture(sdl_texture);
-Lfreerenderer:
-	SDL_DestroyRenderer(renderer);
-Lfreewindow:
-	SDL_DestroyWindow(window);
 Lquitsdl:
 	SDL_Quit();
 	return false;
@@ -158,10 +138,6 @@ Lquitsdl:
 
 static void terminate_platform(void)
 {
-	SDL_CloseAudioDevice(sdl_audio_device);
-	SDL_DestroyTexture(sdl_texture);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
 
@@ -233,9 +209,7 @@ int main(int argc, char* argv[])
 
 		ticks -= ticks_per_sec;
 
-		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, sdl_texture, NULL, NULL);
-		SDL_RenderPresent(renderer);
+		SDL_Flip(sdl_surface);
 
 		#ifdef UNES_LOG_STATE
 		cpu_log_state();

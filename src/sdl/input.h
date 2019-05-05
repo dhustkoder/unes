@@ -7,8 +7,8 @@
 
 static inline uint8_t get_pad_state(const joypad_t pad)
 {
-	extern Uint8 sdl2_padstate[2];
-	return sdl2_padstate[pad];
+	extern Uint8 sdl_padstate[2];
+	return sdl_padstate[pad];
 }
 
 

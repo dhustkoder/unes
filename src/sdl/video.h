@@ -13,17 +13,15 @@
 
 static inline void render(const uint8_t* const fb)
 {
-	extern SDL_Texture* sdl_texture;
 	extern const Uint32 sdl_nes_rgb[0x40];
+	extern SDL_Surface* sdl_surface;
 
-	int pitch;
-	Uint32* pixels;
-	SDL_LockTexture(sdl_texture, NULL, (void**)&pixels, &pitch);
+    SDL_LockSurface( sdl_surface );
 
-	for (int i = 0; i < NES_SCR_WIDTH * NES_SCR_HEIGHT; ++i)
-		pixels[i] = sdl_nes_rgb[fb[i]&0x3F];
+    memcpy(sdl_surface->pixels, fb, TEXTURE_WIDTH * TEXTURE_HEIGHT);
 
-	SDL_UnlockTexture(sdl_texture);
+    SDL_UnlockSurface( sdl_surface );
+
 }
 
 

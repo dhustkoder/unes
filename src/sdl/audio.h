@@ -15,13 +15,7 @@ typedef int16_t audio_t;
 
 static inline void queue_audio_buffer(const audio_t* const buffer)
 {
-	extern SDL_AudioDeviceID sdl_audio_device;
-
-	const Uint32 size = sizeof(*buffer) * AUDIO_BUFFER_SIZE;
-	SDL_QueueAudio(sdl_audio_device, buffer, size);
-	while (SDL_GetQueuedAudioSize(sdl_audio_device) > size) {
-		//...
-	}
+	// TODO: implements
 }
 
 
