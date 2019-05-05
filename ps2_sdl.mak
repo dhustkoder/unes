@@ -1,15 +1,12 @@
-# _____     ___ ____     ___ ____
-#  ____|   |    ____|   |        | |____|
-# |     ___|   |____ ___|    ____| |    \    PS2DEV Open Source Project.
-#-----------------------------------------------------------------------
-# Copyright 2001-2004, ps2dev - http://www.ps2dev.org
-# Licenced under Academic Free License version 2.0
-# Review ps2sdk README & LICENSE files for further details.
-
-EE_BIN = unes.elf
-EE_SRC  = $(wildcard src/ps2/main.c)
+EE_BIN = build/unes.elf
+EE_SRC  = $(wildcard src/sdl/*.c) \
+          $(wildcard src/*.c)
 EE_OBJS = $(EE_SRC:.c=.o)
-EE_LIBS = -ldraw -lgraph -lmath3d -lmf -lpacket -ldma
+EE_LIBS = -lsdl
+EE_INCS = -I./src -I./src/ps2 -I./src/sdl -I$(PS2SDK)/ports/include/SDL
+EE_CFLAGS = -std=c99 -DPLATFORM_PS2
+EE_LDFLAGS = -L$(PS2SDK)/ports/lib
+
 
 all: $(EE_BIN)
 	$(EE_STRIP) --strip-all $(EE_BIN)
@@ -54,7 +51,7 @@ IOP_STRIP = $(IOP_PREFIX)strip
 EE_CC_VERSION := $(shell $(EE_CC) -dumpversion)
 
 # Include directories
-EE_INCS := -I$(PS2SDK)/ee/include -I$(PS2SDK)/common/include -I. $(EE_INCS)
+EE_INCS := $(EE_INCS) -I$(PS2SDK)/ee/include -I$(PS2SDK)/common/include -I. 
 
 # C compiler flags
 EE_CFLAGS := -D_EE -O2 -G0 -Wall $(EE_CFLAGS)

@@ -4,6 +4,7 @@ asm/
 tests/
 src/gc/megamanii.h
 compile_commands.json
+src/ps2/rom_data.h
 *.fns
 *.nes
 *.deb

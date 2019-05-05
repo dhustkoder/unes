@@ -223,12 +223,18 @@ bool rom_load(const uint8_t* const data)
 	else
 		rom_sram = NULL;
 
+
 	log_info("INES HEADER:\n"
-	       "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
-	       "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
-	       "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
-	       "SRAM BANKS:    %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
-	       "CTRL BYTE 1:\n"
+            "PRG-ROM BANKS: %" PRIi32 " x 16Kib = %" PRIi32 "\n"
+            "CHR-ROM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
+            "CHR-RAM BANKS: %" PRIi32 " x 8 Kib = %" PRIi32 "\n"
+            "SRAM BANKS:    %" PRIi32 " x 8 Kib = %" PRIi32 "\n",
+	        prgrom_size / PRGROM_BANK_SIZE, prgrom_size,
+	        chrrom_size / CHR_BANK_SIZE, chrrom_size,
+	        chrram_size / CHR_BANK_SIZE, chrram_size,
+	        sram_size / SRAM_BANK_SIZE, sram_size);
+
+	log_info("CTRL BYTE 1:\n"
 	       "\tMIRRORING: %d = %s\n"
 	       "\tBATTERY-BACKED RAM AT $6000-$7FFF: %d = %s\n"
 	       "\tTRAINER AT $7000-71FF: %d = %s\n"
@@ -238,17 +244,12 @@ bool rom_load(const uint8_t* const data)
 	       "\tBITS 0-3 RESERVED FOR FUTURE USE AND SHOULD ALL BE 0: $%.1x\n"
 	       "\tFOUR UPPER BITS OF MAPPER NUMBER: $%.1x\n"
 	       "MAPPER: %" PRIu8 "\n\n",
-	       prgrom_size / PRGROM_BANK_SIZE, prgrom_size,
-	       chrrom_size / CHR_BANK_SIZE, chrrom_size,
-	       chrram_size / CHR_BANK_SIZE, chrram_size,
-	       sram_size / SRAM_BANK_SIZE, sram_size,
 	       (ines.ctrl1&0x01), (ines.ctrl1&0x01) ? "VERTICAL" : "HORIZONTAL",
 	       (ines.ctrl1&0x02)>>1, (ines.ctrl1&0x02) ? "YES" : "NO",
 	       (ines.ctrl1&0x04)>>2, (ines.ctrl1&0x04) ? "YES" : "NO",
 	       (ines.ctrl1&0x08)>>3, (ines.ctrl1&0x08) ? "YES" : "NO",
 	       (ines.ctrl1&0xF0)>>4, ines.ctrl2&0x0F,
 	       (ines.ctrl2&0xF0)>>4, mappertype);
-	
 
 	init_mapper();
 	return true;

@@ -11,7 +11,9 @@
 #include "cpu.h"
 #include "apu.h"
 #include "ppu.h"
-
+#ifdef PLATFORM_PS2
+#include "rom_data.h"
+#endif
 
 SDL_Color sdl_colors[0x40] = {
 	{.r = 0x7C, .g = 0x7C, .b = 0x7C }, {.r = 0x00, .g = 0x00, .b = 0xFC }, {.r = 0x00, .g = 0x00, .b = 0xBC }, 
@@ -106,7 +108,7 @@ static bool update_events(void)
 
 static bool initialize_platform(void)
 {
-	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_JOYSTICK) != 0) {
 		log_error("Couldn't initialize SDL: %s\n", SDL_GetError());
 		return false;
 	}
@@ -117,7 +119,7 @@ static bool initialize_platform(void)
 		goto Lquitsdl;
 	}
 
-	SDL_Color* const colors = calloc(sizeof(SDL_Color), 256);
+	SDL_Color* const colors = calloc(256, sizeof(SDL_Color));
 	if (colors == NULL) {
 		log_error("Couldn't allocate mem\n");
 		goto Lquitsdl;
@@ -125,13 +127,15 @@ static bool initialize_platform(void)
 
 	memcpy(colors, sdl_colors, sizeof(SDL_Color) * 0x40);
 
-	if (SDL_SetColors(sdl_surface, colors, 0, 256) != 1) {
+	if (SDL_SetColors(sdl_surface, colors, 0, 0x40) != 1) {
 		log_error("Couldn't setup video config: %s\n", SDL_GetError());
 		free(colors);
 		goto Lquitsdl;
 	}
 
 	free(colors);
+
+	SDL_ShowCursor(SDL_DISABLE);
 
 	return true;
 Lquitsdl:
@@ -177,17 +181,27 @@ Lfclose:
 
 int main(int argc, char* argv[])
 {
+	#ifndef PLATFORM_PS2
+	
 	if (argc < 2) {
 		log_error("Usage: %s [rom]\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 
+	#endif
+
+	
 	if (!initialize_platform())
 		return EXIT_FAILURE;
 
 	int exitcode = EXIT_FAILURE;
 
+	#ifndef PLATFORM_PS2
 	const uint8_t* const rom = read_file(argv[1]);
+	#else
+	const uint8_t* const rom = rom_data;
+	#endif
+
 	if (rom == NULL)
 		goto Lterminate_platform;
 
@@ -213,6 +227,7 @@ int main(int argc, char* argv[])
 		ticks -= ticks_per_sec;
 
 		SDL_Flip(sdl_surface);
+		SDL_Delay(16);
 
 		#ifdef UNES_LOG_STATE
 		cpu_log_state();
@@ -222,6 +237,7 @@ int main(int argc, char* argv[])
 
 	exitcode = EXIT_SUCCESS;
 	rom_unload();
+
 Lfreerom:
 	free((void*)rom);
 Lterminate_platform:
