@@ -15,7 +15,8 @@
 #include "rom_data.h"
 #endif
 
-const SDL_Color sdl_colors[0x40] = {
+
+SDL_Color sdl_colors[0x40] = {
 	{.r = 0x7C, .g = 0x7C, .b = 0x7C }, {.r = 0x00, .g = 0x00, .b = 0xFC }, {.r = 0x00, .g = 0x00, .b = 0xBC }, 
 	{.r = 0x44, .g = 0x28, .b = 0xBC }, {.r = 0x94, .g = 0x00, .b = 0x84 }, {.r = 0xA8, .g = 0x00, .b = 0x20 },
 	{.r = 0xA8, .g = 0x10, .b = 0x00 }, {.r = 0x88, .g = 0x14, .b = 0x00 }, {.r = 0x50, .g = 0x30, .b = 0x00 }, 
@@ -45,7 +46,9 @@ Uint8 sdl_padstate[2] = {
 	[JOYPAD_TWO] = KEYSTATE_UP 
 };
 
-SDL_Surface* sdl_surface;
+SDL_Surface* sdl_fb;
+
+static SDL_Surface* sdl_window;
 
 static const unsigned keys_id[2][8] = {
 	[JOYPAD_ONE] = {
@@ -113,15 +116,31 @@ static bool initialize_platform(void)
 		return false;
 	}
 
-	sdl_surface = SDL_SetVideoMode(WIN_WIDTH, WIN_HEIGHT, 32, SDL_HWSURFACE);
-	if (sdl_surface == NULL) {
+	sdl_window = SDL_SetVideoMode(WIN_WIDTH, WIN_HEIGHT, 8,
+	                              SDL_HWPALETTE|SDL_DOUBLEBUF|SDL_RESIZABLE);
+	if (sdl_window == NULL) {
 		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
 		goto Lquitsdl;
+	}
+
+	sdl_fb = SDL_CreateRGBSurface(SDL_HWSURFACE, TEXTURE_WIDTH, TEXTURE_HEIGHT,
+	                              8, 0xFF000000, 0xFF0000, 0xFF00, 0xFF);
+	if (!sdl_fb) {
+		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
+		goto Lfreewindow;	
+	}
+
+	for (int i = 0; i < 0x100; i += 0x40) {
+		SDL_SetColors(sdl_fb, sdl_colors, i, 0x40);
+		SDL_SetColors(sdl_window, sdl_colors, i, 0x40);
 	}
 
 	SDL_ShowCursor(SDL_DISABLE);
 
 	return true;
+
+Lfreewindow:
+	SDL_FreeSurface(sdl_window);
 Lquitsdl:
 	SDL_Quit();
 	return false;
@@ -129,6 +148,8 @@ Lquitsdl:
 
 static void terminate_platform(void)
 {
+	SDL_FreeSurface(sdl_fb);
+	SDL_FreeSurface(sdl_window);
 	SDL_Quit();
 }
 
@@ -210,8 +231,8 @@ int main(int argc, char* argv[])
 
 		ticks -= ticks_per_sec;
 
-		SDL_Flip(sdl_surface);
-		SDL_Delay(16);
+		SDL_SoftStretch(sdl_fb, NULL, sdl_window, NULL);
+		SDL_Flip(sdl_window);
 
 		#ifdef UNES_LOG_STATE
 		cpu_log_state();

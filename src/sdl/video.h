@@ -9,8 +9,8 @@
 #define TEXTURE_WIDTH  (NES_SCR_WIDTH)
 #define TEXTURE_HEIGHT (NES_SCR_HEIGHT)
 #ifdef PLATFORM_PS2
-#define WIN_WIDTH      (640)
-#define WIN_HEIGHT     (400)
+#define WIN_WIDTH      (TEXTURE_WIDTH)
+#define WIN_HEIGHT     (TEXTURE_HEIGHT)
 #else
 #define WIN_WIDTH      (NES_SCR_WIDTH * 3)
 #define WIN_HEIGHT     (NES_SCR_HEIGHT * 3)
@@ -19,27 +19,13 @@
 
 static inline void render(const uint8_t* const fb)
 {
-	extern SDL_Surface* sdl_surface;
-	extern const SDL_Color sdl_colors[0x40];
-
-    SDL_LockSurface(sdl_surface);
-   	
-   	// center on screen, PS2 tests
-   	Uint32* pixdata = sdl_surface->pixels;
-    pixdata += ((WIN_WIDTH / 2) - (TEXTURE_WIDTH / 2));
-    pixdata += WIN_WIDTH * ((WIN_HEIGHT / 2) - (TEXTURE_HEIGHT / 2));
-
-    for (int y = 0; y < TEXTURE_HEIGHT; ++y) {
-    	for (int x = 0; x < TEXTURE_WIDTH; ++x) {
-    		const SDL_Color* const c = &sdl_colors[fb[y*TEXTURE_WIDTH + x]];
-    		pixdata[x] = SDL_MapRGB(sdl_surface->format, c->r, c->g, c->b);
-    	}
-    	pixdata += sdl_surface->w;
-    }
-
-    SDL_UnlockSurface(sdl_surface);
-
+	extern SDL_Surface* sdl_fb;
+	extern const Uint32 sdl_nes_rgb[0x40];
+	SDL_LockSurface(sdl_fb);
+	memcpy(sdl_fb->pixels, fb, TEXTURE_WIDTH * TEXTURE_HEIGHT);
+	SDL_UnlockSurface(sdl_fb);
 }
+
 
 
 #endif
