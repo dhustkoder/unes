@@ -15,7 +15,7 @@
 #include "rom_data.h"
 #endif
 
-SDL_Color sdl_colors[0x40] = {
+const SDL_Color sdl_colors[0x40] = {
 	{.r = 0x7C, .g = 0x7C, .b = 0x7C }, {.r = 0x00, .g = 0x00, .b = 0xFC }, {.r = 0x00, .g = 0x00, .b = 0xBC }, 
 	{.r = 0x44, .g = 0x28, .b = 0xBC }, {.r = 0x94, .g = 0x00, .b = 0x84 }, {.r = 0xA8, .g = 0x00, .b = 0x20 },
 	{.r = 0xA8, .g = 0x10, .b = 0x00 }, {.r = 0x88, .g = 0x14, .b = 0x00 }, {.r = 0x50, .g = 0x30, .b = 0x00 }, 
@@ -113,27 +113,11 @@ static bool initialize_platform(void)
 		return false;
 	}
 
-	sdl_surface = SDL_SetVideoMode(TEXTURE_WIDTH, TEXTURE_HEIGHT, 8, SDL_HWPALETTE|SDL_DOUBLEBUF);
+	sdl_surface = SDL_SetVideoMode(WIN_WIDTH, WIN_HEIGHT, 32, SDL_HWSURFACE);
 	if (sdl_surface == NULL) {
 		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
 		goto Lquitsdl;
 	}
-
-	SDL_Color* const colors = calloc(256, sizeof(SDL_Color));
-	if (colors == NULL) {
-		log_error("Couldn't allocate mem\n");
-		goto Lquitsdl;
-	}
-
-	memcpy(colors, sdl_colors, sizeof(SDL_Color) * 0x40);
-
-	if (SDL_SetColors(sdl_surface, colors, 0, 0x40) != 1) {
-		log_error("Couldn't setup video config: %s\n", SDL_GetError());
-		free(colors);
-		goto Lquitsdl;
-	}
-
-	free(colors);
 
 	SDL_ShowCursor(SDL_DISABLE);
 
