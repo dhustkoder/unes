@@ -49,6 +49,46 @@ Uint8 sdl_padstate[2] = {
 
 SDL_Surface* sdl_surface;
 
+#ifdef PLATFORM_PS2
+#define SQUARE_IDX   (0x00)
+#define CROSS_IDX    (0x01)
+#define SELECT_IDX   (0x04)
+#define START_IDX    (0x05)
+static SDL_Joystick* sdl_joystick;
+
+static void update_button(const joypad_t pad,
+                          const uint8_t button,
+                          const key_state_t state)
+{
+	uint8_t key = 0;
+	switch (button) {
+		case SQUARE_IDX: key = KEY_A; break;
+		case CROSS_IDX: key = KEY_B; break;
+		case SELECT_IDX: key = KEY_SELECT; break;
+		case START_IDX: key = KEY_START; break;
+		default: return;
+	}
+	sdl_padstate[pad] &= ~(0x01<<key);
+	sdl_padstate[pad] |= state<<key;
+}
+
+static void update_hat(const joypad_t pad,
+                       const uint8_t value)
+{
+	sdl_padstate[pad] &= ~(1<<KEY_UP|1<<KEY_DOWN|1<<KEY_LEFT|1<<KEY_RIGHT);
+	switch (value) {
+		case SDL_HAT_UP: sdl_padstate[pad] |= 1<<KEY_UP; break;
+		case SDL_HAT_DOWN: sdl_padstate[pad] |= 1<<KEY_DOWN; break;
+		case SDL_HAT_LEFT: sdl_padstate[pad] |= 1<<KEY_LEFT; break;
+		case SDL_HAT_RIGHT: sdl_padstate[pad] |= 1<<KEY_RIGHT; break;
+		case SDL_HAT_RIGHTUP: sdl_padstate[pad] |= 1<<KEY_RIGHT|1<<KEY_UP; break;
+		case SDL_HAT_RIGHTDOWN: sdl_padstate[pad] |= 1<<KEY_RIGHT|1<<KEY_DOWN; break;
+		case SDL_HAT_LEFTUP: sdl_padstate[pad] |= 1<<KEY_LEFT|1<<KEY_UP; break;
+		case SDL_HAT_LEFTDOWN: sdl_padstate[pad] |= 1<<KEY_LEFT|1<<KEY_DOWN; break;
+	}
+}
+
+#else
 static const unsigned keys_id[2][8] = {
 	[JOYPAD_ONE] = {
 		[KEY_A]      = SDLK_z,
@@ -73,7 +113,6 @@ static const unsigned keys_id[2][8] = {
 	}
 };
 
-
 static void update_key(const Uint32 code, const key_state_t state)
 {
 	for (unsigned pad = 0; pad < 2; ++pad) {
@@ -87,13 +126,29 @@ static void update_key(const Uint32 code, const key_state_t state)
 	}
 }
 
+
+#endif
+
+
 static bool update_events(void)
 {
 	SDL_Event event;
+
 	while (SDL_PollEvent(&event) != 0) {
 		switch (event.type) {
 		case SDL_QUIT:
 			return false;
+		#ifdef PLATFORM_PS2
+		case SDL_JOYHATMOTION:
+			update_hat(event.jhat.which, event.jhat.value);
+			break;
+		case SDL_JOYBUTTONDOWN:
+			update_button(event.jbutton.which, event.jbutton.button, KEYSTATE_DOWN);
+			break;
+		case SDL_JOYBUTTONUP:
+			update_button(event.jbutton.which, event.jbutton.button, KEYSTATE_UP);
+			break;
+		#else
 		case SDL_KEYDOWN:
 			if (event.key.keysym.sym == SDLK_ESCAPE)
 				return false;
@@ -102,6 +157,7 @@ static bool update_events(void)
 		case SDL_KEYUP:
 			update_key(event.key.keysym.sym, KEYSTATE_UP);
 			break;
+		#endif
 		}
 	}
 
@@ -122,10 +178,22 @@ static bool initialize_platform(void)
 		goto Lquitsdl;
 	}
 
+	#ifdef PLATFORM_PS2
+	sdl_joystick = SDL_JoystickOpen(0);
+	if (sdl_joystick == NULL) {
+		log_error("Couldn't open joystick index 0: %s\n", SDL_GetError());
+		goto Lfree_surface;
+	}
+	#endif
+
 	SDL_ShowCursor(SDL_DISABLE);
 
 	return true;
 
+#ifdef PLATFORM_PS2
+Lfree_surface:
+	SDL_FreeSurface(sdl_surface);
+#endif
 Lquitsdl:
 	SDL_Quit();
 	return false;
@@ -133,10 +201,14 @@ Lquitsdl:
 
 static void terminate_platform(void)
 {
+	#ifdef PLATFORM_PS2
+	SDL_JoystickClose(sdl_joystick);
+	#endif
 	SDL_FreeSurface(sdl_surface);
 	SDL_Quit();
 }
 
+#ifndef PLATFORM_PS2
 static uint8_t* read_file(const char* const filepath)
 {
 	FILE* const file = fopen(filepath, "r");
@@ -166,6 +238,7 @@ Lfclose:
 	fclose(file);
 	return data;
 }
+#endif
 
 
 int main(int argc, char* argv[])
@@ -216,7 +289,7 @@ int main(int argc, char* argv[])
 		ticks -= ticks_per_sec;
 
 		SDL_Flip(sdl_surface);
-		SDL_Delay(2);
+		SDL_Delay(1);
 
 		#ifdef UNES_LOG_STATE
 		cpu_log_state();

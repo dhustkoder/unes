@@ -7,8 +7,8 @@
 
 
 #ifdef PLATFORM_PS2
-#define WIN_WIDTH      (640)
-#define WIN_HEIGHT     (400)
+#define WIN_WIDTH      (320)
+#define WIN_HEIGHT     (240)
 #else
 #define WIN_WIDTH      (NES_SCR_WIDTH * 3)
 #define WIN_HEIGHT     (NES_SCR_HEIGHT * 3)
@@ -23,7 +23,8 @@ static inline void render(const uint8_t* const fb)
 	#ifdef PLATFORM_PS2
 
 	Uint32* pixels = sdl_surface->pixels;
-	// center y 
+
+	// center y
 	pixels += ((WIN_HEIGHT / 2) - (NES_SCR_HEIGHT / 2)) * WIN_WIDTH;
 	// center x 
 	pixels += ((WIN_WIDTH / 2) - (NES_SCR_WIDTH / 2));

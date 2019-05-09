@@ -54,7 +54,7 @@ EE_CC_VERSION := $(shell $(EE_CC) -dumpversion)
 EE_INCS := $(EE_INCS) -I$(PS2SDK)/ee/include -I$(PS2SDK)/common/include -I. 
 
 # C compiler flags
-EE_CFLAGS := -D_EE -O2 -G0 -Wall $(EE_CFLAGS)
+EE_CFLAGS := -D_EE -O3 -G0 -Wall $(EE_CFLAGS)
 
 # C++ compiler flags
 EE_CXXFLAGS := -D_EE -O2 -G0 -Wall $(EE_CXXFLAGS)
