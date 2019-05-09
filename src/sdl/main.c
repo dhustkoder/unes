@@ -46,9 +46,8 @@ Uint8 sdl_padstate[2] = {
 	[JOYPAD_TWO] = KEYSTATE_UP 
 };
 
-SDL_Surface* sdl_fb;
 
-static SDL_Surface* sdl_window;
+SDL_Surface* sdl_surface;
 
 static const unsigned keys_id[2][8] = {
 	[JOYPAD_ONE] = {
@@ -116,31 +115,17 @@ static bool initialize_platform(void)
 		return false;
 	}
 
-	sdl_window = SDL_SetVideoMode(WIN_WIDTH, WIN_HEIGHT, 8,
-	                              SDL_HWPALETTE|SDL_DOUBLEBUF|SDL_RESIZABLE);
-	if (sdl_window == NULL) {
+	sdl_surface = SDL_SetVideoMode(WIN_WIDTH, WIN_HEIGHT, 32,
+	                               SDL_HWSURFACE|SDL_DOUBLEBUF|SDL_RESIZABLE);
+	if (sdl_surface == NULL) {
 		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
 		goto Lquitsdl;
-	}
-
-	sdl_fb = SDL_CreateRGBSurface(SDL_HWSURFACE, TEXTURE_WIDTH, TEXTURE_HEIGHT,
-	                              8, 0xFF000000, 0xFF0000, 0xFF00, 0xFF);
-	if (!sdl_fb) {
-		log_error("Couldn't initialize Surface: %s\n", SDL_GetError());
-		goto Lfreewindow;	
-	}
-
-	for (int i = 0; i < 0x100; i += 0x40) {
-		SDL_SetColors(sdl_fb, sdl_colors, i, 0x40);
-		SDL_SetColors(sdl_window, sdl_colors, i, 0x40);
 	}
 
 	SDL_ShowCursor(SDL_DISABLE);
 
 	return true;
 
-Lfreewindow:
-	SDL_FreeSurface(sdl_window);
 Lquitsdl:
 	SDL_Quit();
 	return false;
@@ -148,8 +133,7 @@ Lquitsdl:
 
 static void terminate_platform(void)
 {
-	SDL_FreeSurface(sdl_fb);
-	SDL_FreeSurface(sdl_window);
+	SDL_FreeSurface(sdl_surface);
 	SDL_Quit();
 }
 
@@ -221,18 +205,18 @@ int main(int argc, char* argv[])
 	Sint32 ticks = 0;
 	
 	while (update_events()) {
-
+		SDL_LockSurface(sdl_surface);
 		do {
 			const short step_ticks = cpu_step();
 			ppu_step((step_ticks<<1) + step_ticks);
 			apu_step(step_ticks);
 			ticks += step_ticks;
 		} while (ticks < ticks_per_sec);
-
+		SDL_UnlockSurface(sdl_surface);
 		ticks -= ticks_per_sec;
 
-		SDL_SoftStretch(sdl_fb, NULL, sdl_window, NULL);
-		SDL_Flip(sdl_window);
+		SDL_Flip(sdl_surface);
+		SDL_Delay(2);
 
 		#ifdef UNES_LOG_STATE
 		cpu_log_state();

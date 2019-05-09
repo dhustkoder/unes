@@ -6,11 +6,9 @@
 #include "ppu.h"
 
 
-#define TEXTURE_WIDTH  (NES_SCR_WIDTH)
-#define TEXTURE_HEIGHT (NES_SCR_HEIGHT)
 #ifdef PLATFORM_PS2
-#define WIN_WIDTH      (TEXTURE_WIDTH)
-#define WIN_HEIGHT     (TEXTURE_HEIGHT)
+#define WIN_WIDTH      (640)
+#define WIN_HEIGHT     (400)
 #else
 #define WIN_WIDTH      (NES_SCR_WIDTH * 3)
 #define WIN_HEIGHT     (NES_SCR_HEIGHT * 3)
@@ -19,11 +17,29 @@
 
 static inline void render(const uint8_t* const fb)
 {
-	extern SDL_Surface* sdl_fb;
-	extern const Uint32 sdl_nes_rgb[0x40];
-	SDL_LockSurface(sdl_fb);
-	memcpy(sdl_fb->pixels, fb, TEXTURE_WIDTH * TEXTURE_HEIGHT);
-	SDL_UnlockSurface(sdl_fb);
+	extern SDL_Surface* sdl_surface;
+	extern SDL_Color sdl_colors[0x40];
+
+	#ifdef PLATFORM_PS2
+
+	Uint32* pixels = sdl_surface->pixels;
+	// center y 
+	pixels += ((WIN_HEIGHT / 2) - (NES_SCR_HEIGHT / 2)) * WIN_WIDTH;
+	// center x 
+	pixels += ((WIN_WIDTH / 2) - (NES_SCR_WIDTH / 2));
+
+	for (int y = 0; y < NES_SCR_HEIGHT; ++y) {
+		for (int x = 0; x < NES_SCR_WIDTH; ++x) {
+			const int fbidx = y * NES_SCR_WIDTH + x;
+			const int sfidx = y * WIN_WIDTH + x;
+			const SDL_Color* const c = &sdl_colors[fb[fbidx]&0x3F];
+			pixels[sfidx] = SDL_MapRGBA(sdl_surface->format, c->r, c->g, c->b, 0x00);
+		}
+	}
+
+	#else
+	#error Implement Render 
+	#endif
 }
 
 
