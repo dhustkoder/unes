@@ -15,3 +15,4 @@ src/ps2/rom_data.h
 *.dll
 *.lib
 *.obj
+.vscode/
