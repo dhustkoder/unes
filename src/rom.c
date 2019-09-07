@@ -29,7 +29,7 @@ static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
 static mapper_type_t mappertype;
 static const uint8_t* prgdata;
-static uint8_t* chrdata; 
+static uint8_t* chrdata;
 
 // only NROM and MMC1 are supported for now
 static struct {
@@ -174,12 +174,12 @@ void rom_write(const uint8_t value, const uint16_t addr)
 bool rom_load(const uint8_t* const data)
 {
 	const uint8_t match[] = { 'N', 'E', 'S', 0x1A };
-	memcpy(&ines, data, sizeof ines);
+	memcpy(&ines.match[0], data, sizeof ines);
 	if (memcmp(ines.match, match, sizeof match) != 0) {
 		log_error("file is not an ines file.\n");
 		return false;
 	}
-	
+
 	// check cartridge compatibility
 	mappertype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
 	if (!IS_IN_ARRAY(mappertype, supported_mappers)) {
