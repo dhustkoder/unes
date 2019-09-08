@@ -8,8 +8,8 @@
 
 extern void ppu_reset(void);
 extern void ppu_step(short pputicks);
-extern void ppu_log_state(void);
 extern void ppu_write(uint8_t val, uint16_t addr);
 extern uint8_t ppu_read(uint16_t addr);
+
 
 #endif

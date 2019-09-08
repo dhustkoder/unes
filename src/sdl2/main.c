@@ -24,9 +24,9 @@ const Uint32 sdl_nes_rgb[0x40] = {
 	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
 };
 
-Uint8 sdl2_padstate[2] = { 
+Uint8 sdl2_padstate[2] = {
 	[JOYPAD_ONE] = KEYSTATE_UP,
-	[JOYPAD_TWO] = KEYSTATE_UP 
+	[JOYPAD_TWO] = KEYSTATE_UP
 };
 
 SDL_AudioDeviceID sdl_audio_device;
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])
 
 	const Sint32 ticks_per_sec = NES_CPU_FREQ / 60;
 	Sint32 ticks = 0;
-	
+
 	while (update_events()) {
 
 		do {
@@ -236,11 +236,6 @@ int main(int argc, char* argv[])
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, sdl_texture, NULL, NULL);
 		SDL_RenderPresent(renderer);
-
-		#ifdef UNES_LOG_STATE
-		cpu_log_state();
-		ppu_log_state();
-		#endif
 	}
 
 	exitcode = EXIT_SUCCESS;

@@ -27,7 +27,7 @@ static uint8_t ppuopenbus;
 static uint8_t ppuctrl;     // $2000
 static uint8_t ppumask;     // $2001
 static uint8_t ppustatus;   // $2002
-static uint8_t oamaddr;     // $2003 
+static uint8_t oamaddr;     // $2003
 static uint16_t ppuscroll;  // $2005
 static int16_t ppuaddr;     // $2006
 
@@ -394,41 +394,6 @@ void ppu_step(const short pputicks)
 	}
 }
 
-void ppu_log_state(void)
-{
-	log_info("PPU STATE: {\n"
-	        "\tNT_MIRRORING_MODE: %d\n"
-	        "\tPPU_PATTERN[0]: 0x%p\n"
-	        "\tPPU_PATTERN[1]: 0x%p\n"
-	        "\tPPU_NEED_SCREEN_UPDATE: %d\n"
-	        "\tOPENBUS: %d\n"
-	        "\tCTRL: %d\n"
-	        "\tMASK: %d\n"
-	        "\tSTATUS: %d\n" 
-	        "\tOAM ADDR: %d\n"
-	        "\tSCROLL: %" PRIu16 "\n"
-	        "\tADDR: %" PRIi16 "\n"
-	        "\tCLK: %d\n"
-	        "\tSCANLINE: %" PRIi16 "\n"
-	        "\tSTATES {\n"
-	        "\t\tscanline_drawn: %d\n" 
-	        "\t\tnmi_occurred: %d\n"
-	        "\t\tnmi_output: %d\n" 
-	        "\t\toddframe: %d\n"
-	        "\t\tnmi_for_frame: %d\n"
-	        "\t\twrite_toggle: %d\n"
-	        "\t\tneed_render: %d\n"
-	        "\t}\n"
-	        "}",
-	        (int)ppu_ntmirroring_mode, (void*) (ppu_pattern[0] - (uint8_t*)ppu_pattern_base_addr),
-	        (void*)(ppu_pattern[1] - (uint8_t*)ppu_pattern_base_addr), ppu_need_screen_update,
-	        ppuopenbus, ppuctrl, ppumask, ppustatus,
-	        oamaddr, ppuscroll, ppuaddr, ppuclk,
-	        scanline, states.scanline_drawn, states.nmi_occurred,
-	        states.nmi_output, states.oddframe, states.nmi_for_frame,
-	        states.write_toggle, states.need_render);	
-}
-
 void ppu_write(const uint8_t val, const uint16_t addr)
 {
 	switch (addr&0x0007) {
@@ -445,11 +410,12 @@ void ppu_write(const uint8_t val, const uint16_t addr)
 
 uint8_t ppu_read(const uint16_t addr)
 {
-	switch (addr&0x0007) {	
+	switch (addr&0x0007) {
 	case 2: return read_ppustatus(); break;
 	case 4: return read_oamdata();   break;
 	case 7: return read_ppudata();   break;
 	default: return ppuopenbus;      break;
 	}
 }
+
 

@@ -57,6 +57,10 @@ ifeq ($(ENABLE_LTO),ON)
 	CFLAGS += -flto
 endif
 
+ifeq ($(UNES_DEBUGGER), ON)
+	CFLAGS += -DUNES_DEBUGGER
+endif
+
 
 .PHONY: all clean asm
 
@@ -64,7 +68,7 @@ endif
 all: $(BUILD_DIR)/unes
 asm: $(ASM) $(PLATFORM_ASM)
 
-	
+
 $(BUILD_DIR)/unes: $(OBJS) $(PLATFORM_OBJS)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)

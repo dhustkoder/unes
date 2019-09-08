@@ -42,7 +42,7 @@ enum JoyKey {
 
 extern void cpu_reset(void);
 extern short cpu_step(void);
-extern void cpu_log_state(void);
+
 
 
 #endif

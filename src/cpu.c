@@ -99,7 +99,7 @@ static uint8_t joy_read(const uint16_t addr)
 		return get_pad_state(pad)&0x01;
 	else if (padshifts[pad] >= 8)
 		return 0x01;
-	
+
 	const uint8_t k = padstate[pad]&0x01;
 	padstate[pad] >>= 1;
 	++padshifts[pad];
@@ -171,7 +171,7 @@ static void oam_dma(const uint8_t val)
 {
 	extern uint8_t ppu_oam[0x100];
 	extern bool ppu_need_screen_update;
-	
+
 	const unsigned offset = 0x100 * val;
 	if (offset < 0x2000 && (offset&0x1FFF) <= 0x1F00) {
 		const uint8_t* const pram = &ram[offset&0x7FF];
@@ -554,7 +554,7 @@ short cpu_step(void)
 	case 0xFE: opm(inc, wabsolutexnchk()); break;
 
 	// DEC
-	case 0xC6: opzp(dec, wzeropage());     break; 
+	case 0xC6: opzp(dec, wzeropage());     break;
 	case 0xD6: opzp(dec, wzeropagex());    break;
 	case 0xCE: opm(dec, wabsolute());      break;
 	case 0xDE: opm(dec, wabsolutexnchk()); break;
@@ -689,28 +689,4 @@ short cpu_step(void)
 	return step_cycles;
 }
 
-void cpu_log_state(void)
-{
-	log_info("CPU STATE: {\n"
-	        "\tCPU_NMI: %d\n"
-	        "\tSTEP_CYCLES: %" PRIu16 "\n"
-	        "\tIRQ_PASS: %d\n"
-	        "\tPC: %" PRIu16 "\n"
-	        "\tA: %" PRIu8 "\n"
-	        "\tX: %" PRIu8 "\n"
-	        "\tY: %" PRIu8 "\n"
-	        "\tS: %" PRIu8 "\n"
-	        "\tflags {\n"
-	        "\t\tc: %d\n"
-	        "\t\tz: %d\n"
-	        "\t\ti: %d\n"
-	        "\t\tv: %d\n"
-	        "\t\tn: %d\n"
-	        "\t}\n"
-	        "\tPADSTROBE: %d\n"
-	        "}\n",
-	        cpu_nmi, step_cycles, irq_pass,
-	        pc, a, x, y, s,
-	        flags.c, flags.z, flags.i, flags.v, flags.n,
-	        padstrobe);
-}
+
