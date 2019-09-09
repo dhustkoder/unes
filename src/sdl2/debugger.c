@@ -1,12 +1,11 @@
-#ifdef UNES_DEBUGGER
 #include <stdbool.h>
 #include <SDL.h>
 #include "log.h"
 #include "debugger.h"
 
+#ifdef UNES_DEBUGGER
 static SDL_atomic_t thread_state;
 enum thread_states {
-	THREAD_STARTING,
 	THREAD_RUNNING,
 	THREAD_KILL,
 	THREAD_TERM
@@ -23,6 +22,22 @@ static int dbg_thread_main(void* data)
 {
 	((void)data);
 
+
+	SDL_AtomicSet(&thread_state, THREAD_RUNNING);
+
+	while (SDL_AtomicGet(&thread_state) == THREAD_RUNNING) {
+		SDL_RenderClear(renderer);
+		SDL_RenderPresent(renderer);
+		SDL_Delay(1000 / 60);
+	}
+
+	SDL_AtomicSet(&thread_state, THREAD_TERM);
+	return 0;
+}
+
+
+bool initialize_debugger()
+{
 	// video
 	window = SDL_CreateWindow("µnes debugger", SDL_WINDOWPOS_CENTERED,
 				  SDL_WINDOWPOS_CENTERED,
@@ -30,17 +45,14 @@ static int dbg_thread_main(void* data)
 				  SDL_WINDOW_RESIZABLE);
 	if (window == NULL) {
 		log_error("Failed to create SDL_Window: %s\n", SDL_GetError());
-		return EXIT_FAILURE;
+		return false;
 	}
-
-	int exitcode = EXIT_FAILURE;
-
 
 	renderer = SDL_CreateRenderer(window, -1,
 	                              SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == NULL) {
 		log_error("Failed to create SDL_Renderer: %s\n", SDL_GetError());
-		goto Lexit;
+		goto Lfreewindow;
 	}
 
 	SDL_RendererInfo info;
@@ -51,28 +63,8 @@ static int dbg_thread_main(void* data)
 				    UNES_DEBUGGER_SCR_HEIGHT);
 	if (sdl_texture == NULL) {
 		log_error("Failed to create SDL_Texture: %s\n", SDL_GetError());
-		goto Lexit;
+		goto Lfreerenderer;
 	}
-
-
-	SDL_AtomicSet(&thread_state, THREAD_RUNNING);
-	exitcode = EXIT_SUCCESS;
-
-	while (SDL_AtomicGet(&thread_state) == THREAD_RUNNING) {
-		SDL_RenderClear(renderer);
-		SDL_RenderPresent(renderer);
-		SDL_Delay(1000 / 60);
-	}
-
-Lexit:
-	SDL_AtomicSet(&thread_state, THREAD_TERM);
-	return exitcode;
-}
-
-
-bool initialize_debugger()
-{
-	SDL_AtomicSet(&thread_state, THREAD_STARTING);
 
 	dbg_thread = SDL_CreateThread(
 		dbg_thread_main,
@@ -80,19 +72,16 @@ bool initialize_debugger()
 		NULL
 	);
 
-	SDL_DetachThread(dbg_thread);
-
-	int val;
-	while ((val = SDL_AtomicGet(&thread_state)) == THREAD_STARTING) {
-		SDL_Delay(1);
-	}
-
-	if (val != THREAD_RUNNING) {
-		log_error("FAILED TO START DEBUGGER THREAD");
-		return false;
-	}
-
 	return true;
+
+Lfreerenderer:
+	SDL_DestroyRenderer(renderer);
+Lfreewindow:
+	SDL_DestroyWindow(window);
+
+	return false;
+
+
 }
 
 
