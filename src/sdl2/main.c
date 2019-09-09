@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "video.h"
 #include "log.h"
+#include "debugger.h"
 #include "rom.h"
 #include "cpu.h"
 #include "apu.h"
@@ -79,6 +80,7 @@ static bool update_events(void)
 	while (SDL_PollEvent(&event) != 0) {
 		switch (event.type) {
 		case SDL_QUIT:
+			log_info("SDL QUIT");
 			return false;
 		case SDL_KEYDOWN:
 			if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
@@ -208,6 +210,11 @@ int main(int argc, char* argv[])
 
 	int exitcode = EXIT_FAILURE;
 
+	#ifdef UNES_DEBUGGER
+	if (!initialize_debugger())
+		goto Lterminate_platform;
+	#endif
+
 	const uint8_t* const rom = read_file(argv[1]);
 	if (rom == NULL)
 		goto Lterminate_platform;
@@ -243,6 +250,10 @@ int main(int argc, char* argv[])
 Lfreerom:
 	free((void*)rom);
 Lterminate_platform:
+	// TODO: fix this
+	#ifdef UNES_DEBUGGER
+	terminate_debugger();
+	#endif
 	terminate_platform();
 	return exitcode;
 }
