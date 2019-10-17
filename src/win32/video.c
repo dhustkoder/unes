@@ -78,7 +78,7 @@ static void window_size_update(void)
 	win_height = rect.bottom - rect.top;
 }
 
-static void update_pad_states(const WORD vk, const key_state_t state)
+static void update_pad_states(const WPARAM vk, const key_state_t state)
 {
 	for (int i = 0; i < KEY_NKEYS; ++i) {
 		if (windows_key_map[i] == vk) {

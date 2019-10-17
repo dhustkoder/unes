@@ -89,7 +89,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		return EXIT_FAILURE;
 	
 	atexit(term_platform);
-
+	
 	uint8_t* rom_buffer = read_file("dk.nes");
 
 	rom_load(rom_buffer);
@@ -121,7 +121,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		video_end_frame();
 
 		const DWORD msdiff = GetTickCount() - ms;
-		log_info("%d ms frame", msdiff);
+		log_info("FRAME MS: %d", msdiff);
 	}
 	
 	rom_unload();
