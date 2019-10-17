@@ -80,8 +80,10 @@ static void window_size_update(void)
 
 static void update_pad_states(const WORD vk, const key_state_t state)
 {
+	log_info("searching for key: %d", vk);
 	for (int i = 0; i < KEY_NKEYS; ++i) {
 		if (windows_key_map[i] == vk) {
+			log_info("KEY PRESS: %d", vk);
 			const joykey_t key = unes_key_map[i];
 			unes_pad_states[0] &= ~(0x01<<key);
 			unes_pad_states[0] |= state<<key;

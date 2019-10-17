@@ -22,3 +22,4 @@ set LDFLAGS=%LDFLAGS% %LDFLAGS_RELEASE%
 if not exist "build" mkdir build
 %CC% %CFLAGS% %SRC% %LIBS% /Febuild\unes.exe /link %LDFLAGS%
 del *.obj *.pdb
+

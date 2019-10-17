@@ -36,8 +36,7 @@ enum JoyKey {
 	KEY_UP,
 	KEY_DOWN,
 	KEY_LEFT,
-	KEY_RIGHT,
-	KEY_NKEYS
+	KEY_RIGHT
 };
 
 
