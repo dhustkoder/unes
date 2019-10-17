@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "internal_log.h"
 #include "internal_video.h"
+#include "internal_audio.h"
 #include "cpu.h"
 #include "ppu.h"
 #include "apu.h"
@@ -27,6 +28,8 @@ static BOOL init_plarform(HINSTANCE hInstance,
 	log_info("Initializing Win32 Platform");
 	
 	if (!init_video_system(hInstance, nCmdShow))
+		return 0;
+	if (!init_audio_system())
 		return 0;
 		
 	return 1;
@@ -121,7 +124,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		video_end_frame();
 
 		const DWORD msdiff = GetTickCount() - ms;
-		log_info("FRAME MS: %d", msdiff);
+		log_info("frame ms: %d", msdiff);
 	}
 	
 	rom_unload();
