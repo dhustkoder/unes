@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include "video.h"
 
-extern BOOL init_video_system(HINSTANCE hInstance);
+extern BOOL init_video_system(HINSTANCE hInstance, int nCmdShow);
 extern BOOL video_win_update(void);
 extern void video_start_frame(void);
 extern void video_end_frame(void);

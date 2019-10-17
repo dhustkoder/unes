@@ -3,21 +3,9 @@
 #include "internal_log.h"
 
 static char log_buffer[4096];
+static HANDLE handles[2];
 
-void init_log_system(void)
-{
-	AttachConsole(ATTACH_PARENT_PROCESS);
-	log_info("\n");
-}
-
-void term_log_system(void)
-{
-	FreeConsole();
-}
-
-
-
-void log_info(const char* fmtstr, ...)
+void internal_logger(enum stdhandle_index idx, const char* fmtstr, ...)
 {
 	DWORD towrite, written;
 	va_list valist;
@@ -27,20 +15,21 @@ void log_info(const char* fmtstr, ...)
 	
 	log_buffer[towrite++] = '\n';
 	
-	HANDLE stdhandle = GetStdHandle(STD_OUTPUT_HANDLE);
+	const HANDLE stdhandle = handles[idx];
 	WriteConsoleA(stdhandle, log_buffer, towrite, &written, NULL);
 }
 
-void log_error(const char* fmtstr, ...)
+
+void init_log_system(void)
 {
-	
+	AttachConsole(ATTACH_PARENT_PROCESS);
+	handles[0] = GetStdHandle(STD_OUTPUT_HANDLE);
+	handles[1] = GetStdHandle(STD_ERROR_HANDLE);
+	log_info("\n");
 }
 
-#ifdef DEBUG
-void log_debug(const char* fmtstr, ...)
+void term_log_system(void)
 {
-	
+	FreeConsole();
 }
-#else
-#define log_debug(...) ((void)0)
-#endif
+
