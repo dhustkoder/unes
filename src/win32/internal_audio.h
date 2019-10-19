@@ -4,6 +4,6 @@
 
 extern BOOL init_audio_system(void);
 extern void term_audio_system(void);
-
+extern void internal_audio_sync(void);
 #endif
 

@@ -4,7 +4,7 @@
 
 
 #define AUDIO_MAX_VOLUME (100)
-#define AUDIO_BUFFER_SIZE (1024 * 4)
+#define AUDIO_BUFFER_SIZE (1024 * 12)
 #define AUDIO_FREQUENCY (44100)
 
 

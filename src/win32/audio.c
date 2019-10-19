@@ -3,39 +3,36 @@
 #include "internal_audio.h"
 
 
+#define AQUEUE_ENTRIES (128)
 
-
-static HWAVEOUT hWaveOut; /* device handle */
-static WAVEFORMATEX wfx; /* look this up in your documentation */
-static MMRESULT result;/* for waveOut return values */
+static HWAVEOUT h_waveout; /* device handle */
+static WAVEFORMATEX wfx;   /* look this up in your documentation */
+static MMRESULT result;    /* for waveout return values */
 static WAVEHDR header;
+static int aqueue_playing_idx = 0;
+static int aqueue_idx = 0;
+static audio_t aqueue[AUDIO_BUFFER_SIZE * AQUEUE_ENTRIES];
 
-void writeAudioBlock(const LPSTR block, const DWORD size)
+
+static void writeAudioBlock(const LPSTR block, const DWORD size)
 {
-	/*
-	 * wait a while for the block to play then start trying
-	 * to unprepare the header. this will fail until the block has
-	 * played.
-	 */
-	while (waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR)) == WAVERR_STILLPLAYING) {
-		// ...
-	}
-
+	//internal_audio_sync();
 	/*
 	 * initialise the block header with the size
 	 * and pointer.
 	 */
 	header.dwBufferLength = size;
 	header.lpData = block;
+	header.dwLoops = 2;
 	/*
 	 * prepare the block for playback
 	 */
-	waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+	waveOutPrepareHeader(h_waveout, &header, sizeof(WAVEHDR));
 	/*
 	 * write the block to the device. waveOutWrite returns immediately
 	 * unless a synchronous driver is used (not often).
 	 */
-	waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+	waveOutWrite(h_waveout, &header, sizeof(WAVEHDR));
 }
 
 
@@ -50,7 +47,7 @@ BOOL init_audio_system(void)
 	 */
 	wfx.nSamplesPerSec = AUDIO_FREQUENCY; /* sample rate */
 	wfx.wBitsPerSample = sizeof(audio_t) << 3; /* sample size */
-	wfx.nChannels = 2; /* channels*/
+	wfx.nChannels = 1; /* channels*/
 	/*
 	 * WAVEFORMATEX also has other fields which need filling.
 	 * as long as the three fields above are filled this should
@@ -66,7 +63,7 @@ BOOL init_audio_system(void)
 	 * default wave device on the system (some people have 2 or
 	 * more sound cards).
 	 */
-	if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) { 
+	if (waveOutOpen(&h_waveout, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) { 
 		log_error("unable to open WAVE_MAPPER device");
 		return 0;
 	}
@@ -79,12 +76,28 @@ BOOL init_audio_system(void)
 
 void term_audio_system(void)
 {
-	waveOutClose(hWaveOut);
+	waveOutClose(h_waveout);
 }
 
-void internal_audio_play_pcm(const audio_t* const data)
+void internal_audio_play_pcm(const audio_t* const unes_data)
 {
-	writeAudioBlock((const LPSTR)data, sizeof(audio_t) * AUDIO_BUFFER_SIZE);
+	const LPSTR data = (LPSTR) (aqueue + (aqueue_idx * AUDIO_BUFFER_SIZE)); 
+	memcpy(data, unes_data, AUDIO_BUFFER_SIZE * sizeof(audio_t));
+	aqueue_idx = (aqueue_idx + 1) % AQUEUE_ENTRIES;
+	internal_audio_sync();
 }
+
+void internal_audio_sync(void)
+{
+	if (aqueue_playing_idx == aqueue_idx ||
+	    waveOutUnprepareHeader(h_waveout, &header, sizeof(WAVEHDR)) == WAVERR_STILLPLAYING) 
+		return;
+
+	const LPSTR data = (LPSTR) (aqueue + (aqueue_playing_idx * AUDIO_BUFFER_SIZE));
+	aqueue_playing_idx = (aqueue_playing_idx + 1) % AQUEUE_ENTRIES;
+	writeAudioBlock(data, sizeof(audio_t) * AUDIO_BUFFER_SIZE);
+}
+
+
 
 

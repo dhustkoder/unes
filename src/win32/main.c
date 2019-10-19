@@ -11,6 +11,25 @@
 #include "rom.h"
 
 
+static int usleep(const LONGLONG usec)
+{
+    struct timeval tv;
+
+    fd_set dummy;
+
+    SOCKET s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    FD_ZERO(&dummy);
+
+    FD_SET(s, &dummy);
+
+    tv.tv_sec = (LONG) (usec/1000000L);
+
+    tv.tv_usec = (LONG) (usec%1000000L);
+
+    return select(0, 0, 0, &dummy, &tv);
+
+}
 
 static void term_platform(void)
 {
@@ -23,6 +42,12 @@ static void term_platform(void)
 static BOOL init_plarform(HINSTANCE hInstance,
                           const int nCmdShow)
 {
+    WORD wVersionRequested = MAKEWORD(1,0);
+
+    WSADATA wsaData;
+
+    WSAStartup(wVersionRequested, &wsaData);
+
 	init_log_system();
 	
 	log_info("Initializing Win32 Platform");
@@ -100,12 +125,17 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 	ppu_reset();
 	apu_reset();
 
-	DWORD ms;
 	const int ticks_per_sec = NES_CPU_FREQ / 60;
 	int ticks = 0;
+
+	LARGE_INTEGER start, end, elapsed;
+	LARGE_INTEGER freq;
+
+	QueryPerformanceFrequency(&freq); 
+
 	
 	for (;;) {
-		ms = GetTickCount();
+		QueryPerformanceCounter(&start);
 
 		if (!video_win_update())
 			break;
@@ -123,8 +153,13 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 
 		video_end_frame();
 
-		const DWORD msdiff = GetTickCount() - ms;
-		log_info("frame ms: %d", msdiff);
+		QueryPerformanceCounter(&end);
+		elapsed.QuadPart = end.QuadPart - start.QuadPart;
+		elapsed.QuadPart *= 1000000;
+		elapsed.QuadPart /= freq.QuadPart;
+		if (elapsed.QuadPart < (1000000 / 60)) {
+			usleep((1000000 / 60) - elapsed.QuadPart);
+		}
 	}
 	
 	rom_unload();

@@ -3,10 +3,11 @@ set BUILD_TYPE=%1
 
 set INCLUDE_DIRS=/Isrc /Isrc/win32 
 set SRC=src\\*.c src\\win32\\*.c
-set LIBS=user32.lib gdi32.lib winmm.lib
+set LIBS=user32.lib gdi32.lib winmm.lib Ws2_32.lib
+
 
 set CC=cl
-set CFLAGS=/D_CRT_SECURE_NO_WARNINGS /wd4028 /wd4214 /W4  %INCLUDE_DIRS%
+set CFLAGS=/D_CRT_SECURE_NO_WARNINGS /wd4028 /wd4214 /wd4047 /wd4210 /W4  %INCLUDE_DIRS%
 set LDFLAGS=/SUBSYSTEM:WINDOWS %LIBS%
 
 set CFLAGS_DEBUG=/Od /Zi /DEBUG:FULL /DDEBUG
@@ -15,15 +16,15 @@ set LDFLAGS_DEBUG=
 set CFLAGS_RELEASE=/Ox /DEBUG:NONE
 set LDFLAGS_RELEASE=
 
-if "%BUILD_TYPE%"=="release" goto setup_release else goto setup_debug
+if "%BUILD_TYPE%"=="release" goto build_release else goto build_debug
 
 
-:setup_debug
+:build_debug
 set CFLAGS=%CFLAGS% %CFLAGS_DEBUG%
 set LDFLAGS=%LDFLAGS% %LDFLAGS_DEBUG%
 goto compile
 
-:setup_release
+:build_release
 set CFLAGS=%CFLAGS% %CFLAGS_RELEASE%
 set LDFLAGS=%LDFLAGS% %LDFLAGS_RELEASE%
 goto compile
