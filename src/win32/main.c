@@ -42,12 +42,6 @@ static void term_platform(void)
 static BOOL init_plarform(HINSTANCE hInstance,
                           const int nCmdShow)
 {
-    WORD wVersionRequested = MAKEWORD(1,0);
-
-    WSADATA wsaData;
-
-    WSAStartup(wVersionRequested, &wsaData);
-
 	init_log_system();
 	
 	log_info("Initializing Win32 Platform");
@@ -56,7 +50,14 @@ static BOOL init_plarform(HINSTANCE hInstance,
 		return 0;
 	if (!init_audio_system())
 		return 0;
-		
+
+	WSADATA dummy;
+	int err;
+	if ((err = WSAStartup(MAKEWORD(1, 0), &dummy)) != 0) {
+		log_error("Couldn't initialize WSA: %d", err);
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -157,9 +158,9 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		elapsed.QuadPart = end.QuadPart - start.QuadPart;
 		elapsed.QuadPart *= 1000000;
 		elapsed.QuadPart /= freq.QuadPart;
-		if (elapsed.QuadPart < (1000000 / 60)) {
-			usleep((1000000 / 60) - elapsed.QuadPart);
-		}
+		if (elapsed.QuadPart < (1000000 / 60))
+			usleep((1000000 / 60) - elapsed.QuadPart);	
+
 	}
 	
 	rom_unload();
