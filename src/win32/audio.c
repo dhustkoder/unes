@@ -12,13 +12,9 @@ static volatile BOOL isplaying = 0;
 static audio_t data[AUDIO_BUFFER_SIZE];
 
 
-
 static void send_data_to_device(void)
 {
 	MMRESULT err;
-
-	while (isplaying)
-		;
 
 	header.dwBufferLength = sizeof(audio_t) * AUDIO_BUFFER_SIZE;
 	header.lpData = (LPSTR) data;
@@ -31,7 +27,6 @@ static void send_data_to_device(void)
 	if (err != MMSYSERR_NOERROR)
 		log_error("waveOutWrite Error: %d", err);
 
-	isplaying = 1;
 }
 
 static void init_device_cycle(void)
@@ -86,8 +81,14 @@ void term_audio_system(void)
 
 void internal_audio_play_pcm(const audio_t* const unes_data)
 {
+	while (isplaying)
+		;
+
+	isplaying = 1;
+
 	memcpy(data, unes_data, sizeof(audio_t) * AUDIO_BUFFER_SIZE);
 	send_data_to_device();
+
 }
 
 
