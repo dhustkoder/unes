@@ -158,6 +158,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		elapsed.QuadPart = end.QuadPart - start.QuadPart;
 		elapsed.QuadPart *= 1000000;
 		elapsed.QuadPart /= freq.QuadPart;
+		log_info("Frame MS: %ld", elapsed.QuadPart / 1000);
 		if (elapsed.QuadPart < (1000000 / 60))
 			usleep((1000000 / 60) - elapsed.QuadPart);	
 
