@@ -13,7 +13,7 @@ set LDFLAGS=/SUBSYSTEM:WINDOWS %LIBS%
 set CFLAGS_DEBUG=/Od /Zi /DEBUG:FULL /DDEBUG
 set LDFLAGS_DEBUG=
 
-set CFLAGS_RELEASE=/Ox /DEBUG:NONE
+set CFLAGS_RELEASE=/Ox /DEBUG:NONE /DNDEBUG
 set LDFLAGS_RELEASE=
 
 if "%BUILD_TYPE%"=="release" goto build_release else goto build_debug
