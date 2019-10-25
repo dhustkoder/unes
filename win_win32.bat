@@ -1,5 +1,6 @@
 @echo off
 set BUILD_TYPE=%1
+set RUN_AFTER_BUILD="%2"=="run"
 
 set INCLUDE_DIRS=/Isrc /Isrc/win32 
 set SRC=src\\*.c src\\win32\\*.c
@@ -34,11 +35,12 @@ if not exist "build" mkdir build
 
 @echo on
 %CC% %CFLAGS% %SRC% %LIBS% /Febuild\unes.exe /link %LDFLAGS%
+@echo off
+
+set ERROR=%errorLevel%
 
 :clean
-@echo off
 del *.obj *.pdb
 
-if "%2"=="run" .\build\unes.exe
-
+if  %ERROR%==0 ( if %RUN_AFTER_BUILD% .\build\unes.exe )
 

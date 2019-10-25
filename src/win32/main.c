@@ -133,7 +133,6 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 	LARGE_INTEGER freq;
 
 	QueryPerformanceFrequency(&freq); 
-
 	
 	for (;;) {
 		QueryPerformanceCounter(&start);
@@ -153,6 +152,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		ticks -= ticks_per_sec;
 
 		video_end_frame();
+		internal_audio_sync();
 
 		QueryPerformanceCounter(&end);
 		elapsed.QuadPart = end.QuadPart - start.QuadPart;
@@ -161,7 +161,6 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		log_info("Frame MS: %ld", elapsed.QuadPart / 1000);
 		if (elapsed.QuadPart < (1000000 / 60))
 			usleep((1000000 / 60) - elapsed.QuadPart);	
-
 	}
 	
 	rom_unload();

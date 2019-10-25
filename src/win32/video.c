@@ -44,7 +44,7 @@ static const BITMAPINFO bmi = {
 	.bmiHeader = {
 		.biSize = sizeof(BITMAPINFOHEADER),
 		.biWidth = NES_SCR_WIDTH,
-		.biHeight = NES_SCR_HEIGHT,
+		.biHeight = -NES_SCR_HEIGHT,
 		.biPlanes = 1,
 		.biBitCount = 32,
 		.biCompression = BI_RGB,
@@ -167,11 +167,11 @@ void video_start_frame(void)
 void video_internal_render(const uint8_t* const fb)
 {
 	// TODO: fix the upside down
-	uint32_t* pdst = rgb_buffer + (NES_SCR_WIDTH * NES_SCR_HEIGHT);
 	for (int y = 0; y < NES_SCR_HEIGHT; ++y) {
-		pdst -= NES_SCR_WIDTH;
 		for (int x = 0; x < NES_SCR_WIDTH; ++x) {
-			pdst[x] = nes_rgb[fb[y * NES_SCR_WIDTH + x]&0x3F];
+			rgb_buffer[
+				NES_SCR_WIDTH * y + x
+			] = nes_rgb[fb[y * NES_SCR_WIDTH + x]&0x3F];
 		}
 	}
 
