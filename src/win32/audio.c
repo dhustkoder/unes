@@ -10,8 +10,9 @@ static HWAVEOUT h_waveout;
 static WAVEFORMATEX wfx;
 static WAVEHDR header[QUEUE_SIZE];
 static int writing_idx = 0;
-static int reading_idx = 0;
+static volatile int reading_idx = 0;
 static audio_t data[QUEUE_SIZE][AUDIO_BUFFER_SIZE];
+static CRITICAL_SECTION cso;
 
 static void send_data_to_device(const int idx)
 {
@@ -30,25 +31,9 @@ static void send_data_to_device(const int idx)
 }
 
 
-static void CALLBACK wave_out_proc(HWAVEOUT  hwo,
-                                   UINT      uMsg,
-                                   DWORD_PTR dwInstance,
-                                   DWORD_PTR dwParam1,
-                                   DWORD_PTR dwParam2)
-{
-	((void)hwo);
-	((void)dwInstance);
-	((void)dwParam1);
-	((void)dwParam2);
-
-	if (uMsg != WOM_DONE)
-		return;
-
-}
-
-
 BOOL init_audio_system(void)
 {
+	InitializeCriticalSection(&cso);
 	wfx.nSamplesPerSec = AUDIO_FREQUENCY; 
 	wfx.wBitsPerSample = sizeof(audio_t) * 8; 
 	wfx.nChannels = 1; 
@@ -61,8 +46,7 @@ BOOL init_audio_system(void)
 	if (waveOutOpen(&h_waveout,
 			WAVE_MAPPER,
 	                &wfx,
-			(DWORD_PTR)wave_out_proc, 0,
-	                CALLBACK_FUNCTION) != MMSYSERR_NOERROR) { 
+			0, 0, 0) != MMSYSERR_NOERROR) { 
 		log_error("unable to open WAVE_MAPPER device");
 		return 0;
 	}
@@ -83,7 +67,7 @@ void internal_audio_push_buffer(const audio_t* const unes_data)
 
 void internal_audio_sync(void)
 {
-	if (writing_idx == reading_idx)
+	if (writing_idx == reading_idx) 
 		return;
 	send_data_to_device(reading_idx);
 	reading_idx = (reading_idx + 1) % QUEUE_SIZE;

@@ -119,7 +119,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 	
 	atexit(term_platform);
 	
-	uint8_t* rom_buffer = read_file("dk.nes");
+	uint8_t* rom_buffer = read_file("mm2.nes");
 
 	rom_load(rom_buffer);
 	cpu_reset();
@@ -151,14 +151,14 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		
 		ticks -= ticks_per_sec;
 
-		video_end_frame();
 		internal_audio_sync();
+		video_end_frame();
 
 		QueryPerformanceCounter(&end);
 		elapsed.QuadPart = end.QuadPart - start.QuadPart;
 		elapsed.QuadPart *= 1000000;
 		elapsed.QuadPart /= freq.QuadPart;
-		log_info("Frame MS: %ld", elapsed.QuadPart / 1000);
+		log_debug("Frame MS: %ld", elapsed.QuadPart / 1000);
 		if (elapsed.QuadPart < (1000000 / 60))
 			usleep((1000000 / 60) - elapsed.QuadPart);	
 	}
