@@ -166,7 +166,6 @@ void video_start_frame(void)
 
 void video_internal_render(const uint8_t* const fb)
 {
-	// TODO: fix the upside down
 	for (int y = 0; y < NES_SCR_HEIGHT; ++y) {
 		for (int x = 0; x < NES_SCR_WIDTH; ++x) {
 			rgb_buffer[

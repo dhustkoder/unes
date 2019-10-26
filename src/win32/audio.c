@@ -10,9 +10,9 @@ static HWAVEOUT h_waveout;
 static WAVEFORMATEX wfx;
 static WAVEHDR header[QUEUE_SIZE];
 static int writing_idx = 0;
-static volatile int reading_idx = 0;
+static int reading_idx = 0;
 static audio_t data[QUEUE_SIZE][AUDIO_BUFFER_SIZE];
-static CRITICAL_SECTION cso;
+
 
 static void send_data_to_device(const int idx)
 {
@@ -33,7 +33,6 @@ static void send_data_to_device(const int idx)
 
 BOOL init_audio_system(void)
 {
-	InitializeCriticalSection(&cso);
 	wfx.nSamplesPerSec = AUDIO_FREQUENCY; 
 	wfx.wBitsPerSample = sizeof(audio_t) * 8; 
 	wfx.nChannels = 1; 
