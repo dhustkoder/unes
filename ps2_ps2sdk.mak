@@ -1,11 +1,11 @@
 EE_BIN = build/unes.elf
-EE_SRC  = $(wildcard src/sdl/*.c) \
+EE_SRC  = $(wildcard src/ps2/*.c) \
           $(wildcard src/*.c)
 EE_OBJS = $(EE_SRC:.c=.o)
-EE_LIBS = -lsdl
-EE_INCS = -I./src -I./src/ps2 -I./src/sdl -I$(PS2SDK)/ports/include/SDL
-EE_CFLAGS = -std=c99 -DPLATFORM_PS2
-EE_LDFLAGS = -L$(PS2SDK)/ports/lib
+EE_LIBS = -lgskit -ldmakit 
+EE_INCS = -I./src -I./src/ps2 -I$(PS2DEV)/gsKit/include
+EE_CFLAGS = -std=c99 -DPLATFORM_PS2SDK
+EE_LDFLAGS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib
 
 
 all: $(EE_BIN)
