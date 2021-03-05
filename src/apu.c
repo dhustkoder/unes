@@ -1,9 +1,4 @@
-#include <string.h>
-#include <stdbool.h>
-#include "log.h"
-#include "audio.h"
-#include "cpu.h"
-#include "apu.h"
+#include "unes.h"
 
 
 #define FRAME_COUNTER_RATE     (NES_CPU_FREQ / 240)

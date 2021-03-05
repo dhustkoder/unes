@@ -1,12 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include "log.h"
-#include "cpu.h"
-#include "ppu.h"
-#include "rom.h"
-#include "utils.h"
+#include "unes.h"
 
 // ppu.c controls
 extern nt_mirroring_mode_t ppu_ntmirroring_mode;

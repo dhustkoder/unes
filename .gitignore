@@ -11,6 +11,7 @@ src/ps2/rom_data.h
 *.cdl
 *.o
 *.out
+*.bin
 *.exe
 *.dll
 *.lib

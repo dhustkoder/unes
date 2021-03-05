@@ -1,35 +1,5 @@
 #include <Windows.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include "internal_log.h"
-#include "internal_video.h"
-#include "internal_audio.h"
-#include "cpu.h"
-#include "ppu.h"
-#include "apu.h"
-#include "rom.h"
-
-
-static int usleep(const LONGLONG usec)
-{
-    struct timeval tv;
-
-    fd_set dummy;
-
-    SOCKET s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-    FD_ZERO(&dummy);
-
-    FD_SET(s, &dummy);
-
-    tv.tv_sec = (LONG) (usec/1000000L);
-
-    tv.tv_usec = (LONG) (usec%1000000L);
-
-    return select(0, 0, 0, &dummy, &tv);
-
-}
+#include "unes.h"
 
 static void term_platform(void)
 {
@@ -39,8 +9,10 @@ static void term_platform(void)
 	term_log_system();
 }
 
-static BOOL init_plarform(HINSTANCE hInstance,
-                          const int nCmdShow)
+static BOOL init_plarform(
+	HINSTANCE hInstance,
+	const int nCmdShow
+)
 {
 	init_log_system();
 	
@@ -151,16 +123,20 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 		
 		ticks -= ticks_per_sec;
 
-		internal_audio_sync();
 		video_end_frame();
 
 		QueryPerformanceCounter(&end);
 		elapsed.QuadPart = end.QuadPart - start.QuadPart;
-		elapsed.QuadPart *= 1000000;
-		elapsed.QuadPart /= freq.QuadPart;
-		log_debug("Frame MS: %ld", elapsed.QuadPart / 1000);
-		if (elapsed.QuadPart < (1000000 / 60))
-			usleep((1000000 / 60) - elapsed.QuadPart);	
+		//log_debug("Frame QuadPart: %ld", elapsed.QuadPart);
+		//log_debug("Freq: %ld\n", freq.QuadPart);
+		//log_debug("Freq/60: %ld\n", freq.QuadPart / 60); 
+		if (elapsed.QuadPart < (freq.QuadPart / 60)) {
+			int64_t ms = ((freq.QuadPart / 60) - elapsed.QuadPart);
+			ms *= 1000;
+			ms /= freq.QuadPart;
+			//log_debug("should sleep: %ld", ms);
+			//Sleep(ms);
+		}
 	}
 	
 	rom_unload();

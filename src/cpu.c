@@ -1,14 +1,4 @@
-#include <stdlib.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <string.h>
-#include <inttypes.h>
-#include "log.h"
-#include "input.h"
-#include "rom.h"
-#include "ppu.h"
-#include "apu.h"
-#include "cpu.h"
+#include "unes.h"
 
 
 #define ADDR_NMI_VECTOR   (0xFFFA)

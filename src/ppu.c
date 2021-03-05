@@ -1,12 +1,4 @@
-#include <string.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <inttypes.h>
-#include "log.h"
-#include "video.h"
-#include "cpu.h"
-#include "rom.h"
-#include "ppu.h"
+#include "unes.h"
 
 
 #define PPU_FRAME_TICKS (341)

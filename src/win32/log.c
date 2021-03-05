@@ -1,6 +1,5 @@
 #include <Windows.h>
-#include <stdio.h>
-#include "internal_log.h"
+#include "platform.h"
 
 static char log_buffer[4096];
 static HANDLE handles[2];

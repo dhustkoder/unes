@@ -7,7 +7,7 @@ set SRC=src\\*.c src\\win32\\*.c
 set LIBS=user32.lib gdi32.lib winmm.lib Ws2_32.lib
 
 
-set CC=cl
+set CC=clang-cl -fsanitize=address 
 set CFLAGS=/D_CRT_SECURE_NO_WARNINGS /wd4028 /wd4214 /wd4047 /wd4210 /W4  %INCLUDE_DIRS%
 set LDFLAGS=/SUBSYSTEM:WINDOWS %LIBS%
 

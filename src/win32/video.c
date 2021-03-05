@@ -1,9 +1,5 @@
 #include <Windows.h>
-#include "log.h"
-#include "cpu.h"
-#include "internal_video.h"
-
-
+#include "unes.h"
 
 
 uint8_t unes_pad_states[2];
