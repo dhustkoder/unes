@@ -1,5 +1,25 @@
 #include <Windows.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include "unes.h"
+
+extern bool init_video_system(HINSTANCE hInstance, int nCmdShow);
+extern bool video_win_update(void);
+extern void video_start_frame(void);
+extern void video_end_frame(void);
+extern void term_video_system(void);
+
+
+extern bool init_audio_system(void);
+extern void term_audio_system(void);
+extern void internal_audio_sync(void);
+
+
+extern void init_log_system(void);
+extern void term_log_system(void);
+extern void internal_logger(LoggerID id, const char* fmt, ...);
+
+
 
 static void term_platform(void)
 {
@@ -9,7 +29,7 @@ static void term_platform(void)
 	term_log_system();
 }
 
-static BOOL init_plarform(
+static bool init_plarform(
 	HINSTANCE hInstance,
 	const int nCmdShow
 )
@@ -19,34 +39,32 @@ static BOOL init_plarform(
 	log_info("Initializing Win32 Platform");
 	
 	if (!init_video_system(hInstance, nCmdShow))
-		return 0;
+		return false;
 	if (!init_audio_system())
-		return 0;
+		return false;
 
 	WSADATA dummy;
 	int err;
 	if ((err = WSAStartup(MAKEWORD(1, 0), &dummy)) != 0) {
 		log_error("Couldn't initialize WSA: %d", err);
-		return 0;
+		return false;
 	}
 
-	return 1;
+	return true;
 }
 
 static uint8_t* read_file(const char* path)
 {
 	uint8_t* buffer = NULL;
-	HANDLE file = 0;
-	OFSTRUCT ofstruct;	
-	DWORD file_size, bytes_read;
-
-	file = OpenFile(path, &ofstruct, OF_READ);
+	
+	OFSTRUCT ofstruct;
+	HANDLE file = (HANDLE)OpenFile(path, &ofstruct, OF_READ);
 	if (!file) {
 		log_error("Failed to open ROM file");
 		goto Lfail;
 	}
 
-	file_size = GetFileSize(file, NULL);
+	DWORD file_size = GetFileSize(file, NULL);
 
 	if (file_size == INVALID_FILE_SIZE) {
 		log_error("Failed to get ROM file size");
@@ -59,7 +77,7 @@ static uint8_t* read_file(const char* path)
 		goto Lfail;
 	}
 
-
+	DWORD bytes_read;
 	if (!ReadFile(file, buffer, file_size, &bytes_read, NULL)) {
 		log_error("Failed to read ROM file %d", GetLastError());
 		goto Lfail;
@@ -70,18 +88,23 @@ static uint8_t* read_file(const char* path)
 
 Lfail:
 	log_error("Error Code: %d", GetLastError());
+
 	if (file)
 		CloseHandle(file);
+
 	if (buffer)
 		free(buffer);
+
 	return NULL;
 }
 
 
-int CALLBACK WinMain(HINSTANCE hInstance,
-                     HINSTANCE hPrevInstance,
-                     LPSTR lpCmdLine,
-                     const int nCmdShow)
+int CALLBACK WinMain(
+	HINSTANCE hInstance,
+	HINSTANCE hPrevInstance,
+	LPSTR lpCmdLine,
+	int nCmdShow
+)
 {
 	((void)hPrevInstance);
 	((void)lpCmdLine);
@@ -98,45 +121,20 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 	ppu_reset();
 	apu_reset();
 
-	const int ticks_per_sec = NES_CPU_FREQ / 60;
-	int ticks = 0;
-
-	LARGE_INTEGER start, end, elapsed;
-	LARGE_INTEGER freq;
-
-	QueryPerformanceFrequency(&freq); 
+	const int nes_ticks_per_frame = NES_CPU_FREQ / 60;
+	int nes_ticks = 0;
 	
-	for (;;) {
-		QueryPerformanceCounter(&start);
-
-		if (!video_win_update())
-			break;
-
+	while (video_win_update()) {
 		video_start_frame();
-
 		do {
 			const short step_ticks = cpu_step();
 			ppu_step((step_ticks<<1) + step_ticks);
 			apu_step(step_ticks);
-			ticks += step_ticks;
-		} while (ticks < ticks_per_sec);
-		
-		ticks -= ticks_per_sec;
-
+			nes_ticks += step_ticks;
+		} while (nes_ticks < nes_ticks_per_frame);
+		nes_ticks -= nes_ticks_per_frame;
 		video_end_frame();
-
-		QueryPerformanceCounter(&end);
-		elapsed.QuadPart = end.QuadPart - start.QuadPart;
-		//log_debug("Frame QuadPart: %ld", elapsed.QuadPart);
-		//log_debug("Freq: %ld\n", freq.QuadPart);
-		//log_debug("Freq/60: %ld\n", freq.QuadPart / 60); 
-		if (elapsed.QuadPart < (freq.QuadPart / 60)) {
-			int64_t ms = ((freq.QuadPart / 60) - elapsed.QuadPart);
-			ms *= 1000;
-			ms /= freq.QuadPart;
-			//log_debug("should sleep: %ld", ms);
-			//Sleep(ms);
-		}
+		audio_sync();
 	}
 	
 	rom_unload();
@@ -145,3 +143,38 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 }
 
 
+
+/*
+int CALLBACK WinMain(HINSTANCE hInstance,
+                     HINSTANCE hPrevInstance,
+                     LPSTR lpCmdLine,
+                     int nCmdShow)
+{
+	init_audio_system();
+	init_log_system();
+
+
+	static audio_sample_t sinewave[AUDIO_BUFFER_SAMPLE_COUNT];
+	float freq      = 320;
+	float amp       = 0.5;
+	float phase     = 0.0f;
+	float time      = 0.0f;
+	float dt        = 1.f / 44100.f;
+	float double_pi = M_PI * 2;
+
+
+	for (;;) {
+		for (int i = 0; i < AUDIO_BUFFER_SAMPLE_COUNT; ++i) {
+			float value = amp * sinf(double_pi * freq * time + phase);
+			sinewave[i] = 8000 * value;
+			time += dt;
+		}
+		internal_audio_push_buffer(sinewave);
+		audio_sync();
+	}
+
+
+
+
+	term_audio_system();
+}*/

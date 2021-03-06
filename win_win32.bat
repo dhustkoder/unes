@@ -1,9 +1,8 @@
 @echo off
 set BUILD_TYPE=%1
-set RUN_AFTER_BUILD="%2"=="run"
 
 set INCLUDE_DIRS=/Isrc /Isrc/win32 
-set SRC=src\\*.c src\\win32\\*.c
+set SRC=src\win32\cunits.c
 set LIBS=user32.lib gdi32.lib winmm.lib Ws2_32.lib
 
 
@@ -38,9 +37,14 @@ if not exist "build" mkdir build
 @echo off
 
 set ERROR=%errorLevel%
+if not %ERROR%==0 goto EOF
 
 :clean
 del *.obj *.pdb
 
-if  %ERROR%==0 ( if %RUN_AFTER_BUILD% .\build\unes.exe )
+if "%~2"=="" goto EOF
 
+:run
+build\unes %2
+
+:EOF

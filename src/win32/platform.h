@@ -10,49 +10,36 @@
 #include <assert.h>
 
 
-#define AUDIO_MAX_VOLUME   (100)
-#define AUDIO_FREQUENCY    (44100)
-#define AUDIO_BUFFER_SIZE  (2048)
+typedef int16_t audio_sample_t;
 
-typedef int16_t audio_t;
+#define AUDIO_SAMPLE_SIZE         (sizeof(audio_sample_t))
+#define AUDIO_SAMPLES_PER_SEC     (44100)
+#define AUDIO_BUFFER_SAMPLE_COUNT (735)
+#define AUDIO_BUFFER_SIZE         (AUDIO_BUFFER_SAMPLE_COUNT * AUDIO_SAMPLE_SIZE)
+#define AUDIO_CHANNEL_COUNT       (1)
+
+typedef enum {
+	LOGGER_ID_STDOUT,
+	LOGGER_ID_STDERR,
+	LOGGER_ID_COUNT
+} LoggerID;
 
 
-
-enum stdhandle_index {
-	UNES_LOG_STDOUT,
-	UNES_LOG_STDERR
-};
-
-
-
-#define log_info(fmtstr, ...) internal_logger(UNES_LOG_STDOUT, fmtstr, __VA_ARGS__)
-#define log_error(fmtstr, ...) internal_logger(UNES_LOG_STDERR, fmtstr, __VA_ARGS__)
+extern void internal_logger(LoggerID id, const char* fmt, ...);
+#define log_info(fmtstr, ...) internal_logger(LOGGER_ID_STDOUT, fmtstr, __VA_ARGS__)
+#define log_error(fmtstr, ...) internal_logger(LOGGER_ID_STDERR, fmtstr, __VA_ARGS__)
 #ifdef DEBUG
-#define log_debug(fmtstr, ...) internal_logger(UNES_LOG_STDOUT, fmtstr, __VA_ARGS__)
+#define log_debug(fmtstr, ...) internal_logger(LOGGER_ID_STDOUT, fmtstr, __VA_ARGS__)
 #else
 #define log_debug(...) ((void)0)
 #endif
 
 
-extern void init_log_system(void);
-extern void term_log_system(void);
-extern void internal_logger(enum stdhandle_index idx, const char* fmt, ...);
-
-
-extern BOOL init_video_system(HINSTANCE hInstance, int nCmdShow);
-extern BOOL video_win_update(void);
-extern void video_start_frame(void);
-extern void video_end_frame(void);
-extern void term_video_system(void);
-
-extern BOOL init_audio_system(void);
-extern void term_audio_system(void);
-extern void internal_audio_sync(void);
 
 extern void video_internal_render(const uint8_t* fb);
-#define render(fb) video_internal_render(fb)
+extern void internal_audio_push_buffer(const audio_sample_t* buf);
 
-extern void internal_audio_push_buffer(const audio_t* buf);
+#define render(fb) video_internal_render(fb)
 #define queue_audio_buffer(buf) internal_audio_push_buffer(buf)
 
 

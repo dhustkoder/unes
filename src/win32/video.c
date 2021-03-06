@@ -31,7 +31,7 @@ static HWND hwnd_mainwin;
 static WNDCLASS wc;
 static PAINTSTRUCT paintstruct;
 static MSG msg_mainwin;
-static BOOL wm_destroy_request = 0;
+static bool wm_destroy_request = false;
 static DWORD win_width;
 static DWORD win_height;
 
@@ -103,14 +103,14 @@ static LRESULT window_proc_clbk(HWND hwnd,
 			break;
 		case WM_DESTROY:
 			PostQuitMessage(0);
-			wm_destroy_request = 1;
+			wm_destroy_request = true;
 			return WM_DESTROY;
 	}
 
 	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-BOOL init_video_system(const HINSTANCE hInstance,
+bool init_video_system(const HINSTANCE hInstance,
                        const int nCmdShow)
 {
 	memset(&wc, 0, sizeof(wc));
@@ -127,7 +127,7 @@ BOOL init_video_system(const HINSTANCE hInstance,
 			NULL, NULL, wc.hInstance, NULL);
 	if (!hwnd_mainwin) {
 		log_info("Failed to initialize WINDOW HWND");
-		return 0;
+		return false;
 	}
 
 	ShowWindow(hwnd_mainwin, nCmdShow);
@@ -138,7 +138,7 @@ BOOL init_video_system(const HINSTANCE hInstance,
 
 	rgb_buffer = malloc(sizeof(*rgb_buffer) * NES_SCR_WIDTH * NES_SCR_HEIGHT);
 
-	return 1;
+	return true;
 }
 
 void term_video_system(void)
@@ -147,7 +147,7 @@ void term_video_system(void)
 	DestroyWindow(hwnd_mainwin);
 }
 
-BOOL video_win_update(void)
+bool video_win_update(void)
 {
 	while (PeekMessageA(&msg_mainwin, hwnd_mainwin, 0, 0, PM_REMOVE))
 		DispatchMessage(&msg_mainwin);

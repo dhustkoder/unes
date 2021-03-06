@@ -1,71 +1,80 @@
 #include <Windows.h>
 #include "platform.h"
 
+#define QUEUE_SIZE (16)
+static HWAVEOUT wout;
+static WAVEHDR header[QUEUE_SIZE];
+static audio_sample_t sample_buf[QUEUE_SIZE][AUDIO_BUFFER_SAMPLE_COUNT];
+static int writting_buf_idx = 0;
+static int pushed_samples = 0;
 
-static HWAVEOUT h_waveout;
-static WAVEHDR header;
-static HANDLE buffer_done_ev; 
-
-
-void CALLBACK waveOutProc(
-   HWAVEOUT  hwo,
-   UINT      uMsg,
-   DWORD_PTR dwInstance,
-   DWORD_PTR dwParam1,
-   DWORD_PTR dwParam2
-)
+static void advance_writting_idx(void)
 {
-	if (uMsg == WOM_DONE) {
-		SetEvent(buffer_done_ev);
-	}
+	++writting_buf_idx;
+	if (writting_buf_idx >= QUEUE_SIZE)
+		writting_buf_idx = 0;
 }
 
-BOOL init_audio_system(void)
+bool init_audio_system(void)
 {
-    buffer_done_ev = CreateEvent(NULL, FALSE, FALSE, TEXT("BufferDoneEv")); 
-
 	WAVEFORMATEX wfx;
 	ZeroMemory(&wfx, sizeof(WAVEFORMATEX));
 
 	wfx.wFormatTag = WAVE_FORMAT_PCM;
 
-	wfx.nSamplesPerSec = AUDIO_FREQUENCY;
-	wfx.wBitsPerSample = 16; 
-	wfx.nBlockAlign = 2;
-	wfx.nChannels = 1;
+	wfx.nSamplesPerSec = AUDIO_SAMPLES_PER_SEC;
+	wfx.wBitsPerSample = AUDIO_SAMPLE_SIZE * 8; 
+	wfx.nBlockAlign = AUDIO_SAMPLE_SIZE * AUDIO_CHANNEL_COUNT;
+	wfx.nChannels = AUDIO_CHANNEL_COUNT;
 	wfx.nAvgBytesPerSec = wfx.nBlockAlign * wfx.nSamplesPerSec;
 	
-	if (waveOutOpen(&h_waveout, WAVE_MAPPER, &wfx, waveOutProc, 0, CALLBACK_FUNCTION) != MMSYSERR_NOERROR) {
+	if (waveOutOpen(&wout, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
 		log_error("unable to open WAVE_MAPPER device");
-		return 0;
+		return false;
 	}
 
-	return 1;
+	return true;
 }
 
 void term_audio_system(void)
 {
-	waveOutClose(h_waveout);
+	waveOutClose(wout);
 }
 
 
 
-void internal_audio_push_buffer(const audio_t* data)
+
+void internal_audio_push_buffer(const audio_sample_t* data)
 {
 	MMRESULT err;
-	((void)err);
 
-	ZeroMemory(&header, sizeof(WAVEHDR));
-	header.dwBufferLength = sizeof(audio_t) * AUDIO_BUFFER_SIZE;
-	header.lpData = data;
-	header.dwFlags = WHDR_INQUEUE;
+	ZeroMemory(&header[writting_buf_idx], sizeof(WAVEHDR));
+	header[writting_buf_idx].dwBufferLength = AUDIO_BUFFER_SIZE;
+	header[writting_buf_idx].lpData = &sample_buf[writting_buf_idx];
+	memcpy(header[writting_buf_idx].lpData, data, AUDIO_BUFFER_SIZE);
 
-	err = waveOutPrepareHeader(h_waveout, &header, sizeof(header)); 
+	err = waveOutPrepareHeader(wout, &header[writting_buf_idx], sizeof(header[writting_buf_idx])); 
 	assert(err == MMSYSERR_NOERROR);
 
-	err = waveOutWrite(h_waveout, &header, sizeof(header));
+	err = waveOutWrite(wout, &header[writting_buf_idx], sizeof(header[writting_buf_idx]));
 	assert(err == MMSYSERR_NOERROR);
 
-	WaitForSingleObject(buffer_done_ev, INFINITE);
+	advance_writting_idx();
+
+	pushed_samples += AUDIO_BUFFER_SAMPLE_COUNT;
+}
+
+void audio_sync(void)
+{
+	static DWORD last_sample_time = 0;
+	do {
+		MMTIME mmt = {.wType = TIME_SAMPLES};
+		waveOutGetPosition(wout, &mmt, sizeof(mmt));
+		log_debug("pushed_samples: %d", pushed_samples);
+		log_debug("mmt.u.sample: %ld", mmt.u.sample);
+		log_debug("last_sample_time: %ld", last_sample_time);
+		pushed_samples -= (mmt.u.sample - last_sample_time);
+		last_sample_time = mmt.u.sample;
+	} while (pushed_samples > (AUDIO_BUFFER_SAMPLE_COUNT * 2));
 }
 

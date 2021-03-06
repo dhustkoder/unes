@@ -1,8 +1,8 @@
 #include "unes.h"
 
 
-#define FRAME_COUNTER_RATE     (NES_CPU_FREQ / 240)
-#define APU_SAMPLES_CNT_LIMIT  (NES_CPU_FREQ / AUDIO_FREQUENCY)
+#define FRAME_COUNTER_RATE       (NES_CPU_FREQ / 240)
+#define APU_GEN_SAMPLE_INTERVAL  (NES_CPU_FREQ / AUDIO_SAMPLES_PER_SEC)
 
 // cpu.c
 extern bool cpu_irq_sources[IRQ_SRC_SIZE];
@@ -16,9 +16,9 @@ static uint8_t frame_counter_mode;       // $4017
 static bool irq_inhibit;                 // $4017
 static bool oddtick;
 
-static audio_t audio_buffer[AUDIO_BUFFER_SIZE];
-static int16_t audio_buffer_idx;
-static short apu_samples_cnt;
+static audio_sample_t audio_buffer[AUDIO_BUFFER_SAMPLE_COUNT];
+static short audio_buffer_idx;
+static short apu_gen_sample_cnter;
 
 // Pulse channels
 static struct Pulse {
@@ -261,6 +261,17 @@ static void update_channels_output(void)
 	}
 }
 
+static void generate_sample(void)
+{
+	update_channels_output();
+	const audio_sample_t sample = pulse[0].out + pulse[1].out;
+	audio_buffer[audio_buffer_idx] = sample<<8;
+	if (++audio_buffer_idx >= AUDIO_BUFFER_SAMPLE_COUNT) {
+		audio_buffer_idx = 0;
+		queue_audio_buffer(audio_buffer);
+	}
+}
+
 
 void apu_reset(void)
 {
@@ -275,7 +286,7 @@ void apu_reset(void)
 
 	// sound buffer, apu sample buffer
 	audio_buffer_idx = 0;
-	apu_samples_cnt = 0;
+	apu_gen_sample_cnter = 0;
 
 	// Pulse
 	memset(pulse, 0, sizeof pulse);
@@ -283,19 +294,13 @@ void apu_reset(void)
 
 void apu_step(const short aputicks)
 {
-	for (short i = 0; i < aputicks; ++i) {
+	for (int i = 0; i < aputicks; ++i) {
 		tick_frame_counter();
 		tick_timer();
-		if (++apu_samples_cnt == APU_SAMPLES_CNT_LIMIT) {
-			apu_samples_cnt = 0;
-			update_channels_output();
-
-			const audio_t sample = pulse[0].out + pulse[1].out;
-			audio_buffer[audio_buffer_idx] = sample<<8;
-			if (++audio_buffer_idx >= AUDIO_BUFFER_SIZE) {
-				audio_buffer_idx = 0;
-				queue_audio_buffer(audio_buffer);
-			}
+		++apu_gen_sample_cnter;
+		if (apu_gen_sample_cnter >= APU_GEN_SAMPLE_INTERVAL) {
+			apu_gen_sample_cnter = 0;
+			generate_sample();
 		}
 		oddtick = !oddtick;
 	}

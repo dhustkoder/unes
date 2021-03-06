@@ -2,9 +2,9 @@
 #include "platform.h"
 
 static char log_buffer[4096];
-static HANDLE handles[2];
+static HANDLE handles[LOGGER_ID_COUNT];
 
-void internal_logger(enum stdhandle_index idx, const char* fmtstr, ...)
+void internal_logger(LoggerID id, const char* fmtstr, ...)
 {
 	DWORD towrite, written;
 	va_list valist;
@@ -14,7 +14,7 @@ void internal_logger(enum stdhandle_index idx, const char* fmtstr, ...)
 	
 	log_buffer[towrite++] = '\n';
 	
-	const HANDLE stdhandle = handles[idx];
+	const HANDLE stdhandle = handles[id];
 	WriteConsoleA(stdhandle, log_buffer, towrite, &written, NULL);
 }
 
@@ -22,8 +22,8 @@ void internal_logger(enum stdhandle_index idx, const char* fmtstr, ...)
 void init_log_system(void)
 {
 	AttachConsole(ATTACH_PARENT_PROCESS);
-	handles[0] = GetStdHandle(STD_OUTPUT_HANDLE);
-	handles[1] = GetStdHandle(STD_ERROR_HANDLE);
+	handles[LOGGER_ID_STDOUT] = GetStdHandle(STD_OUTPUT_HANDLE);
+	handles[LOGGER_ID_STDERR] = GetStdHandle(STD_ERROR_HANDLE);
 	log_info("\n");
 }
 
