@@ -75,6 +75,6 @@ void audio_sync(void)
 		log_debug("last_sample_time: %ld", last_sample_time);
 		pushed_samples -= (mmt.u.sample - last_sample_time);
 		last_sample_time = mmt.u.sample;
-	} while (pushed_samples > (AUDIO_BUFFER_SAMPLE_COUNT * 2));
+	} while (pushed_samples > (AUDIO_BUFFER_SAMPLE_COUNT * 2.5f));
 }
 

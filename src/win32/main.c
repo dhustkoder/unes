@@ -98,7 +98,7 @@ Lfail:
 	return NULL;
 }
 
-
+#if 1
 int CALLBACK WinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -143,8 +143,8 @@ int CALLBACK WinMain(
 }
 
 
+#else
 
-/*
 int CALLBACK WinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
                      LPSTR lpCmdLine,
@@ -155,7 +155,7 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 
 
 	static audio_sample_t sinewave[AUDIO_BUFFER_SAMPLE_COUNT];
-	float freq      = 320;
+	float freq      = 240;
 	float amp       = 0.5;
 	float phase     = 0.0f;
 	float time      = 0.0f;
@@ -177,4 +177,6 @@ int CALLBACK WinMain(HINSTANCE hInstance,
 
 
 	term_audio_system();
-}*/
+}
+
+#endif
