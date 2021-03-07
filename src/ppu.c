@@ -363,7 +363,7 @@ void ppu_step(const short pputicks)
 		if (scanline == 262) {
 			scanline = 0;
 			if (states.need_render) {
-				render((void*)framebuffer);
+				queue_video_buffer((void*)framebuffer);
 				states.need_render = false;
 			}
 			if ((ppumask&0x18) && states.oddframe)
@@ -384,6 +384,7 @@ void ppu_step(const short pputicks)
 		ppu_need_screen_update = false;
 		cpu_nmi = true;
 	}
+	
 }
 
 void ppu_write(const uint8_t val, const uint16_t addr)
@@ -409,5 +410,4 @@ uint8_t ppu_read(const uint16_t addr)
 	default: return ppuopenbus;      break;
 	}
 }
-
 

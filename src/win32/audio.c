@@ -50,7 +50,7 @@ void internal_audio_push_buffer(const audio_sample_t* data)
 
 	ZeroMemory(&header[writting_buf_idx], sizeof(WAVEHDR));
 	header[writting_buf_idx].dwBufferLength = AUDIO_BUFFER_SIZE;
-	header[writting_buf_idx].lpData = &sample_buf[writting_buf_idx];
+	header[writting_buf_idx].lpData = &sample_buf[writting_buf_idx][0];
 	memcpy(header[writting_buf_idx].lpData, data, AUDIO_BUFFER_SIZE);
 
 	err = waveOutPrepareHeader(wout, &header[writting_buf_idx], sizeof(header[writting_buf_idx])); 
@@ -70,9 +70,9 @@ void audio_sync(void)
 	do {
 		MMTIME mmt = {.wType = TIME_SAMPLES};
 		waveOutGetPosition(wout, &mmt, sizeof(mmt));
-		log_debug("pushed_samples: %d", pushed_samples);
-		log_debug("mmt.u.sample: %ld", mmt.u.sample);
-		log_debug("last_sample_time: %ld", last_sample_time);
+		//log_debug("pushed_samples: %d", pushed_samples);
+		//log_debug("mmt.u.sample: %ld", mmt.u.sample);
+		//log_debug("last_sample_time: %ld", last_sample_time);
 		pushed_samples -= (mmt.u.sample - last_sample_time);
 		last_sample_time = mmt.u.sample;
 	} while (pushed_samples > (AUDIO_BUFFER_SAMPLE_COUNT * 2.5f));

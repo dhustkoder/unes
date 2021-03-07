@@ -39,7 +39,7 @@ extern void internal_logger(LoggerID id, const char* fmt, ...);
 extern void video_internal_render(const uint8_t* fb);
 extern void internal_audio_push_buffer(const audio_sample_t* buf);
 
-#define render(fb) video_internal_render(fb)
+#define queue_video_buffer(fb) video_internal_render(fb)
 #define queue_audio_buffer(buf) internal_audio_push_buffer(buf)
 
 
