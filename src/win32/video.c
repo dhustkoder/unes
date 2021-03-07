@@ -123,7 +123,7 @@ bool init_video_system(const HINSTANCE hInstance,
 	hwnd_mainwin = CreateWindowEx(
 			0, wc.lpszClassName,
 			"UNES", WS_OVERLAPPEDWINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			CW_USEDEFAULT, CW_USEDEFAULT, NES_SCR_WIDTH * 2, NES_SCR_HEIGHT * 2,
 			NULL, NULL, wc.hInstance, NULL);
 	if (!hwnd_mainwin) {
 		log_info("Failed to initialize WINDOW HWND");

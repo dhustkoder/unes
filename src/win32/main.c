@@ -109,12 +109,15 @@ int CALLBACK WinMain(
 	((void)hPrevInstance);
 	((void)lpCmdLine);
 
+
 	if (!init_plarform(hInstance, nCmdShow))
 		return EXIT_FAILURE;
 	
 	atexit(term_platform);
 	
-	uint8_t* rom_buffer = read_file("mm2.nes");
+	uint8_t* rom_buffer = read_file(lpCmdLine);
+	if (!rom_buffer)
+		return EXIT_FAILURE;
 
 	rom_load(rom_buffer);
 	cpu_reset();

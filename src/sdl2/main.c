@@ -3,16 +3,13 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <errno.h>
-#include "SDL.h"
-#include "audio.h"
-#include "video.h"
-#include "log.h"
-#include "debugger.h"
-#include "rom.h"
-#include "cpu.h"
-#include "apu.h"
-#include "ppu.h"
+#include <SDL.h>
+#include "unes.h"
 
+#define TEXTURE_WIDTH  (NES_SCR_WIDTH)
+#define TEXTURE_HEIGHT (NES_SCR_HEIGHT)
+#define WIN_WIDTH      (NES_SCR_WIDTH * 2)
+#define WIN_HEIGHT     (NES_SCR_HEIGHT * 2)
 
 const Uint32 sdl_nes_rgb[0x40] = {
 	0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
@@ -25,7 +22,7 @@ const Uint32 sdl_nes_rgb[0x40] = {
 	0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000
 };
 
-Uint8 sdl2_padstate[2] = {
+uint8_t unes_pad_states[2] = {
 	[JOYPAD_ONE] = KEYSTATE_UP,
 	[JOYPAD_TWO] = KEYSTATE_UP
 };
@@ -36,7 +33,7 @@ SDL_Texture* sdl_texture;
 static SDL_Renderer* renderer;
 static SDL_Window* window;
 
-static const Uint8 keys_id[2][8] = {
+static const uint8_t keys_id[2][8] = {
 	[JOYPAD_ONE] = {
 		[KEY_A]      = SDL_SCANCODE_Z,
 		[KEY_B]      = SDL_SCANCODE_X,
@@ -66,8 +63,8 @@ static void update_key(const Uint32 code, const key_state_t state)
 	for (unsigned pad = 0; pad < 2; ++pad) {
 		for (unsigned key = 0; key < 8; ++key) {
 			if (keys_id[pad][key] == code) {
-				sdl2_padstate[pad] &= ~(0x01<<key);
-				sdl2_padstate[pad] |= state<<key;
+				unes_pad_states[pad] &= ~(0x01<<key);
+				unes_pad_states[pad] |= state<<key;
 				break;
 			}
 		}
@@ -98,7 +95,7 @@ static bool update_events(void)
 
 static bool initialize_platform(void)
 {
-	if (SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) != 0) {
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		log_error("Couldn't initialize SDL: %s\n", SDL_GetError());
 		return false;
 	}
@@ -113,8 +110,7 @@ static bool initialize_platform(void)
 		goto Lquitsdl;
 	}
 
-	renderer = SDL_CreateRenderer(window, -1,
-	                              SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
 	if (renderer == NULL) {
 		log_error("Failed to create SDL_Renderer: %s\n", SDL_GetError());
 		goto Lfreewindow;
@@ -133,10 +129,10 @@ static bool initialize_platform(void)
 	// audio
 	SDL_AudioSpec want;
 	SDL_zero(want);
-	want.freq = AUDIO_FREQUENCY;
+	want.freq = AUDIO_SAMPLES_PER_SEC;
 	want.format = AUDIO_S16SYS;
-	want.channels = 1;
-	want.samples = AUDIO_BUFFER_SIZE;
+	want.channels = AUDIO_CHANNEL_COUNT;
+	want.samples = AUDIO_BUFFER_SAMPLE_COUNT;
 	if ((sdl_audio_device = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0)) == 0) {
 		log_error("Failed to open audio: %s\n", SDL_GetError());
 		goto Lfreetexture;
@@ -169,7 +165,7 @@ static void terminate_platform(void)
 
 static uint8_t* read_file(const char* const filepath)
 {
-	FILE* const file = fopen(filepath, "r");
+	FILE* const file = fopen(filepath, "rb");
 	if (file == NULL) {
 		log_error("Couldn't open \'%s\': %s\n", filepath, strerror(errno));
 		return NULL;
@@ -197,6 +193,35 @@ Lfclose:
 	return data;
 }
 
+static void audio_sync(void)
+{
+	const uint32_t max_queued_size = AUDIO_BUFFER_SIZE;
+
+	for (;;) {
+		const uint32_t queued_size = SDL_GetQueuedAudioSize(sdl_audio_device);
+		if (queued_size <= max_queued_size)
+			break;
+	}
+}
+
+void queue_audio_buffer(const void* fb)
+{
+	SDL_QueueAudio(sdl_audio_device, fb, AUDIO_BUFFER_SIZE);
+}
+
+void queue_video_buffer(const void* fb)
+{
+	int pitch;
+	Uint32* pixels;
+	SDL_LockTexture(sdl_texture, NULL, (void**)&pixels, &pitch);
+
+	for (int i = 0; i < NES_SCR_WIDTH * NES_SCR_HEIGHT; ++i) {
+		pixels[i] = sdl_nes_rgb[((uint8_t*)fb)[i]&0x3F];
+	}
+
+	SDL_UnlockTexture(sdl_texture);
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -210,10 +235,6 @@ int main(int argc, char* argv[])
 
 	int exitcode = EXIT_FAILURE;
 
-	#ifdef UNES_DEBUGGER
-	if (!initialize_debugger())
-		goto Lterminate_platform;
-	#endif
 
 	const uint8_t* const rom = read_file(argv[1]);
 	if (rom == NULL)
@@ -226,20 +247,21 @@ int main(int argc, char* argv[])
 	apu_reset();
 	ppu_reset();
 
-	const Sint32 ticks_per_sec = NES_CPU_FREQ / 60;
-	Sint32 ticks = 0;
+	const int ticks_per_frame = NES_CPU_FREQ / 60;
+	int ticks = 0;
 
 	while (update_events()) {
-
+		
 		do {
 			const short step_ticks = cpu_step();
-			ppu_step((step_ticks<<1) + step_ticks);
+			ppu_step(step_ticks * 3);
 			apu_step(step_ticks);
 			ticks += step_ticks;
-		} while (ticks < ticks_per_sec);
+		} while (ticks < ticks_per_frame);
 
-		ticks -= ticks_per_sec;
+		ticks -= ticks_per_frame;
 
+		audio_sync();
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, sdl_texture, NULL, NULL);
 		SDL_RenderPresent(renderer);
@@ -250,10 +272,6 @@ int main(int argc, char* argv[])
 Lfreerom:
 	free((void*)rom);
 Lterminate_platform:
-	// TODO: fix this
-	#ifdef UNES_DEBUGGER
-	terminate_debugger();
-	#endif
 	terminate_platform();
 	return exitcode;
 }

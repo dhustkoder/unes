@@ -444,8 +444,7 @@ short cpu_step(void)
 	const uint8_t opcode = fetch8();
 	step_cycles += clock_table[opcode];
 
-
-	/* log_info("PC $%.4X -> OPCODE -> $%.2X\n", pc - 1, opcode); */
+	//log_info("PC $%.4X -> OPCODE -> $%.2X CYCLES -> %.2X\n",(int) pc - 1,(int) opcode, (int) step_cycles);
 
 	switch (opcode) {
 	// ADC
