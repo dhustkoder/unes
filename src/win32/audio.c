@@ -1,12 +1,12 @@
 #include <Windows.h>
 #include "platform.h"
 
-#define QUEUE_SIZE (16)
+#define QUEUE_SIZE (3)
 static HWAVEOUT wout;
 static WAVEHDR header[QUEUE_SIZE];
 static audio_sample_t sample_buf[QUEUE_SIZE][AUDIO_BUFFER_SAMPLE_COUNT];
 static int writting_buf_idx = 0;
-static int pushed_samples = 0;
+static int queued_samples = 0;
 
 static void advance_writting_idx(void)
 {
@@ -23,7 +23,7 @@ bool init_audio_system(void)
 	wfx.wFormatTag = WAVE_FORMAT_PCM;
 
 	wfx.nSamplesPerSec = AUDIO_SAMPLES_PER_SEC;
-	wfx.wBitsPerSample = AUDIO_SAMPLE_SIZE * 8; 
+	wfx.wBitsPerSample = AUDIO_SAMPLE_SIZE * 8;
 	wfx.nBlockAlign = AUDIO_SAMPLE_SIZE * AUDIO_CHANNEL_COUNT;
 	wfx.nChannels = AUDIO_CHANNEL_COUNT;
 	wfx.nAvgBytesPerSec = wfx.nBlockAlign * wfx.nSamplesPerSec;
@@ -61,20 +61,20 @@ void internal_audio_push_buffer(const audio_sample_t* data)
 
 	advance_writting_idx();
 
-	pushed_samples += AUDIO_BUFFER_SAMPLE_COUNT;
+	queued_samples += AUDIO_BUFFER_SAMPLE_COUNT;
 }
 
 void audio_sync(void)
 {
 	static DWORD last_sample_time = 0;
-	do {
+	const int max_queued_samples = AUDIO_BUFFER_SAMPLE_COUNT * QUEUE_SIZE;
+	for (;;) {
 		MMTIME mmt = {.wType = TIME_SAMPLES};
 		waveOutGetPosition(wout, &mmt, sizeof(mmt));
-		//log_debug("pushed_samples: %d", pushed_samples);
-		//log_debug("mmt.u.sample: %ld", mmt.u.sample);
-		//log_debug("last_sample_time: %ld", last_sample_time);
-		pushed_samples -= (mmt.u.sample - last_sample_time);
-		last_sample_time = mmt.u.sample;
-	} while (pushed_samples > (AUDIO_BUFFER_SAMPLE_COUNT * 2.5f));
+		queued_samples -= (mmt.u.sample - last_sample_time);
+		last_sample_time = mmt.u.sample;		
+		if (queued_samples < max_queued_samples)
+			break;
+	}
 }
 

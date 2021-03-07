@@ -136,8 +136,8 @@ int CALLBACK WinMain(
 			nes_ticks += step_ticks;
 		} while (nes_ticks < nes_ticks_per_frame);
 		nes_ticks -= nes_ticks_per_frame;
-		video_end_frame();
 		audio_sync();
+		video_end_frame();
 	}
 	
 	rom_unload();
