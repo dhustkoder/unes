@@ -5,7 +5,7 @@
 #define APU_GEN_SAMPLE_INTERVAL  (NES_CPU_FREQ / AUDIO_SAMPLES_PER_SEC)
 
 // cpu.c
-extern bool cpu_irq_sources[IRQ_SRC_SIZE];
+extern bool cpu_irq_sources[IRQ_SRC_COUNT];
 
 
 // apu.c

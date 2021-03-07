@@ -19,7 +19,7 @@ uint8_t* rom_sram;
 static int32_t prgrom_size;
 static int32_t chr_size;   // chrrom or chrram size
 static int32_t sram_size;
-static mapper_type_t mappertype;
+static mapper_type_t mapper_type;
 static const uint8_t* prgdata;
 static uint8_t* chrdata;
 
@@ -44,9 +44,19 @@ static union {
 	} mmc1;
 } mapper;
 
-static const mapper_type_t supported_mappers[] = {
+static const mapper_type_t supported_mappers[MAPPER_TYPE_COUNT] = {
 	MAPPER_TYPE_NROM, MAPPER_TYPE_MMC1
 };
+
+
+static bool is_mapper_type_supported(mapper_type_t type)
+{
+	for (int i = 0; i < MAPPER_TYPE_COUNT; ++i) {
+		if (supported_mappers[i] == type)
+			return true;
+	}
+	return false;
+}
 
 
 // MMC1
@@ -131,7 +141,7 @@ static void mmc1_write(const uint8_t value, const uint16_t addr)
 static void init_mapper(void)
 {
 	memset(&mapper, 0, sizeof mapper);
-	switch (mappertype) {
+	switch (mapper_type) {
 	case MAPPER_TYPE_NROM:
 		// cpu prg map
 		if (ines.prgrom_nbanks > 1) {
@@ -157,7 +167,7 @@ static void init_mapper(void)
 
 void rom_write(const uint8_t value, const uint16_t addr)
 {
-	switch (mappertype) {
+	switch (mapper_type) {
 	case MAPPER_TYPE_NROM: break;
 	case MAPPER_TYPE_MMC1: mmc1_write(value, addr); break;
 	}
@@ -173,9 +183,9 @@ bool rom_load(const uint8_t* const data)
 	}
 
 	// check cartridge compatibility
-	mappertype = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
-	if (!IS_IN_ARRAY(mappertype, supported_mappers)) {
-		log_error("mapper %d not supported.\n", mappertype);
+	mapper_type = (ines.ctrl2&0xF0)|((ines.ctrl1&0xF0)>>4);
+	if (!is_mapper_type_supported(mapper_type)) {
+		log_error("mapper %d not supported.\n", mapper_type);
 		return false;
 	} else if ((ines.ctrl1&0x08) != 0) {
 		log_error("four screen mirroring not supported.\n");
@@ -241,7 +251,7 @@ bool rom_load(const uint8_t* const data)
 	       (ines.ctrl1&0x04)>>2, (ines.ctrl1&0x04) ? "YES" : "NO",
 	       (ines.ctrl1&0x08)>>3, (ines.ctrl1&0x08) ? "YES" : "NO",
 	       (ines.ctrl1&0xF0)>>4, ines.ctrl2&0x0F,
-	       (ines.ctrl2&0xF0)>>4, mappertype);
+	       (ines.ctrl2&0xF0)>>4, mapper_type);
 
 	init_mapper();
 	return true;

@@ -17,7 +17,7 @@ enum IrqSource {
 	IRQ_SRC_APU_FRAME_COUNTER,
 	IRQ_SRC_APU_DMC_TIMER,
 
-	IRQ_SRC_SIZE
+	IRQ_SRC_COUNT
 };
 
 typedef uint8_t joypad_t;
@@ -42,14 +42,17 @@ enum JoyKey {
 	KEY_DOWN,
 	KEY_LEFT,
 	KEY_RIGHT,
-	KEY_NKEYS
+	
+	KEY_COUNT
 };
 
 
 typedef uint8_t mapper_type_t;
 enum MapperType {
 	MAPPER_TYPE_NROM,
-	MAPPER_TYPE_MMC1
+	MAPPER_TYPE_MMC1,
+
+	MAPPER_TYPE_COUNT
 };
 
 typedef uint8_t nt_mirroring_mode_t;
@@ -57,23 +60,13 @@ enum NTMirroringMode {
 	NT_MIRRORING_MODE_HORIZONTAL,
 	NT_MIRRORING_MODE_VERTICAL,
 	NT_MIRRORING_MODE_ONE_SCREEN_LOW,
-	NT_MIRRORING_MODE_ONE_SCREEN_UPPER
+	NT_MIRRORING_MODE_ONE_SCREEN_UPPER,
+
+	NT_MIRRORING_MODE_COUNT
 };
 
 
-/* utilities */
-#define IS_IN_ARRAY(v, a) (is_in_array(&v, a, sizeof(v), sizeof(a)/sizeof(v)))
 
-static inline bool is_in_array(const void* const value, const void* const array,
-                               const int size, const int nmemb)
-{
-	const uint8_t* const end = ((const uint8_t* const)array) + size * nmemb;
-	for (const uint8_t* p = array; p < end; p += size) {
-		if (memcmp(value, p, size) == 0)
-			return true;
-	}
-	return false;
-}
 
 
 static inline uint8_t get_pad_state(const joypad_t pad)

@@ -31,7 +31,7 @@ extern uint8_t* rom_sram; // sram control
 
 // cpu.c globals
 bool cpu_nmi;
-bool cpu_irq_sources[IRQ_SRC_SIZE];
+bool cpu_irq_sources[IRQ_SRC_COUNT];
 const uint8_t* cpu_prgrom[2]; // lower and upper banks, switching is done in rom.c
 
 // cpu.c
@@ -347,7 +347,7 @@ static void branch(const bool cond)
 
 static bool check_irq_sources(void)
 {
-	for (unsigned i = 0; i < IRQ_SRC_SIZE; ++i)
+	for (unsigned i = 0; i < IRQ_SRC_COUNT; ++i)
 		if (cpu_irq_sources[i])
 			return true;
 	return false;

@@ -76,7 +76,7 @@ static void window_size_update(void)
 
 static void update_pad_states(const WPARAM vk, const key_state_t state)
 {
-	for (int i = 0; i < KEY_NKEYS; ++i) {
+	for (int i = 0; i < KEY_COUNT; ++i) {
 		if (windows_key_map[i] == vk) {
 			const joykey_t key = unes_key_map[i];
 			unes_pad_states[0] &= ~(0x01<<key);
