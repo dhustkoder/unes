@@ -10,7 +10,7 @@ set LIBS=sdl2.lib sdl2main.lib shell32.lib
 
 
 set CC=clang-cl -fsanitize=address -fsanitize=undefined
-set CFLAGS=/D_CRT_SECURE_NO_WARNINGS /wd4028 /wd4214 /wd4047 /wd4210 /W4  %INCLUDE_DIRS%
+set CFLAGS=/D_CRT_SECURE_NO_WARNINGS /DPLATFORM_SDL2 /wd4028 /wd4214 /wd4047 /wd4210 /W4  %INCLUDE_DIRS%
 
 set LDFLAGS=/SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup /LIBPATH:%LIBRARY_DIRS%^ %LIBS%
 

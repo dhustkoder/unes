@@ -1,6 +1,6 @@
 #ifndef UNES_PLATFORM_H_
 #define UNES_PLATFORM_H_
-#include "SDL.h"
+#include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
