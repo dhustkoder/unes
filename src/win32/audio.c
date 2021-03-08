@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include "platform.h"
 
-#define QUEUE_SIZE (4)
+#define QUEUE_FRAME_COUNT (4)
 
 typedef struct {
 	WAVEHDR header;
@@ -9,7 +9,7 @@ typedef struct {
 } AudioFrame;
 
 typedef struct {
-	AudioFrame frames[QUEUE_SIZE];
+	AudioFrame frames[QUEUE_FRAME_COUNT];
 	int writting_idx;
 	int queued_samples;
 } AudioQueue;
@@ -18,7 +18,7 @@ static HWAVEOUT wout;
 static AudioQueue audio_queue;
 
 
-static void audio_frame_setup(AudioFrame* frame, const void* data)
+static void audio_frame_setup_and_send(AudioFrame* frame, const void* data)
 {
 	waveOutUnprepareHeader(wout, &frame->header, sizeof(frame->header)); 
 
@@ -40,19 +40,19 @@ static void audio_queue_reset(void)
 	audio_queue.writting_idx = 0;
 }
 
-static void audio_enqueue(const void* data)
+static void audio_enqueue(const void* framebuffer)
 {
 	AudioFrame* frame = &audio_queue.frames[audio_queue.writting_idx];
-	audio_frame_setup(frame, data);
+	audio_frame_setup_and_send(frame, framebuffer);
 
 	audio_queue.queued_samples += AUDIO_BUFFER_SAMPLE_COUNT;
 
 	++audio_queue.writting_idx;
-	if (audio_queue.writting_idx >= QUEUE_SIZE)
+	if (audio_queue.writting_idx >= QUEUE_FRAME_COUNT)
 		audio_queue.writting_idx = 0;
 }
 
-static DWORD audio_queue_get_enqueued_samples(void)
+static DWORD get_enqueued_samples_count(void)
 {
 	static DWORD last_sample_time = 0;
 	static MMTIME mmt = {.wType = TIME_SAMPLES};
@@ -65,6 +65,7 @@ static DWORD audio_queue_get_enqueued_samples(void)
 
 	return audio_queue.queued_samples;
 }
+
 
 
 bool init_audio_system(void)
@@ -100,11 +101,15 @@ void internal_audio_push_buffer(const audio_sample_t* data)
 
 void audio_sync(void)
 {
-	const DWORD max_queued_samples = AUDIO_BUFFER_SAMPLE_COUNT * QUEUE_SIZE;
+	const DWORD max_queued_samples = AUDIO_BUFFER_SAMPLE_COUNT * QUEUE_FRAME_COUNT;
+	const double sample_time = 1.0 / AUDIO_SAMPLES_PER_SEC;
 	for (;;) {
-		const DWORD queued_samples = audio_queue_get_enqueued_samples();		
-		if (queued_samples < max_queued_samples)
+		const DWORD queued_samples = get_enqueued_samples_count();		
+		if (queued_samples < max_queued_samples) {
 			break;
+		} else {
+			Sleep(sample_time * (queued_samples - max_queued_samples) * 1000);
+		}
 	}
 }
 
