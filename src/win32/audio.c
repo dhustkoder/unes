@@ -1,19 +1,71 @@
 #include <Windows.h>
 #include "platform.h"
 
-#define QUEUE_SIZE (3)
-static HWAVEOUT wout;
-static WAVEHDR header[QUEUE_SIZE];
-static audio_sample_t sample_buf[QUEUE_SIZE][AUDIO_BUFFER_SAMPLE_COUNT];
-static int writting_buf_idx = 0;
-static int queued_samples = 0;
+#define QUEUE_SIZE (4)
 
-static void advance_writting_idx(void)
+typedef struct {
+	WAVEHDR header;
+	audio_sample_t data[AUDIO_BUFFER_SAMPLE_COUNT];
+} AudioFrame;
+
+typedef struct {
+	AudioFrame frames[QUEUE_SIZE];
+	int writting_idx;
+	int queued_samples;
+} AudioQueue;
+
+static HWAVEOUT wout;
+static AudioQueue audio_queue;
+
+
+static void audio_frame_setup(AudioFrame* frame, const void* data)
 {
-	++writting_buf_idx;
-	if (writting_buf_idx >= QUEUE_SIZE)
-		writting_buf_idx = 0;
+	waveOutUnprepareHeader(wout, &frame->header, sizeof(frame->header)); 
+
+	ZeroMemory(&frame->header, sizeof(frame->header));
+	
+	frame->header.dwBufferLength = AUDIO_BUFFER_SIZE;
+	frame->header.lpData = frame->data;
+	
+	memcpy(frame->data, data, AUDIO_BUFFER_SIZE);
+
+	waveOutPrepareHeader(wout, &frame->header, sizeof(frame->header)); 
+	waveOutWrite(wout, &frame->header, sizeof(frame->header));
 }
+
+static void audio_queue_reset(void)
+{
+	ZeroMemory(&audio_queue, sizeof(audio_queue));
+	audio_queue.queued_samples = 0;
+	audio_queue.writting_idx = 0;
+}
+
+static void audio_enqueue(const void* data)
+{
+	AudioFrame* frame = &audio_queue.frames[audio_queue.writting_idx];
+	audio_frame_setup(frame, data);
+
+	audio_queue.queued_samples += AUDIO_BUFFER_SAMPLE_COUNT;
+
+	++audio_queue.writting_idx;
+	if (audio_queue.writting_idx >= QUEUE_SIZE)
+		audio_queue.writting_idx = 0;
+}
+
+static DWORD audio_queue_get_enqueued_samples(void)
+{
+	static DWORD last_sample_time = 0;
+	static MMTIME mmt = {.wType = TIME_SAMPLES};
+
+	waveOutGetPosition(wout, &mmt, sizeof(mmt));
+
+	audio_queue.queued_samples -= (mmt.u.sample - last_sample_time);
+
+	last_sample_time = mmt.u.sample;
+
+	return audio_queue.queued_samples;
+}
+
 
 bool init_audio_system(void)
 {
@@ -41,38 +93,16 @@ void term_audio_system(void)
 	waveOutClose(wout);
 }
 
-
-
-
 void internal_audio_push_buffer(const audio_sample_t* data)
 {
-	MMRESULT err;
-
-	ZeroMemory(&header[writting_buf_idx], sizeof(WAVEHDR));
-	header[writting_buf_idx].dwBufferLength = AUDIO_BUFFER_SIZE;
-	header[writting_buf_idx].lpData = &sample_buf[writting_buf_idx][0];
-	memcpy(header[writting_buf_idx].lpData, data, AUDIO_BUFFER_SIZE);
-
-	err = waveOutPrepareHeader(wout, &header[writting_buf_idx], sizeof(header[writting_buf_idx])); 
-	assert(err == MMSYSERR_NOERROR);
-
-	err = waveOutWrite(wout, &header[writting_buf_idx], sizeof(header[writting_buf_idx]));
-	assert(err == MMSYSERR_NOERROR);
-
-	advance_writting_idx();
-
-	queued_samples += AUDIO_BUFFER_SAMPLE_COUNT;
+	audio_enqueue(data);
 }
 
 void audio_sync(void)
 {
-	static DWORD last_sample_time = 0;
-	const int max_queued_samples = AUDIO_BUFFER_SAMPLE_COUNT * QUEUE_SIZE;
+	const DWORD max_queued_samples = AUDIO_BUFFER_SAMPLE_COUNT * QUEUE_SIZE;
 	for (;;) {
-		MMTIME mmt = {.wType = TIME_SAMPLES};
-		waveOutGetPosition(wout, &mmt, sizeof(mmt));
-		queued_samples -= (mmt.u.sample - last_sample_time);
-		last_sample_time = mmt.u.sample;		
+		const DWORD queued_samples = audio_queue_get_enqueued_samples();		
 		if (queued_samples < max_queued_samples)
 			break;
 	}
